@@ -36,13 +36,9 @@ class HomeFragment : Fragment() {
             findNavController().navigate(R.id.action_home_to_scanner)
         }
 
-        // Products card - show coming soon message
+        // Products card - navigate to products list
         binding.productsCard.setOnClickListener {
-            Toast.makeText(
-                requireContext(),
-                "Products feature coming soon!",
-                Toast.LENGTH_SHORT
-            ).show()
+            findNavController().navigate(R.id.action_home_to_products)
         }
 
         // Packages card - show coming soon message
