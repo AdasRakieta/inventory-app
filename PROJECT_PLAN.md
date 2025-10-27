@@ -14,7 +14,7 @@ Natywna aplikacja mobilna Android do zarządzania inwentarzem z możliwością �
 ## Funkcje Inwentaryzacyjne i Wysyłkowe
 
 ### Zarządzanie numerami seryjnymi
-- [ ] Możliwość przypisywania numerów seryjnych do produktów w paczce za pomocą skanera barcode/QR
+- [x] Możliwość przypisywania numerów seryjnych do produktów w paczce za pomocą skanera barcode/QR
 - [ ] Rozszerzenie modelu produktu o pole serialNumber
 - [ ] Ekran szczegółów produktu/paczki z akcją „Skanuj numer seryjny"
 - [ ] Obsługa błędów przy niepoprawnym lub zdublowanym numerze seryjnym
