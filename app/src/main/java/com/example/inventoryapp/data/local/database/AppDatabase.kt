@@ -19,7 +19,7 @@ import com.example.inventoryapp.data.local.entities.*
         ProductTemplateEntity::class,
         ScannerSettingsEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -67,6 +67,34 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Migration 3 -> 4: Ensure unique index on products.serialNumber exists
+        // Also remove duplicate non-null serial numbers to satisfy UNIQUE constraint
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Remove duplicate rows keeping the lowest id for each non-null serialNumber
+                database.execSQL(
+                    """
+                    DELETE FROM products
+                    WHERE id NOT IN (
+                        SELECT MIN(id)
+                        FROM products
+                        WHERE serialNumber IS NOT NULL
+                        GROUP BY serialNumber
+                    )
+                    AND serialNumber IS NOT NULL
+                    """.trimIndent()
+                )
+
+                // Create the unique index if it doesn't exist
+                database.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS index_products_serialNumber
+                    ON products(serialNumber)
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -74,7 +102,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "inventory_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Placeholder vector: white box; replace with provided PNG by adding app_logo.png to drawable and updating splash_screen.xml -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M18,18h72v72h-72z"/>
+</vector>

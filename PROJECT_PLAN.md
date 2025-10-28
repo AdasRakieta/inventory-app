@@ -7,7 +7,7 @@
 **Root Cause:** ProductEntity.serialNumber changed from `String?` to `String` (non-null) without proper database migration
 **Solution:** Reverted serialNumber to nullable (`String?`) in database layer while keeping UI validation requiring the field
 **Impact:** 
-- Database schema now stable at version 3
+- Database schema bumped to version 4 with migration 3→4 (unique index on products.serialNumber + dedup)
 - UI still enforces serial number requirement through validation
 - App no longer crashes on initialization
 - Build: ✅ SUCCESSFUL
@@ -22,6 +22,14 @@
 - Build: ✅ PASS (`.\gradlew.bat assembleDebug --stacktrace`)
 - APK generated: `app\build\outputs\apk\debug\app-debug.apk`
 - Ready for device testing
+
+### ✅ Splash screen / Logo (COMPLETED)
+Added legacy splash screen showing app logo centered on brand background.
+
+How to swap in your PNG logo:
+- Put your PNG as `app/src/main/res/drawable/ic_app_logo.png` (it will override the vector placeholder)
+- The splash uses `@drawable/ic_app_logo` automatically
+- Optional: later we can also update adaptive app icon to use the same artwork
 
 **Next Steps:**
 1. Install APK on scanner device and verify no crash

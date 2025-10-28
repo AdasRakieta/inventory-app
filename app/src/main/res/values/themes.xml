@@ -34,4 +34,12 @@
         <item name="android:textColor">@color/text_primary</item>
         <item name="cornerRadius">6dp</item>
     </style>
+
+    <!-- Splash theme showing centered logo on brand background -->
+    <style name="Theme.InventoryApp.Splash" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_screen</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
 </resources>
