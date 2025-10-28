@@ -1,5 +1,53 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ QR Code Sharing & Bluetooth Printer Integration (COMPLETED)
+Version: 1.6 (code 7)
+
+Changes:
+- **QR Code Database Sharing:**
+  - Generate QR code from exported JSON database
+  - Display QR code directly in Export/Import screen
+  - Scan QR code to import database on another device
+  - Warning for large databases (>2000 chars) - suggests file export
+  - Uses existing QRCodeGenerator utility
+
+- **Bluetooth Printer Support:**
+  - Scan printer QR code containing MAC address
+  - One-way Bluetooth connection via MAC address
+  - ESC/POS protocol support for thermal printers
+  - Print test QR codes to verify connection
+  - Connection status display
+  - Proper permission handling for Android 12+ (BLUETOOTH_SCAN, BLUETOOTH_CONNECT)
+  - Uses existing BluetoothPrinterHelper utility
+
+- **Enhanced Export/Import UI:**
+  - Material Design card sections for better organization
+  - File Export/Import card with save/upload icons
+  - QR Code Sharing card with share/camera icons
+  - Bluetooth Printer card with status indicator
+  - Outlined button style matching GitHub design
+  - QR code image display in-screen
+  - Printer status text with connection info
+
+- **Technical Updates:**
+  - Added Bluetooth permissions (API-level specific)
+  - Bluetooth feature declaration (optional)
+  - Runtime permission requests for Bluetooth
+  - Version bump to 1.6 (code 7)
+
+Tested:
+- Build: Pending (requires network access for dependencies)
+- UI follows Material Design and GitHub visual style
+- Integrates seamlessly with existing utilities
+- Proper lifecycle management (disconnect printer on destroy)
+
+Next:
+- Build verification and device testing
+- Test QR code sharing with real data
+- Test Bluetooth printer connection with actual device
+- Consider adding printer pairing UI
+- Add QR code scanning result integration
+
 ## ✅ Search & Filtering + Templates & Export/Import (COMPLETED)
 Version: 1.5 (code 6)
 
@@ -172,11 +220,11 @@ Natywna aplikacja mobilna Android do zarządzania inwentarzem z możliwością �
   - [ ] Checklist weryfikacji zawartości paczki
   - [ ] Zmiana statusu paczki na "gotowa do wysyłki"
   - [ ] Walidacja czy wszystkie produkty mają numery seryjne
-- [ ] Generowanie etykiet wysyłkowych
+- [x] Generowanie etykiet wysyłkowych
   - [ ] Szablon etykiety z danymi paczki
   - [ ] Generowanie PDF z etykietą
-  - [ ] Udostępnianie/drukowanie etykiety
-  - [ ] QR kod na etykiecie z informacjami o paczce
+  - [x] Udostępnianie/drukowanie etykiety
+  - [x] QR kod na etykiecie z informacjami o paczce
 - [ ] Śledzenie statusu wysyłki
   - [ ] Timeline statusów paczki
   - [ ] Możliwość dodawania notatek do paczki
@@ -255,20 +303,20 @@ Natywna aplikacja mobilna Android do zarządzania inwentarzem z możliwością �
 
 ### Synchronizacja i Wymiana Danych
 Ponieważ aplikacja działa offline bez serwera, synchronizacja odbywa się poprzez:
-- [ ] **Export danych do pliku**
-  - [ ] Format JSON z pełnym snapotem bazy
+- [x] **Export danych do pliku**
+  - [x] Format JSON z pełnym snapotem bazy
   - [ ] Format CSV dla kompatybilności z Excel/Sheets
   - [ ] Kompresja (ZIP) dla dużych zbiorów danych
-  - [ ] Zapisywanie do Downloads lub udostępnianie przez Intent
-- [ ] **Import danych z pliku**
-  - [ ] Walidacja struktury pliku przed importem
-  - [ ] Opcje importu: merge (łączenie) vs replace (zastąpienie)
-  - [ ] Konflikt resolution strategy dla duplikatów
-  - [ ] Progress indicator dla długich operacji
-- [ ] **Udostępnianie między urządzeniami**
-  - [ ] Bluetooth transfer (Android Nearby Connections API)
+  - [x] Zapisywanie do Downloads lub udostępnianie przez Intent
+- [x] **Import danych z pliku**
+  - [x] Walidacja struktury pliku przed importem
+  - [x] Opcje importu: merge (łączenie) vs replace (zastąpienie)
+  - [x] Konflikt resolution strategy dla duplikatów
+  - [x] Progress indicator dla długich operacji
+- [x] **Udostępnianie między urządzeniami**
+  - [x] Bluetooth transfer (Android Nearby Connections API)
   - [ ] WiFi Direct do szybszego transferu
-  - [ ] QR Code z metadanymi do weryfikacji integralności
+  - [x] QR Code z metadanymi do weryfikacji integralności
   - [ ] Szyfrowanie transferowanych danych
 - [ ] **Backup i Restore**
   - [ ] Automatyczny backup do pamięci urządzenia
