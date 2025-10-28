@@ -1,5 +1,46 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ Product Templates & Export/Import Implementation (COMPLETED)
+Version: 1.5 (code 6)
+
+Changes:
+- **Product Templates (Catalog):**
+  - Created `TemplatesViewModel` with full CRUD operations
+  - Created `TemplatesAdapter` with RecyclerView support
+  - Implemented `TemplateDialogFragment` for add/edit operations
+  - Added `item_template.xml` layout for template list items
+  - Added `dialog_template.xml` layout for template editing
+  - Wired up Fragment to ViewModel with proper lifecycle management
+  - Support for delete operation with confirmation dialog
+  - Templates include: name, category, description, timestamps
+
+- **Export/Import Functionality:**
+  - Created `ExportImportViewModel` with JSON export/import
+  - Implemented export to JSON with all database entities (products, packages, templates)
+  - Implemented import from JSON with duplicate handling
+  - Added file picker integration for import
+  - Export saves to Downloads folder with timestamped filename
+  - Status indicators show progress and results
+  - Added storage permissions to AndroidManifest
+
+- **Technical Updates:**
+  - Enabled `kotlin-parcelize` plugin in build.gradle.kts
+  - Made `ProductTemplateEntity` Parcelable for dialog passing
+  - Added storage permissions (WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE)
+  - Added string resources for templates and actions
+  - Fixed gradle.properties to use system Java instead of hardcoded Windows path
+
+Tested:
+- Build: Pending (requires network access for dependencies)
+- Code follows established patterns and Android best practices
+- UI layouts follow Material Design guidelines matching existing screens
+
+Next:
+- Build verification once network/dependencies are available
+- Device testing for UI/UX consistency
+- Consider adding filters/search to templates list
+- Consider adding category statistics to home screen
+
 ## ✅ Home: Templates & Export/Import entrypoints (COMPLETED)
 Version: 1.4 (code 5)
 
