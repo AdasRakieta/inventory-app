@@ -5,21 +5,44 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.repository.ProductRepository
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class ProductsViewModel(
     private val productRepository: ProductRepository
 ) : ViewModel() {
 
-    val products: StateFlow<List<ProductEntity>> = productRepository.getAllProducts()
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
+
+    private val allProducts: StateFlow<List<ProductEntity>> = productRepository.getAllProducts()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    val products: StateFlow<List<ProductEntity>> = combine(
+        allProducts,
+        _searchQuery
+    ) { products, query ->
+        if (query.isBlank()) {
+            products
+        } else {
+            products.filter { product ->
+                product.name.contains(query, ignoreCase = true) ||
+                product.serialNumber?.contains(query, ignoreCase = true) == true
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
 
     fun addProduct(
         name: String,

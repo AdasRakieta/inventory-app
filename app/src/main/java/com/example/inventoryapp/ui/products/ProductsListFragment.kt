@@ -1,6 +1,8 @@
 package com.example.inventoryapp.ui.products
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -48,6 +50,7 @@ class ProductsListFragment : Fragment() {
 
         setupRecyclerView()
         setupClickListeners()
+        setupSearchBar()
         observeProducts()
     }
 
@@ -72,6 +75,18 @@ class ProductsListFragment : Fragment() {
         binding.emptyAddButton.setOnClickListener {
             findNavController().navigate(R.id.action_products_to_add_product)
         }
+    }
+
+    private fun setupSearchBar() {
+        binding.searchEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                viewModel.setSearchQuery(s?.toString() ?: "")
+            }
+            
+            override fun afterTextChanged(s: Editable?) {}
+        })
     }
 
     private fun observeProducts() {

@@ -5,17 +5,17 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.inventoryapp.data.local.entities.PackageEntity
 import com.example.inventoryapp.data.repository.PackageRepository
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class PackagesViewModel(
     private val packageRepository: PackageRepository
 ) : ViewModel() {
 
-    val packagesWithCount: StateFlow<List<PackageWithCount>> = 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
+
+    private val allPackagesWithCount: StateFlow<List<PackageWithCount>> = 
         packageRepository.getAllPackages()
             .map { packages ->
                 packages.map { pkg ->
@@ -29,6 +29,28 @@ class PackagesViewModel(
                 started = SharingStarted.WhileSubscribed(5000),
                 initialValue = emptyList()
             )
+
+    val packagesWithCount: StateFlow<List<PackageWithCount>> = combine(
+        allPackagesWithCount,
+        _searchQuery
+    ) { packages, query ->
+        if (query.isBlank()) {
+            packages
+        } else {
+            packages.filter { packageWithCount ->
+                packageWithCount.packageEntity.name.contains(query, ignoreCase = true) ||
+                packageWithCount.packageEntity.status.contains(query, ignoreCase = true)
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
 
     fun createPackage(name: String, status: String = "PREPARATION") {
         viewModelScope.launch {
