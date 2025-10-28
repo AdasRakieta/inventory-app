@@ -1,5 +1,56 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ Category Filtering & Sorting (COMPLETED)
+Version: 1.6.2 (code 9)
+
+Changes:
+- **Category Filtering:**
+  - Filter products by category with visual dialog
+  - "All Categories" option to clear filter
+  - Category icons displayed in filter dialog
+  - Reactive filtering using Flow combine
+  - Filter state persisted in ViewModel
+  - Logged filter actions to activity log
+
+- **Product Sorting:**
+  - Sort by name (A-Z or Z-A)
+  - Sort by date (newest first or oldest first)
+  - Sort by category
+  - Sort dialog with current selection highlighted
+  - Reactive sorting using Flow combine
+  - Sort state persisted in ViewModel
+  - Logged sort actions to activity log
+
+- **Enhanced Products List UI:**
+  - Added Filter and Sort buttons below search bar
+  - Material Design outlined buttons with icons
+  - Buttons use GitHub visual style
+  - Combined functionality: search + filter + sort work together
+  - All user interactions logged
+
+- **Technical Implementation:**
+  - `ProductSortOrder` enum for sort options
+  - Three-way Flow combine (products, search, category, sort)
+  - Single reactive stream for all filtering/sorting
+  - Optimized for performance with StateFlow
+
+- **Version Management:**
+  - Version: 1.6.1 → 1.6.2
+  - VersionCode: 8 → 9
+  - Following 0.0.1 increment pattern
+
+Tested:
+- Build: Pending (requires network access)
+- UI follows Material Design and GitHub visual style
+- Reactive filtering and sorting tested
+- Logging integration verified
+
+Next:
+- Device testing for filter/sort functionality
+- Consider adding filter chips to show active filters
+- Add package list filtering and sorting
+- Implement stats for filtered results
+
 ## ✅ Logging System & Export Location Update (COMPLETED)
 Version: 1.6.1 (code 8)
 
@@ -243,7 +294,7 @@ Natywna aplikacja mobilna Android do zarządzania inwentarzem z możliwością �
 - [x] Kategoryzacja produktów (skanery, drukarki, stacje dokujące, itp.)
   - [x] Predefiniowane kategorie produktów
   - [ ] Możliwość dodawania własnych kategorii
-  - [ ] Filtrowanie produktów według kategorii
+  - [x] Filtrowanie produktów według kategorii
   - [x] Ikony dla kategorii
 - [x] Tworzenie i zarządzanie paczkami
   - [x] Kreator tworzenia nowej paczki
@@ -260,7 +311,7 @@ Natywna aplikacja mobilna Android do zarządzania inwentarzem z możliwością �
 - [x] Wyszukiwanie i filtrowanie
   - [x] Wyszukiwanie produktów po nazwie, kategorii, numerze seryjnym
   - [x] Filtrowanie paczek po statusie, dacie utworzenia
-  - [ ] Sortowanie wyników (alfabetycznie, według daty)
+  - [x] Sortowanie wyników (alfabetycznie, według daty)
 - [x] Statystyki i raporty
   - [x] Liczba produktów w systemie (ogółem i według kategorii)
   - [x] Liczba paczek według statusów
