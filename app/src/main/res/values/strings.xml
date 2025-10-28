@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Inventory App</string>
+    
+    <!-- Main Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_products">Products</string>
+    <string name="nav_packages">Packages</string>
+    <string name="nav_scanner">Scanner</string>
+    
+    <!-- Scanner -->
+    <string name="scanner_title">Scan Barcode/QR Code</string>
+    <string name="scanner_instruction">Point camera at barcode or QR code</string>
+    <string name="scanner_success">Code scanned successfully</string>
+    <string name="scanner_error">Failed to scan code</string>
+    <string name="scanner_duplicate_error">Serial number already exists</string>
+    <string name="scanner_permission_required">Camera permission is required for scanning</string>
+    <string name="scanner_grant_permission">Grant Permission</string>
+    <string name="scanner_assign_serial">Assign Serial Number</string>
+    <string name="scanner_cancel">Cancel</string>
+    
+    <!-- Product -->
+    <string name="product_name">Product Name</string>
+    <string name="product_serial_number">Serial Number</string>
+    <string name="product_category">Category</string>
+    <string name="product_add">Add Product</string>
+    <string name="product_scan_serial">Scan Serial Number</string>
+    <string name="product_manual_entry">Manual Entry</string>
+    <string name="product_details">Product Details</string>
+    
+    <!-- Package -->
+    <string name="package_name">Package Name</string>
+    <string name="package_status">Status</string>
+    <string name="package_add">Add Package</string>
+    <string name="package_details">Package Details</string>
+    
+    <!-- General -->
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="ok">OK</string>
+    <string name="error">Error</string>
+    <string name="success">Success</string>
+    
+    <!-- Errors -->
+    <string name="error_empty_field">This field cannot be empty</string>
+    <string name="error_duplicate_serial">This serial number is already assigned</string>
+    <string name="error_invalid_format">Invalid format</string>
+</resources>

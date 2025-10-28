@@ -14,25 +14,25 @@ Natywna aplikacja mobilna Android do zarządzania inwentarzem z możliwością �
 ## Funkcje Inwentaryzacyjne i Wysyłkowe
 
 ### Zarządzanie numerami seryjnymi
-- [ ] Możliwość przypisywania numerów seryjnych do produktów w paczce za pomocą skanera barcode/QR
-- [ ] Rozszerzenie modelu produktu o pole serialNumber
+- [x] Możliwość przypisywania numerów seryjnych do produktów w paczce za pomocą skanera barcode/QR
+- [x] Rozszerzenie modelu produktu o pole serialNumber
 - [ ] Ekran szczegółów produktu/paczki z akcją „Skanuj numer seryjny"
-- [ ] Obsługa błędów przy niepoprawnym lub zdublowanym numerze seryjnym
+- [x] Obsługa błędów przy niepoprawnym lub zdublowanym numerze seryjnym
 - [ ] Raportowanie numerów seryjnych w paczkach
-- [ ] Integracja z CameraX API do skanowania kodów
-- [ ] Obsługa skanowania za pomocą ML Kit Barcode Scanning
-- [ ] Walidacja formatów kodów kreskowych (EAN-13, Code 128, QR Code)
-- [ ] Historia skanów z timestampami
+- [x] Integracja z CameraX API do skanowania kodów
+- [x] Obsługa skanowania za pomocą ML Kit Barcode Scanning
+- [x] Walidacja formatów kodów kreskowych (EAN-13, Code 128, QR Code)
+- [x] Historia skanów z timestampami
 - [ ] Możliwość edycji ręcznej numeru seryjnego w przypadku problemu ze skanowaniem
 - [ ] Podgląd zeskanowanego obrazu kodu kreskowego
-- [ ] Wsparcie dla ciemnego trybu podczas skanowania
+- [x] Wsparcie dla ciemnego trybu podczas skanowania
 
 ### Podstawowe funkcje inwentaryzacyjne
-- [ ] Rejestrowanie nowych produktów w systemie
-  - [ ] Formularz dodawania produktu z walidacją pól
+- [x] Rejestrowanie nowych produktów w systemie
+  - [x] Formularz dodawania produktu z walidacją pól
   - [ ] Możliwość dodania zdjęcia produktu
-  - [ ] Przypisanie kategorii
-  - [ ] Pole dla numeru seryjnego (opcjonalne przy tworzeniu)
+  - [x] Przypisanie kategorii
+  - [x] Pole dla numeru seryjnego (opcjonalne przy tworzeniu)
 - [ ] Kategoryzacja produktów (skanery, drukarki, stacje dokujące, itp.)
   - [ ] Predefiniowane kategorie produktów
   - [ ] Możliwość dodawania własnych kategorii

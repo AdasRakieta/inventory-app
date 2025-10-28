@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.inventoryapp.ui.main.HomeFragment"
+        android:label="@string/nav_home">
+        <action
+            android:id="@+id/action_home_to_scanner"
+            app:destination="@id/scannerFragment" />
+        <action
+            android:id="@+id/action_home_to_products"
+            app:destination="@id/productsListFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/scannerFragment"
+        android:name="com.example.inventoryapp.ui.scanner.ScannerFragment"
+        android:label="@string/scanner_title" />
+
+    <fragment
+        android:id="@+id/productsListFragment"
+        android:name="com.example.inventoryapp.ui.products.ProductsListFragment"
+        android:label="@string/nav_products">
+        <action
+            android:id="@+id/action_products_to_add_product"
+            app:destination="@id/addProductFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/addProductFragment"
+        android:name="com.example.inventoryapp.ui.products.AddProductFragment"
+        android:label="@string/product_add" />
+
+</navigation>
