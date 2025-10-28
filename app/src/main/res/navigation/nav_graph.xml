@@ -53,6 +53,19 @@
     <fragment
         android:id="@+id/packageListFragment"
         android:name="com.example.inventoryapp.ui.packages.PackageListFragment"
-        android:label="@string/nav_packages" />
+        android:label="@string/nav_packages">
+        <action
+            android:id="@+id/action_packages_to_package_details"
+            app:destination="@id/packageDetailsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/packageDetailsFragment"
+        android:name="com.example.inventoryapp.ui.packages.PackageDetailsFragment"
+        android:label="@string/package_details">
+        <argument
+            android:name="packageId"
+            app:argType="long" />
+    </fragment>
 
 </navigation>

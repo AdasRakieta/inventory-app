@@ -54,8 +54,9 @@ class PackageListFragment : Fragment() {
 
     private fun setupRecyclerView() {
         adapter = PackagesAdapter { packageEntity ->
-            // TODO: Navigate to package details
-            Toast.makeText(requireContext(), "Package details coming soon", Toast.LENGTH_SHORT).show()
+            val action = PackageListFragmentDirections
+                .actionPackagesToPackageDetails(packageEntity.id)
+            findNavController().navigate(action)
         }
         
         binding.packagesRecyclerView.apply {
