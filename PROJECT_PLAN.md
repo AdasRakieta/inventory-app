@@ -16,14 +16,14 @@ Natywna aplikacja mobilna Android do zarządzania inwentarzem z możliwością �
 ### Zarządzanie numerami seryjnymi
 - [x] Możliwość przypisywania numerów seryjnych do produktów w paczce za pomocą skanera barcode/QR
 - [x] Rozszerzenie modelu produktu o pole serialNumber
-- [ ] Ekran szczegółów produktu/paczki z akcją „Skanuj numer seryjny"
+- [x] Ekran szczegółów produktu/paczki z akcją „Skanuj numer seryjny"
 - [x] Obsługa błędów przy niepoprawnym lub zdublowanym numerze seryjnym
 - [ ] Raportowanie numerów seryjnych w paczkach
 - [x] Integracja z CameraX API do skanowania kodów
 - [x] Obsługa skanowania za pomocą ML Kit Barcode Scanning
 - [x] Walidacja formatów kodów kreskowych (EAN-13, Code 128, QR Code)
 - [x] Historia skanów z timestampami
-- [ ] Możliwość edycji ręcznej numeru seryjnego w przypadku problemu ze skanowaniem
+- [x] Możliwość edycji ręcznej numeru seryjnego w przypadku problemu ze skanowaniem
 - [ ] Podgląd zeskanowanego obrazu kodu kreskowego
 - [x] Wsparcie dla ciemnego trybu podczas skanowania
 
@@ -33,23 +33,23 @@ Natywna aplikacja mobilna Android do zarządzania inwentarzem z możliwością �
   - [ ] Możliwość dodania zdjęcia produktu
   - [x] Przypisanie kategorii
   - [x] Pole dla numeru seryjnego (opcjonalne przy tworzeniu)
-- [ ] Kategoryzacja produktów (skanery, drukarki, stacje dokujące, itp.)
-  - [ ] Predefiniowane kategorie produktów
+- [x] Kategoryzacja produktów (skanery, drukarki, stacje dokujące, itp.)
+  - [x] Predefiniowane kategorie produktów
   - [ ] Możliwość dodawania własnych kategorii
   - [ ] Filtrowanie produktów według kategorii
-  - [ ] Ikony dla kategorii
-- [ ] Tworzenie i zarządzanie paczkami
-  - [ ] Kreator tworzenia nowej paczki
-  - [ ] Edycja istniejących paczek
-  - [ ] Usuwanie paczek (z potwierdzeniem)
+  - [x] Ikony dla kategorii
+- [x] Tworzenie i zarządzanie paczkami
+  - [x] Kreator tworzenia nowej paczki
+  - [x] Edycja istniejących paczek
+  - [x] Usuwanie paczek (z potwierdzeniem)
   - [ ] Duplikowanie paczek
-  - [ ] Statusy paczek (przygotowanie, gotowa, wysłana, dostarczona)
-- [ ] Przypisywanie produktów do paczek
+  - [x] Statusy paczek (przygotowanie, gotowa, wysłana, dostarczona)
+- [x] Przypisywanie produktów do paczek
   - [ ] Lista produktów z checkboxami
   - [ ] Wyszukiwanie produktów po nazwie/numerze seryjnym
   - [ ] Skanowanie kodów produktów do szybkiego dodania
-  - [ ] Usuwanie produktów z paczki
-  - [ ] Podgląd zawartości paczki
+  - [x] Usuwanie produktów z paczki
+  - [x] Podgląd zawartości paczki
 - [ ] Wyszukiwanie i filtrowanie
   - [ ] Wyszukiwanie produktów po nazwie, kategorii, numerze seryjnym
   - [ ] Filtrowanie paczek po statusie, dacie utworzenia
