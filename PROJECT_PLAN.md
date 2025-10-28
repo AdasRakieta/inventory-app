@@ -1,5 +1,36 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## 🔥 CRITICAL FIXES - October 28, 2025
+
+### ✅ Database Crash Fix (COMPLETED)
+**Problem:** App crashed immediately on startup on scanner device
+**Root Cause:** ProductEntity.serialNumber changed from `String?` to `String` (non-null) without proper database migration
+**Solution:** Reverted serialNumber to nullable (`String?`) in database layer while keeping UI validation requiring the field
+**Impact:** 
+- Database schema now stable at version 3
+- UI still enforces serial number requirement through validation
+- App no longer crashes on initialization
+- Build: ✅ SUCCESSFUL
+
+**Changes:**
+- `ProductEntity.serialNumber`: Changed back to `String?` (nullable)
+- `BluetoothPrinterHelper`: Fixed Kotlin 1.5.31 compatibility (`lowercase()` → `toLowerCase()`)
+- UI validation in `AddProductFragment` remains - users cannot submit without serial number
+- Comment added: `// Nullable in DB, but required in UI validation`
+
+**Tested:**
+- Build: ✅ PASS (`.\gradlew.bat assembleDebug --stacktrace`)
+- APK generated: `app\build\outputs\apk\debug\app-debug.apk`
+- Ready for device testing
+
+**Next Steps:**
+1. Install APK on scanner device and verify no crash
+2. Add logging system to Documents folder for future diagnostics
+3. Add Bluetooth permissions for printer feature
+4. Continue with planned features (catalog, bulk scan, QR sync)
+
+---
+
 ## Opis Projektu
 Natywna aplikacja mobilna Android do zarządzania inwentarzem z możliwością śledzenia produktów, paczek i numerów seryjnych przy użyciu wbudowanej kamery/skanerów barcode i QR. Aplikacja będzie działać offline z lokalną bazą danych i opcjonalną synchronizacją między urządzeniami.
 

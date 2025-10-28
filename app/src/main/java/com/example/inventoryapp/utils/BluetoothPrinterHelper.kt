@@ -44,7 +44,7 @@ class BluetoothPrinterHelper {
                 val pairedDevices = bluetoothAdapter.bondedDevices
                 // Filter devices that might be printers
                 pairedDevices.filter { device ->
-                    val name = device.name?.lowercase() ?: ""
+                    val name = device.name?.toLowerCase() ?: ""
                     name.contains("printer") || 
                     name.contains("print") || 
                     name.contains("pos") ||

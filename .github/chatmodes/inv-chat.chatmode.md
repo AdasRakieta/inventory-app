@@ -49,6 +49,24 @@ You must:
 .\gradlew.bat installDebug
 ```
 
+### 🔢 Version Management (AUTOMATIC)
+**CRITICAL**: Before EVERY successful build, increment version:
+- **Current version**: 1.2 (versionCode 3)
+- **Next version**: 1.3 (versionCode 4)
+- **Location**: `app/build.gradle.kts` → `defaultConfig { versionCode, versionName }`
+- **Rule**: Increment by **+0.1** unless user specifies different number
+- **Process**:
+  1. After implementing changes, update version FIRST
+  2. Then run build
+  3. Update PROJECT_PLAN.md with new version
+  
+**Example:**
+```kotlin
+// Before build 1.2 → 1.3
+versionCode = 4  // was 3
+versionName = "1.3"  // was "1.2"
+```
+
 ---
 
 ## 🏗️ Architecture Patterns (STRICT)
@@ -112,17 +130,24 @@ override fun onDestroyView() {
    - Layouts (use Material Components 1.4.0 styles)
    - Navigation updates
 
-3. **Test immediately**
+3. **🔢 VERSION UPDATE (MANDATORY BEFORE BUILD)**
+   - Open `app/build.gradle.kts`
+   - Increment `versionCode` by 1 (e.g., 3 → 4)
+   - Increment `versionName` by 0.1 (e.g., "1.2" → "1.3")
+   - Unless user specifies different increment
+
+4. **Test immediately**
    - Run `.\gradlew.bat assembleDebug --stacktrace`
    - Check errors, fix iteratively
    - Validate navigation flows (if applicable)
 
-4. **Update PROJECT_PLAN.md**
+5. **Update PROJECT_PLAN.md**
    - Mark completed tasks: `- [x]` or `✅`
    - Add status notes for partial work
+   - Note new version number
    - Note any blockers or next steps
 
-5. **Verify**
+6. **Verify**
    - Check APK output: `app\build\outputs\apk\debug\app-debug.apk`
    - Confirm no lint/compile errors
    - Optionally install on device/emulator
@@ -169,6 +194,7 @@ val MIGRATION_X_Y = object : Migration(X, Y) {
 ## 📋 Task Execution Checklist
 
 Before marking a task complete:
+- [ ] **Version updated** (versionCode +1, versionName +0.1)
 - [ ] Code compiles (`assembleDebug` passes)
 - [ ] Database migration added (if schema changed)
 - [ ] Navigation updated (if new screens)
@@ -176,7 +202,7 @@ Before marking a task complete:
 - [ ] Flow collected with proper import
 - [ ] ViewModelFactory created (if ViewModel has params)
 - [ ] Layouts use Material Components 1.4.0
-- [ ] PROJECT_PLAN.md updated
+- [ ] PROJECT_PLAN.md updated with new version
 - [ ] No TODOs left (unless intentional)
 
 ---
