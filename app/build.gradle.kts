@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.kapt")
+    id("kotlin-parcelize")
     id("androidx.navigation.safeargs.kotlin")
 }
 
@@ -12,8 +13,8 @@ android {
         applicationId = "com.inventory.prd"
         minSdkVersion(26)
         targetSdkVersion(30)
-    versionCode = 5
-    versionName = "1.4"
+    versionCode = 9
+    versionName = "1.6.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

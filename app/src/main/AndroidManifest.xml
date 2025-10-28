@@ -4,8 +4,23 @@
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
     
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="32" />
+    
+    <!-- Bluetooth permissions for printer support -->
+    <uses-permission android:name="android.permission.BLUETOOTH" 
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" 
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" 
+        android:minSdkVersion="31" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" 
+        android:minSdkVersion="31" />
 
     <application
         android:name=".InventoryApplication"

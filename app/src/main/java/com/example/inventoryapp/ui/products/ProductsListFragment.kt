@@ -1,9 +1,12 @@
 package com.example.inventoryapp.ui.products
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -13,6 +16,7 @@ import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentProductsListBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.ProductRepository
+import com.example.inventoryapp.utils.CategoryHelper
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
@@ -48,6 +52,8 @@ class ProductsListFragment : Fragment() {
 
         setupRecyclerView()
         setupClickListeners()
+        setupSearchBar()
+        setupFilterAndSort()
         observeProducts()
     }
 
@@ -72,6 +78,86 @@ class ProductsListFragment : Fragment() {
         binding.emptyAddButton.setOnClickListener {
             findNavController().navigate(R.id.action_products_to_add_product)
         }
+    }
+
+    private fun setupSearchBar() {
+        binding.searchEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                viewModel.setSearchQuery(s?.toString() ?: "")
+            }
+            
+            override fun afterTextChanged(s: Editable?) {}
+        })
+    }
+    
+    private fun setupFilterAndSort() {
+        binding.filterButton.setOnClickListener {
+            showCategoryFilterDialog()
+        }
+        
+        binding.sortButton.setOnClickListener {
+            showSortDialog()
+        }
+    }
+    
+    private fun showCategoryFilterDialog() {
+        val categories = CategoryHelper.getAllCategories()
+        val categoryNames = arrayOf("All Categories") + categories.map { "${it.icon} ${it.name}" }.toTypedArray()
+        
+        val currentCategoryId = viewModel.selectedCategoryId.value
+        val currentSelection = if (currentCategoryId == null) {
+            0
+        } else {
+            categories.indexOfFirst { it.id == currentCategoryId } + 1
+        }
+        
+        AlertDialog.Builder(requireContext())
+            .setTitle("Filter by Category")
+            .setSingleChoiceItems(categoryNames, currentSelection) { dialog, which ->
+                val selectedCategoryId = if (which == 0) null else categories[which - 1].id
+                viewModel.setCategoryFilter(selectedCategoryId)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun showSortDialog() {
+        val sortOptions = arrayOf(
+            "Name (A-Z)",
+            "Name (Z-A)",
+            "Newest First",
+            "Oldest First",
+            "By Category"
+        )
+        
+        val currentSortOrder = viewModel.sortOrder.value
+        val currentSelection = when (currentSortOrder) {
+            ProductSortOrder.NAME_ASC -> 0
+            ProductSortOrder.NAME_DESC -> 1
+            ProductSortOrder.DATE_NEWEST -> 2
+            ProductSortOrder.DATE_OLDEST -> 3
+            ProductSortOrder.CATEGORY -> 4
+        }
+        
+        AlertDialog.Builder(requireContext())
+            .setTitle("Sort Products")
+            .setSingleChoiceItems(sortOptions, currentSelection) { dialog, which ->
+                val selectedSortOrder = when (which) {
+                    0 -> ProductSortOrder.NAME_ASC
+                    1 -> ProductSortOrder.NAME_DESC
+                    2 -> ProductSortOrder.DATE_NEWEST
+                    3 -> ProductSortOrder.DATE_OLDEST
+                    4 -> ProductSortOrder.CATEGORY
+                    else -> ProductSortOrder.NAME_ASC
+                }
+                viewModel.setSortOrder(selectedSortOrder)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun observeProducts() {

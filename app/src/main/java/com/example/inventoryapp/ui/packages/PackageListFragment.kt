@@ -2,6 +2,8 @@ package com.example.inventoryapp.ui.packages
 
 import android.app.AlertDialog
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -50,6 +52,7 @@ class PackageListFragment : Fragment() {
 
         setupRecyclerView()
         setupClickListeners()
+        setupSearchBar()
         observePackages()
     }
 
@@ -74,6 +77,18 @@ class PackageListFragment : Fragment() {
         binding.emptyAddButton.setOnClickListener {
             showCreatePackageDialog()
         }
+    }
+
+    private fun setupSearchBar() {
+        binding.searchEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                viewModel.setSearchQuery(s?.toString() ?: "")
+            }
+            
+            override fun afterTextChanged(s: Editable?) {}
+        })
     }
 
     private fun showCreatePackageDialog() {
