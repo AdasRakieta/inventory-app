@@ -52,7 +52,9 @@ class ProductsListFragment : Fragment() {
 
     private fun setupRecyclerView() {
         adapter = ProductsAdapter { product ->
-            // TODO: Navigate to product details
+            val action = ProductsListFragmentDirections
+                .actionProductsToProductDetails(product.id)
+            findNavController().navigate(action)
         }
         
         binding.productsRecyclerView.apply {

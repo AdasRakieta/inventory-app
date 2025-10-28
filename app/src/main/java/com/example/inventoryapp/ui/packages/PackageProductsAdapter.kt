@@ -1,4 +1,4 @@
-package com.example.inventoryapp.ui.products
+package com.example.inventoryapp.ui.packages
 
 import android.view.LayoutInflater
 import android.view.View
@@ -6,21 +6,21 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.inventoryapp.databinding.ItemProductBinding
+import com.example.inventoryapp.databinding.ItemPackageProductBinding
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.utils.CategoryHelper
 
-class ProductsAdapter(
-    private val onProductClick: (ProductEntity) -> Unit
-) : ListAdapter<ProductEntity, ProductsAdapter.ProductViewHolder>(ProductDiffCallback()) {
+class PackageProductsAdapter(
+    private val onRemoveClick: (ProductEntity) -> Unit
+) : ListAdapter<ProductEntity, PackageProductsAdapter.ProductViewHolder>(ProductDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductViewHolder {
-        val binding = ItemProductBinding.inflate(
+        val binding = ItemPackageProductBinding.inflate(
             LayoutInflater.from(parent.context),
             parent,
             false
         )
-        return ProductViewHolder(binding, onProductClick)
+        return ProductViewHolder(binding, onRemoveClick)
     }
 
     override fun onBindViewHolder(holder: ProductViewHolder, position: Int) {
@@ -28,26 +28,23 @@ class ProductsAdapter(
     }
 
     class ProductViewHolder(
-        private val binding: ItemProductBinding,
-        private val onProductClick: (ProductEntity) -> Unit
+        private val binding: ItemPackageProductBinding,
+        private val onRemoveClick: (ProductEntity) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(product: ProductEntity) {
-            binding.productName.text = product.name
-            binding.productCategory.text = CategoryHelper.getCategoryName(product.categoryId)
             binding.categoryIcon.text = CategoryHelper.getCategoryIcon(product.categoryId)
+            binding.productName.text = product.name
             
             if (product.serialNumber != null) {
-                binding.serialNumberContainer.visibility = View.VISIBLE
-                binding.noSerialNumber.visibility = View.GONE
-                binding.productSerialNumber.text = product.serialNumber
+                binding.productSerialNumber.visibility = View.VISIBLE
+                binding.productSerialNumber.text = "SN: ${product.serialNumber}"
             } else {
-                binding.serialNumberContainer.visibility = View.GONE
-                binding.noSerialNumber.visibility = View.VISIBLE
+                binding.productSerialNumber.visibility = View.GONE
             }
 
-            binding.root.setOnClickListener {
-                onProductClick(product)
+            binding.removeButton.setOnClickListener {
+                onRemoveClick(product)
             }
         }
     }
