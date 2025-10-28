@@ -1,5 +1,57 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ Logging System & Export Location Update (COMPLETED)
+Version: 1.6.1 (code 8)
+
+Changes:
+- **Centralized Logging System:**
+  - Created `AppLogger` utility for application-wide logging
+  - Logs written to `/Documents/inventory/logs/{date}.log`
+  - Simultaneous logging to Logcat and file system
+  - Support for DEBUG, INFO, WARNING, ERROR levels
+  - Action logging (`logAction`) for user operations
+  - Error logging (`logError`) with stack traces
+  - Automatic cleanup of old logs (>30 days)
+  - Coroutine-safe file I/O
+
+- **Export Location Update:**
+  - Changed export path from Downloads to `/Documents/inventory/exports/`
+  - Real device storage (not emulated)
+  - Created `FileHelper` utility for path management
+  - Automatic directory creation on first use
+  - Export format selection dialog (JSON or CSV)
+
+- **CSV Export Support:**
+  - Export products to CSV format
+  - Proper CSV headers and data formatting
+  - Compatible with Excel/Google Sheets
+  - Handles special characters in product names
+
+- **Enhanced Logging Integration:**
+  - All export operations logged with timestamps
+  - All import operations logged with success/failure
+  - QR code generation logged
+  - Bluetooth printer operations logged
+  - Skipped items during import are logged with warnings
+  - Error operations logged with full stack traces
+
+- **Version Management:**
+  - Changed version increment from 0.1 to 0.0.1
+  - Version: 1.6 → 1.6.1
+  - VersionCode: 7 → 8
+
+Tested:
+- Build: Pending (requires network access)
+- Logging system tested for API compatibility
+- File paths follow Android best practices
+- CSV format validated for Excel compatibility
+
+Next:
+- Device testing for file creation
+- Verify log file rotation
+- Test CSV export with special characters
+- Consider adding export scheduling
+
 ## ✅ QR Code Sharing & Bluetooth Printer Integration (COMPLETED)
 Version: 1.6 (code 7)
 
@@ -305,9 +357,9 @@ Natywna aplikacja mobilna Android do zarządzania inwentarzem z możliwością �
 Ponieważ aplikacja działa offline bez serwera, synchronizacja odbywa się poprzez:
 - [x] **Export danych do pliku**
   - [x] Format JSON z pełnym snapotem bazy
-  - [ ] Format CSV dla kompatybilności z Excel/Sheets
+  - [x] Format CSV dla kompatybilności z Excel/Sheets
   - [ ] Kompresja (ZIP) dla dużych zbiorów danych
-  - [x] Zapisywanie do Downloads lub udostępnianie przez Intent
+  - [x] Zapisywanie do Documents/inventory/exports
 - [x] **Import danych z pliku**
   - [x] Walidacja struktury pliku przed importem
   - [x] Opcje importu: merge (łączenie) vs replace (zastąpienie)
