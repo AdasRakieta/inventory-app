@@ -8,6 +8,7 @@ import com.example.inventoryapp.data.repository.ProductTemplateRepository
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.local.entities.PackageEntity
 import com.example.inventoryapp.data.local.entities.ProductTemplateEntity
+import com.example.inventoryapp.utils.AppLogger
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +42,7 @@ class ExportImportViewModel(
 
     suspend fun exportToJson(outputFile: File): Boolean {
         return try {
+            AppLogger.logAction("Export Started", "File: ${outputFile.absolutePath}")
             _status.value = "Exporting data..."
             
             val products = productRepository.getAllProducts().first()
@@ -53,20 +55,65 @@ class ExportImportViewModel(
                 templates = templates
             )
 
+            // Ensure parent directory exists
+            outputFile.parentFile?.mkdirs()
+
             FileWriter(outputFile).use { writer ->
                 gson.toJson(exportData, writer)
             }
 
-            _status.value = "Export successful: ${products.size} products, ${packages.size} packages, ${templates.size} templates"
+            val message = "Export successful: ${products.size} products, ${packages.size} packages, ${templates.size} templates"
+            _status.value = message
+            AppLogger.logAction("Export Completed", message)
             true
         } catch (e: Exception) {
-            _status.value = "Export failed: ${e.message}"
+            val errorMsg = "Export failed: ${e.message}"
+            _status.value = errorMsg
+            AppLogger.logError("Export", e)
+            false
+        }
+    }
+    
+    suspend fun exportToCsv(outputFile: File): Boolean {
+        return try {
+            AppLogger.logAction("CSV Export Started", "File: ${outputFile.absolutePath}")
+            _status.value = "Exporting to CSV..."
+            
+            val products = productRepository.getAllProducts().first()
+            
+            // Ensure parent directory exists
+            outputFile.parentFile?.mkdirs()
+            
+            FileWriter(outputFile).use { writer ->
+                // CSV Header
+                writer.append("ID,Name,Category ID,Serial Number,Created At,Updated At\n")
+                
+                // CSV Data
+                products.forEach { product ->
+                    writer.append("${product.id},")
+                    writer.append("\"${product.name}\",")
+                    writer.append("${product.categoryId ?: ""},")
+                    writer.append("\"${product.serialNumber ?: ""}\",")
+                    writer.append("${product.createdAt},")
+                    writer.append("${product.updatedAt}\n")
+                }
+            }
+            
+            val message = "CSV export successful: ${products.size} products"
+            _status.value = message
+            AppLogger.logAction("CSV Export Completed", message)
+            true
+        } catch (e: Exception) {
+            val errorMsg = "CSV export failed: ${e.message}"
+            _status.value = errorMsg
+            AppLogger.logError("CSV Export", e)
             false
         }
     }
 
     suspend fun importFromJson(inputFile: File): Boolean {
         return try {
+            AppLogger.logAction("Import Started", "File: ${inputFile.absolutePath}")
             _status.value = "Importing data..."
             
             val exportData = FileReader(inputFile).use { reader ->
@@ -83,7 +130,7 @@ class ExportImportViewModel(
                     templateRepository.insertTemplate(template.copy(id = 0))
                     importedTemplates++
                 } catch (e: Exception) {
-                    // Skip duplicates or errors
+                    AppLogger.w("Import", "Skipped template: ${template.name}", e)
                 }
             }
 
@@ -93,7 +140,7 @@ class ExportImportViewModel(
                     productRepository.insertProduct(product.copy(id = 0))
                     importedProducts++
                 } catch (e: Exception) {
-                    // Skip duplicates or errors (e.g., duplicate serial numbers)
+                    AppLogger.w("Import", "Skipped product: ${product.name}", e)
                 }
             }
 
@@ -103,14 +150,18 @@ class ExportImportViewModel(
                     packageRepository.insertPackage(pkg.copy(id = 0))
                     importedPackages++
                 } catch (e: Exception) {
-                    // Skip duplicates or errors
+                    AppLogger.w("Import", "Skipped package: ${pkg.name}", e)
                 }
             }
 
-            _status.value = "Import successful: $importedProducts products, $importedPackages packages, $importedTemplates templates"
+            val message = "Import successful: $importedProducts products, $importedPackages packages, $importedTemplates templates"
+            _status.value = message
+            AppLogger.logAction("Import Completed", message)
             true
         } catch (e: Exception) {
-            _status.value = "Import failed: ${e.message}"
+            val errorMsg = "Import failed: ${e.message}"
+            _status.value = errorMsg
+            AppLogger.logError("Import", e)
             false
         }
     }

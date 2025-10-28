@@ -9,7 +9,6 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -28,6 +27,8 @@ import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductTemplateRepository
 import com.example.inventoryapp.utils.QRCodeGenerator
 import com.example.inventoryapp.utils.BluetoothPrinterHelper
+import com.example.inventoryapp.utils.AppLogger
+import com.example.inventoryapp.utils.FileHelper
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -120,7 +121,7 @@ class ExportImportFragment : Fragment() {
 
     private fun setupButtons() {
         binding.exportButton.setOnClickListener {
-            exportData()
+            showExportOptions()
         }
 
         binding.importButton.setOnClickListener {
@@ -152,21 +153,63 @@ class ExportImportFragment : Fragment() {
         }
     }
 
-    private fun exportData() {
+    private fun showExportOptions() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Export Format")
+            .setMessage("Choose export format")
+            .setPositiveButton("JSON") { _, _ ->
+                exportDataAsJson()
+            }
+            .setNegativeButton("CSV") { _, _ ->
+                exportDataAsCsv()
+            }
+            .setNeutralButton("Cancel", null)
+            .show()
+    }
+
+    private fun exportDataAsJson() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val file = File(downloadsDir, getExportFileName())
+                AppLogger.logAction("Export JSON Initiated")
+                val exportsDir = FileHelper.getExportsDirectory()
+                val file = File(exportsDir, getExportFileName("json"))
                 
                 val success = viewModel.exportToJson(file)
                 if (success) {
                     Toast.makeText(
                         requireContext(),
-                        "Exported to: ${file.absolutePath}",
+                        "Exported to: Documents/inventory/exports/",
                         Toast.LENGTH_LONG
                     ).show()
                 }
             } catch (e: Exception) {
+                AppLogger.logError("Export JSON", e)
+                Toast.makeText(
+                    requireContext(),
+                    "Export failed: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    private fun exportDataAsCsv() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                AppLogger.logAction("Export CSV Initiated")
+                val exportsDir = FileHelper.getExportsDirectory()
+                val file = File(exportsDir, getExportFileName("csv"))
+                
+                val success = viewModel.exportToCsv(file)
+                if (success) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Exported to: Documents/inventory/exports/",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } catch (e: Exception) {
+                AppLogger.logError("Export CSV", e)
                 Toast.makeText(
                     requireContext(),
                     "Export failed: ${e.message}",
@@ -177,6 +220,9 @@ class ExportImportFragment : Fragment() {
     }
 
     private fun importData() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            AppLogger.logAction("Import Initiated")
+        }
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "application/json"
@@ -187,7 +233,8 @@ class ExportImportFragment : Fragment() {
     private fun shareViaQR() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val file = File(requireContext().cacheDir, getExportFileName())
+                AppLogger.logAction("QR Code Share Initiated")
+                val file = File(requireContext().cacheDir, getExportFileName("json"))
                 val success = viewModel.exportToJson(file)
                 
                 if (success) {
@@ -200,6 +247,7 @@ class ExportImportFragment : Fragment() {
                             .setMessage("Database is too large for QR code. Use file export instead or export individual items.")
                             .setPositiveButton("OK", null)
                             .show()
+                        AppLogger.w("QR Share", "Database too large for QR code: ${jsonContent.length} chars")
                         return@launch
                     }
                     
@@ -207,13 +255,16 @@ class ExportImportFragment : Fragment() {
                     if (qrBitmap != null) {
                         binding.qrCodeImage.setImageBitmap(qrBitmap)
                         binding.qrCodeImage.visibility = View.VISIBLE
+                        AppLogger.logAction("QR Code Generated Successfully")
                         Toast.makeText(requireContext(), "QR Code generated. Scan to import.", Toast.LENGTH_LONG).show()
                     } else {
+                        AppLogger.e("QR Share", "Failed to generate QR bitmap")
                         Toast.makeText(requireContext(), "Failed to generate QR code", Toast.LENGTH_SHORT).show()
                     }
                 }
                 file.delete()
             } catch (e: Exception) {
+                AppLogger.logError("QR Share", e)
                 Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
@@ -316,9 +367,9 @@ class ExportImportFragment : Fragment() {
         } ?: Toast.makeText(requireContext(), "No printer connected", Toast.LENGTH_SHORT).show()
     }
 
-    private fun getExportFileName(): String {
+    private fun getExportFileName(extension: String): String {
         val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
-        return "inventory_export_${dateFormat.format(Date())}.json"
+        return "inventory_export_${dateFormat.format(Date())}.$extension"
     }
 
     override fun onDestroyView() {
