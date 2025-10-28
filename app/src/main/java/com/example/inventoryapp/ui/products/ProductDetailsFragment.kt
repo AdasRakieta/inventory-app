@@ -17,6 +17,7 @@ import com.example.inventoryapp.databinding.FragmentProductDetailsBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.ProductRepository
 import com.example.inventoryapp.utils.CategoryHelper
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date

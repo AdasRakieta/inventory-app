@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductRepository
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

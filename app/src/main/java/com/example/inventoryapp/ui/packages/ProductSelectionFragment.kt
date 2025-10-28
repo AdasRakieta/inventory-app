@@ -15,6 +15,7 @@ import com.example.inventoryapp.databinding.FragmentProductSelectionBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductRepository
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class ProductSelectionFragment : Fragment() {

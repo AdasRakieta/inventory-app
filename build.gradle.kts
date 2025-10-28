@@ -1,16 +1,19 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+// Add legacy buildscript only for plugins not available via the plugins DSL (e.g., Navigation Safe Args 2.3.x)
 buildscript {
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:8.1.4")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22")
-        classpath("androidx.navigation:navigation-safe-args-gradle-plugin:2.8.5")
+        classpath("androidx.navigation:navigation-safe-args-gradle-plugin:2.3.5")
     }
 }
-
-plugins {
-    id("com.google.devtools.ksp") version "1.9.22-1.0.17" apply false
+// For Gradle 6.x + AGP 4.2.x, configure repositories for all projects here
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
 }

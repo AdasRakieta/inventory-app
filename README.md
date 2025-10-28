@@ -21,7 +21,7 @@ Native Android inventory management application built with Kotlin. This app help
 
 - **Language**: Kotlin
 - **Minimum SDK**: API 26 (Android 8.0)
-- **Target SDK**: API 35
+ - **Target SDK**: API 30
 - **Architecture**: MVVM with Repository pattern
 - **Database**: Room (SQLite)
 - **Camera**: CameraX API
@@ -32,25 +32,45 @@ Native Android inventory management application built with Kotlin. This app help
 ## Getting Started
 
 ### Prerequisites
-- Android Studio Hedgehog (2023.1.1) or newer
-- Android SDK API 26-35
-- JDK 17
+- Android Studio (Arctic Fox 2020.3.1 or newer recommended)
+- Android SDK API 26–30 installed
+- JDK 8 or JDK 11 installed (Gradle runs on a JDK, not a JRE)
 
 ### Build
 ```bash
+# macOS/Linux
 ./gradlew assembleDebug
+
+# Windows (PowerShell)
+./gradlew.bat assembleDebug
 ```
 
 ### Run Tests
 ```bash
+# macOS/Linux
 ./gradlew test
 ./gradlew connectedAndroidTest
+
+# Windows (PowerShell)
+./gradlew.bat test
+./gradlew.bat connectedAndroidTest
 ```
 
 ### Install on Device
 ```bash
+# macOS/Linux
 ./gradlew installDebug
+
+# Windows (PowerShell)
+./gradlew.bat installDebug
 ```
+
+### Troubleshooting
+
+- Error: "Kotlin could not find the required JDK tools ... Make sure Gradle is running on a JDK, not JRE"
+	- Ensure you have a JDK installed (8 or 11). A JRE alone is not sufficient.
+	- Set JAVA_HOME to your JDK directory, or set `org.gradle.java.home` in `gradle.properties` to the JDK path.
+	- If you use Android Studio, you can point Gradle to the embedded JDK (e.g., `C:\\Program Files\\Android\\Android Studio\\jbr`).
 
 ## Project Structure
 

@@ -13,6 +13,7 @@ import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentProductsListBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.ProductRepository
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class ProductsListFragment : Fragment() {
