@@ -30,6 +30,7 @@ interface PackageDao {
     @Delete
     suspend fun removeProductFromPackage(crossRef: PackageProductCrossRef)
 
+    @RewriteQueriesToDropUnusedColumns
     @Query("SELECT * FROM products INNER JOIN package_product_cross_ref ON products.id = package_product_cross_ref.productId WHERE package_product_cross_ref.packageId = :packageId")
     fun getProductsInPackage(packageId: Long): Flow<List<ProductEntity>>
 

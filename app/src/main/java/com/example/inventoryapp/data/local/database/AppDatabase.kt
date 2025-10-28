@@ -16,7 +16,7 @@ import com.example.inventoryapp.data.local.entities.*
         ScanHistoryEntity::class
     ],
     version = 1,
-    exportSchema = true
+    exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun productDao(): ProductDao
