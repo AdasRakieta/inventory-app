@@ -47,4 +47,12 @@
     <string name="error_empty_field">This field cannot be empty</string>
     <string name="error_duplicate_serial">This serial number is already assigned</string>
     <string name="error_invalid_format">Invalid format</string>
+
+    <!-- Templates / Catalog -->
+    <string name="title_templates">Product Templates</string>
+
+    <!-- Export / Import -->
+    <string name="title_export_import">Export / Import</string>
+    <string name="action_export">Export</string>
+    <string name="action_import">Import</string>
 </resources>

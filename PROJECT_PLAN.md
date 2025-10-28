@@ -1,5 +1,22 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ Home: Templates & Export/Import entrypoints (COMPLETED)
+Version: 1.4 (code 5)
+
+Changes:
+- Added navigation actions from Home to new destinations: Templates and Export/Import.
+- Created `TemplatesFragment` (stub) with toolbar, RecyclerView, and FAB.
+- Created `ExportImportFragment` (stub) with Export and Import buttons and status text.
+- Updated `nav_graph.xml` with new fragments and actions.
+- Added required string resources for titles and actions.
+
+Tested:
+- Build: pending in this step; will run immediately after version bump (done) and wiring. Expected to pass as stubs compile.
+
+Next:
+- Implement Product Templates list (bind to repository/Room) and add/edit flows.
+- Implement Export (JSON snapshot) and Import (merge rules) with progress and error handling.
+
 ## 🔥 CRITICAL FIXES - October 28, 2025
 
 ### ✅ Database Crash Fix (COMPLETED)

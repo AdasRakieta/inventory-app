@@ -17,6 +17,12 @@
         <action
             android:id="@+id/action_home_to_packages"
             app:destination="@id/packageListFragment" />
+        <action
+            android:id="@+id/action_home_to_templates"
+            app:destination="@id/templatesFragment" />
+        <action
+            android:id="@+id/action_home_to_export_import"
+            app:destination="@id/exportImportFragment" />
     </fragment>
 
     <fragment
@@ -79,5 +85,15 @@
             android:name="packageId"
             app:argType="long" />
     </fragment>
+
+    <fragment
+        android:id="@+id/templatesFragment"
+        android:name="com.example.inventoryapp.ui.templates.TemplatesFragment"
+        android:label="Templates" />
+
+    <fragment
+        android:id="@+id/exportImportFragment"
+        android:name="com.example.inventoryapp.ui.tools.ExportImportFragment"
+        android:label="Export / Import" />
 
 </navigation>

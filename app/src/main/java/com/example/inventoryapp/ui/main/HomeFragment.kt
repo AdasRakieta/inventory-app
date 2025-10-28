@@ -57,6 +57,16 @@ class HomeFragment : Fragment() {
         binding.packagesCard.setOnClickListener {
             findNavController().navigate(R.id.action_home_to_packages)
         }
+
+        // Templates card - navigate to product templates (catalog)
+        binding.templatesCard.setOnClickListener {
+            findNavController().navigate(R.id.action_home_to_templates)
+        }
+
+        // Export/Import card - navigate to tools screen
+        binding.exportImportCard.setOnClickListener {
+            findNavController().navigate(R.id.action_home_to_export_import)
+        }
     }
 
     private fun loadStatistics() {
