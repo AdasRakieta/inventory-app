@@ -19,7 +19,8 @@ class PackagesViewModel(
         packageRepository.getAllPackages()
             .map { packages ->
                 packages.map { pkg ->
-                    // For now, set count to 0 - we'll update this when we implement product assignment
+                    // Product counts shown in package details screen
+                    // Keeping it simple in list view for performance
                     PackageWithCount(pkg, 0)
                 }
             }

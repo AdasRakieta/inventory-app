@@ -71,8 +71,9 @@ class PackageDetailsFragment : Fragment() {
 
     private fun setupClickListeners() {
         binding.addProductsButton.setOnClickListener {
-            // TODO: Navigate to product selection screen
-            Toast.makeText(requireContext(), "Add products coming soon", Toast.LENGTH_SHORT).show()
+            val action = PackageDetailsFragmentDirections
+                .actionPackageDetailsToProductSelection(args.packageId)
+            findNavController().navigate(action)
         }
         
         binding.editPackageButton.setOnClickListener {

@@ -45,7 +45,7 @@ Natywna aplikacja mobilna Android do zarządzania inwentarzem z możliwością �
   - [ ] Duplikowanie paczek
   - [x] Statusy paczek (przygotowanie, gotowa, wysłana, dostarczona)
 - [x] Przypisywanie produktów do paczek
-  - [ ] Lista produktów z checkboxami
+  - [x] Lista produktów z checkboxami
   - [ ] Wyszukiwanie produktów po nazwie/numerze seryjnym
   - [ ] Skanowanie kodów produktów do szybkiego dodania
   - [x] Usuwanie produktów z paczki
@@ -54,9 +54,9 @@ Natywna aplikacja mobilna Android do zarządzania inwentarzem z możliwością �
   - [ ] Wyszukiwanie produktów po nazwie, kategorii, numerze seryjnym
   - [ ] Filtrowanie paczek po statusie, dacie utworzenia
   - [ ] Sortowanie wyników (alfabetycznie, według daty)
-- [ ] Statystyki i raporty
-  - [ ] Liczba produktów w systemie (ogółem i według kategorii)
-  - [ ] Liczba paczek według statusów
+- [x] Statystyki i raporty
+  - [x] Liczba produktów w systemie (ogółem i według kategorii)
+  - [x] Liczba paczek według statusów
   - [ ] Produkty bez przypisanych numerów seryjnych
   - [ ] Wykres aktywności (dodawanie produktów w czasie)
 

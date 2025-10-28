@@ -66,6 +66,18 @@
         <argument
             android:name="packageId"
             app:argType="long" />
+        <action
+            android:id="@+id/action_package_details_to_product_selection"
+            app:destination="@id/productSelectionFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/productSelectionFragment"
+        android:name="com.example.inventoryapp.ui.packages.ProductSelectionFragment"
+        android:label="Add Products">
+        <argument
+            android:name="packageId"
+            app:argType="long" />
     </fragment>
 
 </navigation>
