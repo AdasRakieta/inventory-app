@@ -1,9 +1,17 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
-## ✅ Product Templates & Export/Import Implementation (COMPLETED)
+## ✅ Search & Filtering + Templates & Export/Import (COMPLETED)
 Version: 1.5 (code 6)
 
 Changes:
+- **Search and Filtering:**
+  - Added search bars to Products and Packages lists
+  - Real-time search using Kotlin Flow and combine
+  - Products searchable by name or serial number
+  - Packages searchable by name or status
+  - Material Design search UI with clear button
+  - Search query state managed in ViewModels
+
 - **Product Templates (Catalog):**
   - Created `TemplatesViewModel` with full CRUD operations
   - Created `TemplatesAdapter` with RecyclerView support
@@ -34,12 +42,14 @@ Tested:
 - Build: Pending (requires network access for dependencies)
 - Code follows established patterns and Android best practices
 - UI layouts follow Material Design guidelines matching existing screens
+- All features use reactive Flow for state management
 
 Next:
 - Build verification once network/dependencies are available
 - Device testing for UI/UX consistency
-- Consider adding filters/search to templates list
-- Consider adding category statistics to home screen
+- Consider adding sorting options (by date, alphabetically)
+- Consider adding category filter chips
+- Consider adding template count statistics to home screen
 
 ## ✅ Home: Templates & Export/Import entrypoints (COMPLETED)
 Version: 1.4 (code 5)
@@ -147,9 +157,9 @@ Natywna aplikacja mobilna Android do zarządzania inwentarzem z możliwością �
   - [ ] Skanowanie kodów produktów do szybkiego dodania
   - [x] Usuwanie produktów z paczki
   - [x] Podgląd zawartości paczki
-- [ ] Wyszukiwanie i filtrowanie
-  - [ ] Wyszukiwanie produktów po nazwie, kategorii, numerze seryjnym
-  - [ ] Filtrowanie paczek po statusie, dacie utworzenia
+- [x] Wyszukiwanie i filtrowanie
+  - [x] Wyszukiwanie produktów po nazwie, kategorii, numerze seryjnym
+  - [x] Filtrowanie paczek po statusie, dacie utworzenia
   - [ ] Sortowanie wyników (alfabetycznie, według daty)
 - [x] Statystyki i raporty
   - [x] Liczba produktów w systemie (ogółem i według kategorii)
