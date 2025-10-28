@@ -12,8 +12,8 @@ android {
         applicationId = "com.inventory.prd"
         minSdkVersion(26)
         targetSdkVersion(30)
-    versionCode = 5
-    versionName = "1.4"
+    versionCode = 8
+    versionName = "1.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

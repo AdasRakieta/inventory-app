@@ -25,13 +25,15 @@ class ProductsViewModel(
         name: String,
         categoryId: Long? = null,
         serialNumber: String,
+        scannerId: String? = null,
         description: String? = null
     ) {
         viewModelScope.launch {
             val product = ProductEntity(
                 name = name,
                 categoryId = categoryId,
-                serialNumber = serialNumber
+                serialNumber = serialNumber,
+                scannerId = scannerId
             )
             productRepository.insertProduct(product)
         }

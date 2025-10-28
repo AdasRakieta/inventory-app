@@ -8,7 +8,9 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import kotlinx.coroutines.launch
 import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentAddProductBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
@@ -78,6 +80,7 @@ class AddProductFragment : Fragment() {
     private fun saveProduct() {
         val name = binding.productNameInput.text.toString().trim()
         val serialNumber = binding.serialNumberInput.text.toString().trim()
+        val scannerId = binding.scannerIdInput.text.toString().trim().takeIf { it.isNotEmpty() }
         val description = binding.descriptionInput.text.toString().trim().takeIf { it.isNotEmpty() }
         val categoryName = binding.categoryInput.text.toString().trim()
         
@@ -101,20 +104,32 @@ class AddProductFragment : Fragment() {
                     null
                 }
                 
-                viewModel.addProduct(
-                    name = name,
-                    categoryId = categoryId,
-                    serialNumber = serialNumber,
-                    description = null // TODO: Add description field to ProductEntity
-                )
-                
-                Toast.makeText(
-                    requireContext(),
-                    "Product added successfully!",
-                    Toast.LENGTH_SHORT
-                ).show()
-                
-                findNavController().navigateUp()
+                // Validate unique serial number before saving
+                val database = AppDatabase.getDatabase(requireContext())
+                val repository = ProductRepository(database.productDao())
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val exists = repository.isSerialNumberExists(serialNumber)
+                    if (exists) {
+                        binding.serialNumberLayout.error = getString(R.string.error_duplicate_serial)
+                        return@launch
+                    }
+
+                    viewModel.addProduct(
+                        name = name,
+                        categoryId = categoryId,
+                        serialNumber = serialNumber,
+                        scannerId = scannerId,
+                        description = null // TODO: Add description field to ProductEntity
+                    )
+
+                    Toast.makeText(
+                        requireContext(),
+                        "Product added successfully!",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    findNavController().navigateUp()
+                }
             }
         }
     }

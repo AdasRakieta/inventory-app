@@ -68,7 +68,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Serial Number (Optional)"
+            android:text="Serial Number (Required)"
             android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary"
@@ -107,6 +107,26 @@
             app:icon="@android:drawable/ic_menu_camera"
             app:iconTint="@color/text_primary"
             android:layout_marginBottom="24dp" />
+
+        <!-- Scanner ID Field -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/scannerIdLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Scanner ID (Optional)"
+            app:boxBackgroundColor="@color/surface"
+            app:boxStrokeColor="@color/primary"
+            app:hintTextColor="@color/text_secondary"
+            android:layout_marginBottom="24dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/scannerIdInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:inputType="text" />
+
+        </com.google.android.material.textfield.TextInputLayout>
 
         <!-- Description Field -->
         <com.google.android.material.textfield.TextInputLayout

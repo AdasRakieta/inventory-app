@@ -14,6 +14,7 @@ data class ProductEntity(
     val name: String,
     val categoryId: Long? = null,
     val serialNumber: String?, // Nullable in DB, but required in UI validation
+    val scannerId: String? = null,
     val imageUri: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()

@@ -4,26 +4,19 @@ import com.example.inventoryapp.data.local.dao.ProductTemplateDao
 import com.example.inventoryapp.data.local.entities.ProductTemplateEntity
 import kotlinx.coroutines.flow.Flow
 
-class ProductTemplateRepository(private val productTemplateDao: ProductTemplateDao) {
-    
-    fun getAllTemplates(): Flow<List<ProductTemplateEntity>> = 
-        productTemplateDao.getAllTemplates()
-    
-    fun getTemplateById(templateId: Long): Flow<ProductTemplateEntity?> = 
-        productTemplateDao.getTemplateById(templateId)
-    
-    fun getTemplatesByCategory(categoryId: Long): Flow<List<ProductTemplateEntity>> =
-        productTemplateDao.getTemplatesByCategory(categoryId)
-    
-    suspend fun insertTemplate(template: ProductTemplateEntity): Long =
-        productTemplateDao.insertTemplate(template)
-    
-    suspend fun updateTemplate(template: ProductTemplateEntity) =
-        productTemplateDao.updateTemplate(template)
-    
-    suspend fun deleteTemplate(template: ProductTemplateEntity) =
-        productTemplateDao.deleteTemplate(template)
-    
-    suspend fun isTemplateNameExists(name: String): Boolean =
-        productTemplateDao.isTemplateNameExists(name) > 0
+class ProductTemplateRepository(private val dao: ProductTemplateDao) {
+    fun getAllTemplates(): Flow<List<ProductTemplateEntity>> = dao.getAllTemplates()
+
+    suspend fun addTemplate(name: String, categoryId: Long? = null): Long {
+        val now = System.currentTimeMillis()
+        val tpl = ProductTemplateEntity(
+            name = name,
+            categoryId = categoryId,
+            createdAt = now,
+            updatedAt = now
+        )
+        return dao.insertTemplate(tpl)
+    }
+
+    suspend fun deleteTemplate(entity: ProductTemplateEntity) = dao.deleteTemplate(entity)
 }
