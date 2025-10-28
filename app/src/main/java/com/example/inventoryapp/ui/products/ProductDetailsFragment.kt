@@ -16,6 +16,7 @@ import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentProductDetailsBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.ProductRepository
+import com.example.inventoryapp.utils.CategoryHelper
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,7 +60,8 @@ class ProductDetailsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.product.collect { product ->
                 product?.let {
-                    // Update product name and category
+                    // Update product name, icon and category
+                    binding.productIconText.text = CategoryHelper.getCategoryIcon(it.categoryId)
                     binding.productNameText.text = it.name
                     binding.productCategoryText.text = getCategoryName(it.categoryId)
                     
@@ -147,17 +149,7 @@ class ProductDetailsFragment : Fragment() {
     }
 
     private fun getCategoryName(categoryId: Long?): String {
-        // Predefined categories from AddProductFragment
-        return when (categoryId) {
-            1L -> "Scanner"
-            2L -> "Printer"
-            3L -> "Docking Station"
-            4L -> "Monitor"
-            5L -> "Laptop"
-            6L -> "Desktop"
-            7L -> "Accessories"
-            else -> "Uncategorized"
-        }
+        return CategoryHelper.getCategoryName(categoryId)
     }
 
     override fun onDestroyView() {

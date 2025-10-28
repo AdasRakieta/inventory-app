@@ -13,6 +13,7 @@ import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentAddProductBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.ProductRepository
+import com.example.inventoryapp.utils.CategoryHelper
 
 class AddProductFragment : Fragment() {
 
@@ -48,15 +49,7 @@ class AddProductFragment : Fragment() {
     }
 
     private fun setupCategoryDropdown() {
-        val categories = arrayOf(
-            "Scanners",
-            "Printers",
-            "Docking Stations",
-            "Laptops",
-            "Tablets",
-            "Accessories",
-            "Other"
-        )
+        val categories = CategoryHelper.getCategoryNames()
         
         val adapter = ArrayAdapter(
             requireContext(),
@@ -86,6 +79,7 @@ class AddProductFragment : Fragment() {
         val name = binding.productNameInput.text.toString().trim()
         val serialNumber = binding.serialNumberInput.text.toString().trim().takeIf { it.isNotEmpty() }
         val description = binding.descriptionInput.text.toString().trim().takeIf { it.isNotEmpty() }
+        val categoryName = binding.categoryInput.text.toString().trim()
         
         when {
             name.isEmpty() -> {
@@ -95,9 +89,16 @@ class AddProductFragment : Fragment() {
             else -> {
                 binding.productNameLayout.error = null
                 
+                // Map category name to ID
+                val categoryId = if (categoryName.isNotEmpty()) {
+                    CategoryHelper.getCategoryIdByName(categoryName)
+                } else {
+                    null
+                }
+                
                 viewModel.addProduct(
                     name = name,
-                    categoryId = null, // TODO: Map category to ID
+                    categoryId = categoryId,
                     serialNumber = serialNumber,
                     description = null // TODO: Add description field to ProductEntity
                 )

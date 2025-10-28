@@ -24,6 +24,7 @@
             android:layout_marginBottom="8dp">
 
             <TextView
+                android:id="@+id/categoryIcon"
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:text="📦"

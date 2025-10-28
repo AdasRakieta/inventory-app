@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.inventoryapp.databinding.ItemProductBinding
 import com.example.inventoryapp.data.local.entities.ProductEntity
+import com.example.inventoryapp.utils.CategoryHelper
 
 class ProductsAdapter(
     private val onProductClick: (ProductEntity) -> Unit
@@ -33,7 +34,8 @@ class ProductsAdapter(
 
         fun bind(product: ProductEntity) {
             binding.productName.text = product.name
-            binding.productCategory.text = "Category ID: ${product.categoryId ?: "None"}"
+            binding.productCategory.text = CategoryHelper.getCategoryName(product.categoryId)
+            binding.categoryIcon.text = CategoryHelper.getCategoryIcon(product.categoryId)
             
             if (product.serialNumber != null) {
                 binding.serialNumberContainer.visibility = View.VISIBLE
