@@ -14,6 +14,9 @@
         <action
             android:id="@+id/action_home_to_products"
             app:destination="@id/productsListFragment" />
+        <action
+            android:id="@+id/action_home_to_packages"
+            app:destination="@id/packageListFragment" />
     </fragment>
 
     <fragment
@@ -28,11 +31,53 @@
         <action
             android:id="@+id/action_products_to_add_product"
             app:destination="@id/addProductFragment" />
+        <action
+            android:id="@+id/action_products_to_product_details"
+            app:destination="@id/productDetailsFragment" />
     </fragment>
 
     <fragment
         android:id="@+id/addProductFragment"
         android:name="com.example.inventoryapp.ui.products.AddProductFragment"
         android:label="@string/product_add" />
+
+    <fragment
+        android:id="@+id/productDetailsFragment"
+        android:name="com.example.inventoryapp.ui.products.ProductDetailsFragment"
+        android:label="@string/product_details">
+        <argument
+            android:name="productId"
+            app:argType="long" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/packageListFragment"
+        android:name="com.example.inventoryapp.ui.packages.PackageListFragment"
+        android:label="@string/nav_packages">
+        <action
+            android:id="@+id/action_packages_to_package_details"
+            app:destination="@id/packageDetailsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/packageDetailsFragment"
+        android:name="com.example.inventoryapp.ui.packages.PackageDetailsFragment"
+        android:label="@string/package_details">
+        <argument
+            android:name="packageId"
+            app:argType="long" />
+        <action
+            android:id="@+id/action_package_details_to_product_selection"
+            app:destination="@id/productSelectionFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/productSelectionFragment"
+        android:name="com.example.inventoryapp.ui.packages.ProductSelectionFragment"
+        android:label="Add Products">
+        <argument
+            android:name="packageId"
+            app:argType="long" />
+    </fragment>
 
 </navigation>

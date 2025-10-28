@@ -4,11 +4,15 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentHomeBinding
+import com.example.inventoryapp.data.local.database.AppDatabase
+import com.example.inventoryapp.data.repository.ProductRepository
+import com.example.inventoryapp.data.repository.PackageRepository
+import kotlinx.coroutines.launch
 
 class HomeFragment : Fragment() {
 
@@ -28,6 +32,7 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         setupClickListeners()
+        loadStatistics()
     }
 
     private fun setupClickListeners() {
@@ -41,13 +46,29 @@ class HomeFragment : Fragment() {
             findNavController().navigate(R.id.action_home_to_products)
         }
 
-        // Packages card - show coming soon message
+        // Packages card - navigate to packages list
         binding.packagesCard.setOnClickListener {
-            Toast.makeText(
-                requireContext(),
-                "Packages feature coming soon!",
-                Toast.LENGTH_SHORT
-            ).show()
+            findNavController().navigate(R.id.action_home_to_packages)
+        }
+    }
+
+    private fun loadStatistics() {
+        val database = AppDatabase.getDatabase(requireContext())
+        val productRepository = ProductRepository(database.productDao())
+        val packageRepository = PackageRepository(database.packageDao())
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            // Load product count
+            productRepository.getAllProducts().collect { products ->
+                binding.productsCountText.text = products.size.toString()
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            // Load package count
+            packageRepository.getAllPackages().collect { packages ->
+                binding.packagesCountText.text = packages.size.toString()
+            }
         }
     }
 
