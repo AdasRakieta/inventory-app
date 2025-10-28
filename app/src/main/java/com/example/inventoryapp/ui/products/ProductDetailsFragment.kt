@@ -66,17 +66,11 @@ class ProductDetailsFragment : Fragment() {
                     binding.productNameText.text = it.name
                     binding.productCategoryText.text = getCategoryName(it.categoryId)
                     
-                    // Update serial number section
-                    if (it.serialNumber != null) {
-                        binding.serialNumberAssignedLayout.visibility = View.VISIBLE
-                        binding.serialNumberNotAssignedLayout.visibility = View.GONE
-                        binding.serialNumberText.text = it.serialNumber
-                        binding.editSerialButton.text = "Edit"
-                    } else {
-                        binding.serialNumberAssignedLayout.visibility = View.GONE
-                        binding.serialNumberNotAssignedLayout.visibility = View.VISIBLE
-                        binding.editSerialButton.text = "Add Manual"
-                    }
+                    // Update serial number section (always present now)
+                    binding.serialNumberAssignedLayout.visibility = View.VISIBLE
+                    binding.serialNumberNotAssignedLayout.visibility = View.GONE
+                    binding.serialNumberText.text = it.serialNumber
+                    binding.editSerialButton.text = "Edit"
                     
                     // Update timestamps
                     val dateFormat = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault())
@@ -111,7 +105,7 @@ class ProductDetailsFragment : Fragment() {
         val currentProduct = viewModel.product.value ?: return
         
         val editText = EditText(requireContext()).apply {
-            setText(currentProduct.serialNumber ?: "")
+            setText(currentProduct.serialNumber)
             hint = "Enter serial number"
             setSingleLine(true)
         }
@@ -126,8 +120,7 @@ class ProductDetailsFragment : Fragment() {
                     viewModel.updateSerialNumber(newSerialNumber)
                     Toast.makeText(requireContext(), "Serial number updated", Toast.LENGTH_SHORT).show()
                 } else {
-                    viewModel.updateSerialNumber(null)
-                    Toast.makeText(requireContext(), "Serial number removed", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Serial number cannot be empty", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton("Cancel", null)

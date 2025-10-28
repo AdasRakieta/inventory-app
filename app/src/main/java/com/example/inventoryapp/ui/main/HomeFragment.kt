@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.example.inventoryapp.BuildConfig
 import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentHomeBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
@@ -34,6 +35,11 @@ class HomeFragment : Fragment() {
 
         setupClickListeners()
         loadStatistics()
+        setupAppVersion()
+    }
+
+    private fun setupAppVersion() {
+        binding.appVersionText.text = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
     }
 
     private fun setupClickListeners() {
@@ -56,7 +62,7 @@ class HomeFragment : Fragment() {
     private fun loadStatistics() {
         val database = AppDatabase.getDatabase(requireContext())
         val productRepository = ProductRepository(database.productDao())
-        val packageRepository = PackageRepository(database.packageDao())
+        val packageRepository = PackageRepository(database.packageDao(), database.productDao())
 
         viewLifecycleOwner.lifecycleScope.launch {
             // Load product count

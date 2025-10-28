@@ -32,7 +32,7 @@ class ProductSelectionFragment : Fragment() {
         
         val database = AppDatabase.getDatabase(requireContext())
         val productRepository = ProductRepository(database.productDao())
-        val packageRepository = PackageRepository(database.packageDao())
+        val packageRepository = PackageRepository(database.packageDao(), database.productDao())
         val factory = ProductSelectionViewModelFactory(
             productRepository,
             packageRepository,

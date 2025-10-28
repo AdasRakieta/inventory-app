@@ -12,8 +12,8 @@ android {
         applicationId = "com.inventory.prd"
         minSdkVersion(26)
         targetSdkVersion(30)
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -82,6 +82,9 @@ dependencies {
 
     // Gson for JSON serialization
     implementation("com.google.code.gson:gson:2.8.7")
+
+    // ZXing for QR code generation
+    implementation("com.google.zxing:core:3.4.1")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

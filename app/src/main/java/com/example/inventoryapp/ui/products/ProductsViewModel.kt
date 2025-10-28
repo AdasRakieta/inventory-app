@@ -24,7 +24,7 @@ class ProductsViewModel(
     fun addProduct(
         name: String,
         categoryId: Long? = null,
-        serialNumber: String? = null,
+        serialNumber: String,
         description: String? = null
     ) {
         viewModelScope.launch {

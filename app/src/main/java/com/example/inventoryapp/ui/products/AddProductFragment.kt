@@ -77,7 +77,7 @@ class AddProductFragment : Fragment() {
 
     private fun saveProduct() {
         val name = binding.productNameInput.text.toString().trim()
-        val serialNumber = binding.serialNumberInput.text.toString().trim().takeIf { it.isNotEmpty() }
+        val serialNumber = binding.serialNumberInput.text.toString().trim()
         val description = binding.descriptionInput.text.toString().trim().takeIf { it.isNotEmpty() }
         val categoryName = binding.categoryInput.text.toString().trim()
         
@@ -86,8 +86,13 @@ class AddProductFragment : Fragment() {
                 binding.productNameLayout.error = "Product name is required"
                 return
             }
+            serialNumber.isEmpty() -> {
+                binding.serialNumberLayout.error = "Serial number is required"
+                return
+            }
             else -> {
                 binding.productNameLayout.error = null
+                binding.serialNumberLayout.error = null
                 
                 // Map category name to ID
                 val categoryId = if (categoryName.isNotEmpty()) {

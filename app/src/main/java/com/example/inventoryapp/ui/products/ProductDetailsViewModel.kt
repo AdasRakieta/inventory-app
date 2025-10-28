@@ -31,11 +31,11 @@ class ProductDetailsViewModel(
         }
     }
 
-    fun updateSerialNumber(serialNumber: String?) {
+    fun updateSerialNumber(serialNumber: String) {
         viewModelScope.launch {
             val currentProduct = _product.value ?: return@launch
             val updatedProduct = currentProduct.copy(
-                serialNumber = if (serialNumber.isNullOrBlank()) null else serialNumber,
+                serialNumber = serialNumber,
                 updatedAt = System.currentTimeMillis()
             )
             productRepository.updateProduct(updatedProduct)

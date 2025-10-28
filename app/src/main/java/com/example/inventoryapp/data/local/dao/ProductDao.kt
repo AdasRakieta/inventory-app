@@ -16,11 +16,11 @@ interface ProductDao {
     @Query("SELECT * FROM products WHERE serialNumber = :serialNumber")
     suspend fun getProductBySerialNumber(serialNumber: String): ProductEntity?
 
-    @Query("SELECT * FROM products WHERE serialNumber IS NULL")
-    fun getProductsWithoutSerialNumber(): Flow<List<ProductEntity>>
-
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertProduct(product: ProductEntity): Long
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProducts(products: List<ProductEntity>)
 
     @Update
     suspend fun updateProduct(product: ProductEntity)

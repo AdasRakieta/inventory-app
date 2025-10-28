@@ -30,7 +30,7 @@ class PackageListFragment : Fragment() {
         super.onCreate(savedInstanceState)
         
         val database = AppDatabase.getDatabase(requireContext())
-        val repository = PackageRepository(database.packageDao())
+        val repository = PackageRepository(database.packageDao(), database.productDao())
         val factory = PackagesViewModelFactory(repository)
         val vm: PackagesViewModel by viewModels { factory }
         viewModel = vm

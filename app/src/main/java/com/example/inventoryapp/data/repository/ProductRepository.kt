@@ -10,14 +10,14 @@ class ProductRepository(private val productDao: ProductDao) {
     
     fun getProductById(productId: Long): Flow<ProductEntity?> = productDao.getProductById(productId)
     
-    fun getProductsWithoutSerialNumber(): Flow<List<ProductEntity>> = 
-        productDao.getProductsWithoutSerialNumber()
-    
     suspend fun getProductBySerialNumber(serialNumber: String): ProductEntity? =
         productDao.getProductBySerialNumber(serialNumber)
     
     suspend fun insertProduct(product: ProductEntity): Long =
         productDao.insertProduct(product)
+    
+    suspend fun insertProducts(products: List<ProductEntity>) =
+        productDao.insertProducts(products)
     
     suspend fun updateProduct(product: ProductEntity) =
         productDao.updateProduct(product)
