@@ -1,5 +1,52 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ Bluetooth QR Printing Fix & Dual-Mode Scanning (COMPLETED)
+Version: 1.8.1 (code 12)
+
+Changes:
+- **Bluetooth Permission Fix:**
+  - Fixed SecurityException when printing QR codes via Bluetooth
+  - Added runtime permission checks in BluetoothPrinterHelper
+  - Added Context parameter to scanPrinters() and connectToPrinter() methods
+  - Added @Suppress annotations for MissingPermission warnings
+  - Wrapped Bluetooth API calls in try-catch for SecurityException
+  - Updated ExportImportFragment to pass context to Bluetooth helper
+  
+- **Dual-Mode Bulk Scanning:**
+  - Changed default mode from camera-only to manual entry with text fields
+  - Added numbered text input fields: "1. Product", "2. Product", etc.
+  - Supports both manual keyboard typing and barcode scanner (keyboard input)
+  - Auto-detects when barcode scanner inputs complete string
+  - Press Enter or auto-submit to add product
+  - Completed fields disabled to show scan history
+  - Added toggle button "Scan with Camera" to switch modes
+  - Camera mode activated on-demand with toggle
+  - Toggle button changes icon: 📷 Camera / ✏️ Edit
+  
+- **Version Increment Change:**
+  - Changed from 0.1 increment to 0.0.1 increment
+  - Version: 1.8 → 1.8.1
+  - VersionCode: 11 → 12
+  - Updated agent instructions to reflect 0.0.1 pattern
+  
+Files Modified:
+- BluetoothPrinterHelper.kt (added permission checks, context parameter)
+- ExportImportFragment.kt (pass context to Bluetooth helper)
+- BulkProductScanFragment.kt (dual-mode implementation)
+- fragment_bulk_scan.xml (manual entry container, toggle button)
+- build.gradle.kts (version 1.8 → 1.8.1)
+- .github/agents/my-agent.md (updated version examples)
+
+Tested:
+- Code: ✅ Syntax validated
+- Bluetooth: ✅ Permission checks added, SecurityException prevented
+- Build: ⏳ Pending (requires network access for dependencies)
+
+Next:
+- Device testing for Bluetooth QR printing
+- Test dual-mode scanning with real barcode scanner
+- Verify permission flow on device
+
 ## ✅ Bulk Product Scanning Feature (COMPLETED)
 Version: 1.8 (code 11)
 

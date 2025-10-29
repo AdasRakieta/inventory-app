@@ -308,7 +308,7 @@ class ExportImportFragment : Fragment() {
             try {
                 binding.printerStatusText.text = "Connecting to printer..."
                 
-                val socket = BluetoothPrinterHelper.connectToPrinter(macAddress)
+                val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), macAddress)
                 if (socket != null) {
                     connectedPrinter = socket
                     binding.printerStatusText.text = "Connected: $macAddress"

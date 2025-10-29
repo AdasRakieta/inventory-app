@@ -1,10 +1,14 @@
 package com.example.inventoryapp.utils
 
+import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
+import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.util.Log
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.OutputStream
@@ -30,26 +34,50 @@ class BluetoothPrinterHelper {
         private val LINE_FEED = byteArrayOf(0x0A) // New line
         
         /**
+         * Check if Bluetooth permissions are granted
+         */
+        private fun hasBluetoothPermissions(context: Context): Boolean {
+            return ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.BLUETOOTH
+            ) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.BLUETOOTH_ADMIN
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+        
+        /**
          * Scan for paired Bluetooth devices
          * Returns list of printer-like devices (based on name patterns)
          */
-        suspend fun scanPrinters(): List<BluetoothDevice> = withContext(Dispatchers.IO) {
+        suspend fun scanPrinters(context: Context): List<BluetoothDevice> = withContext(Dispatchers.IO) {
             try {
+                if (!hasBluetoothPermissions(context)) {
+                    Log.w(TAG, "Bluetooth permissions not granted")
+                    return@withContext emptyList()
+                }
+                
                 val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
                 if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
                     Log.w(TAG, "Bluetooth not available or not enabled")
                     return@withContext emptyList()
                 }
                 
+                @Suppress("MissingPermission")
                 val pairedDevices = bluetoothAdapter.bondedDevices
                 // Filter devices that might be printers
                 pairedDevices.filter { device ->
+                    @Suppress("MissingPermission")
                     val name = device.name?.toLowerCase() ?: ""
                     name.contains("printer") || 
                     name.contains("print") || 
                     name.contains("pos") ||
                     name.contains("thermal")
                 }
+            } catch (e: SecurityException) {
+                Log.e(TAG, "Security exception - missing Bluetooth permissions", e)
+                emptyList()
             } catch (e: Exception) {
                 Log.e(TAG, "Error scanning for printers", e)
                 emptyList()
@@ -59,8 +87,13 @@ class BluetoothPrinterHelper {
         /**
          * Connect to printer by MAC address scanned from QR code
          */
-        suspend fun connectToPrinter(macAddress: String): BluetoothSocket? = withContext(Dispatchers.IO) {
+        suspend fun connectToPrinter(context: Context, macAddress: String): BluetoothSocket? = withContext(Dispatchers.IO) {
             try {
+                if (!hasBluetoothPermissions(context)) {
+                    Log.w(TAG, "Bluetooth permissions not granted")
+                    return@withContext null
+                }
+                
                 val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
                 if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
                     Log.w(TAG, "Bluetooth not available or not enabled")
@@ -68,14 +101,21 @@ class BluetoothPrinterHelper {
                 }
                 
                 val device = bluetoothAdapter.getRemoteDevice(macAddress)
+                @Suppress("MissingPermission")
                 val socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
                 
                 // Cancel discovery to improve connection speed
+                @Suppress("MissingPermission")
                 bluetoothAdapter.cancelDiscovery()
                 
+                @Suppress("MissingPermission")
                 socket.connect()
+                @Suppress("MissingPermission")
                 Log.d(TAG, "Connected to printer: ${device.name}")
                 socket
+            } catch (e: SecurityException) {
+                Log.e(TAG, "Security exception - missing Bluetooth permissions", e)
+                null
             } catch (e: Exception) {
                 Log.e(TAG, "Error connecting to printer", e)
                 null

@@ -56,10 +56,10 @@ You must:
 
 **CRITICAL**: Before EVERY successful build, increment version:
 
-- **Current version**: 1.2 (versionCode 3)
-- **Next version**: 1.3 (versionCode 4)
+- **Current version**: 1.8.1 (versionCode 12)
+- **Next version**: 1.8.2 (versionCode 13)
 - **Location**: `app/build.gradle.kts` → `defaultConfig { versionCode, versionName }`
-- **Rule**: Increment by **+0.0.1**unless user specifies different number
+- **Rule**: Increment by **+0.0.1** unless user specifies different number
 - **Process**:
   1. After implementing changes, update version FIRST
   2. Then run build
@@ -68,9 +68,9 @@ You must:
 **Example:**
 
 ```kotlin
-// Before build 1.2 → 1.3
-versionCode = 4  // was 3
-versionName = "1.3"  // was "1.2"
+// Before build 1.8.1 → 1.8.2
+versionCode = 13  // was 12
+versionName = "1.8.2"  // was "1.8.1"
 ```
 
 ---
