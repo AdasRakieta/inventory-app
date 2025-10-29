@@ -60,8 +60,8 @@ class ProductsViewModel(
         
         // Apply sorting
         when (sortOrder) {
-            ProductSortOrder.NAME_ASC -> filtered.sortedBy { it.name.lowercase() }
-            ProductSortOrder.NAME_DESC -> filtered.sortedByDescending { it.name.lowercase() }
+            ProductSortOrder.NAME_ASC -> filtered.sortedBy { it.name.toLowerCase() }
+            ProductSortOrder.NAME_DESC -> filtered.sortedByDescending { it.name.toLowerCase() }
             ProductSortOrder.DATE_NEWEST -> filtered.sortedByDescending { it.createdAt }
             ProductSortOrder.DATE_OLDEST -> filtered.sortedBy { it.createdAt }
             ProductSortOrder.CATEGORY -> filtered.sortedBy { it.categoryId ?: Long.MAX_VALUE }

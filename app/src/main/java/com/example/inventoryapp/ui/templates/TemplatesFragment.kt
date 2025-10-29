@@ -12,6 +12,7 @@ import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentTemplatesBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.ProductTemplateRepository
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class TemplatesFragment : Fragment() {

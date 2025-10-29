@@ -1,5 +1,41 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ Build System Fixed (COMPLETED)
+Version: 1.7 (code 10)
+
+Changes:
+- **XML Layout Fix:**
+  - Fixed malformed fragment_products_list.xml with duplicate ConstraintLayout elements
+  - Removed invalid markup after root element causing "Content is not allowed in trailing section" error
+  - Restored proper single ConstraintLayout structure with search bar, filters, empty state, and RecyclerView
+
+- **Kotlin Compilation Errors Fixed:**
+  - Fixed `lowercase()` → `toLowerCase()` for Kotlin 1.5.31 compatibility in ProductsViewModel
+  - Fixed `displayName` → `name` property access in CategoryEntity (TemplateDialogFragment)
+  - Added proper `kotlinx.coroutines.flow.collect` imports to fix internal API usage warnings
+  - Fixed missing `extension` parameter in `getExportFileName()` calls
+  - Replaced Android 12+ Bluetooth permissions with legacy permissions for targetSdk 30
+
+- **JDK Configuration:**
+  - Configured Gradle to use JDK 11 (Temurin 11.0.28+6) in gradle.properties
+  - Stopped Gradle daemon to force JDK reload
+  - Resolved "Kotlin could not find required JDK tools" error
+
+- **Version Management:**
+  - Version: 1.6.2 → 1.7
+  - VersionCode: 9 → 10
+  - Following 0.1 increment pattern for significant fixes
+
+Tested:
+- Build: ✅ PASS (assembleDebug successful)
+- XML parsing: ✅ Fixed (no more trailing content errors)
+- Kotlin compilation: ✅ PASS (all syntax errors resolved)
+- JDK configuration: ✅ Working (Gradle uses JDK 11)
+
+Next:
+- Continue with active features: Product Templates, Bulk Scanning, Package Shipping
+- Test on device/emulator to verify functionality
+
 ## ✅ Category Filtering & Sorting (COMPLETED)
 Version: 1.6.2 (code 9)
 

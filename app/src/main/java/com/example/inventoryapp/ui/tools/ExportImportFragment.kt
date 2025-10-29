@@ -29,6 +29,7 @@ import com.example.inventoryapp.utils.QRCodeGenerator
 import com.example.inventoryapp.utils.BluetoothPrinterHelper
 import com.example.inventoryapp.utils.AppLogger
 import com.example.inventoryapp.utils.FileHelper
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -48,7 +49,7 @@ class ExportImportFragment : Fragment() {
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
                 viewLifecycleOwner.lifecycleScope.launch {
-                    val file = File(requireContext().cacheDir, getExportFileName())
+                    val file = File(requireContext().cacheDir, getExportFileName("json"))
                     val success = viewModel.exportToJson(file)
                     if (success) {
                         requireContext().contentResolver.openOutputStream(uri)?.use { output ->
@@ -277,17 +278,11 @@ class ExportImportFragment : Fragment() {
     }
 
     private fun requestBluetoothPermissionsAndScan() {
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            arrayOf(
-                Manifest.permission.BLUETOOTH_SCAN,
-                Manifest.permission.BLUETOOTH_CONNECT
-            )
-        } else {
-            arrayOf(
-                Manifest.permission.BLUETOOTH,
-                Manifest.permission.BLUETOOTH_ADMIN
-            )
-        }
+        // For targetSdk 30, always use legacy Bluetooth permissions
+        val permissions = arrayOf(
+            Manifest.permission.BLUETOOTH,
+            Manifest.permission.BLUETOOTH_ADMIN
+        )
 
         val missingPermissions = permissions.filter {
             ContextCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED

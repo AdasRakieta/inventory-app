@@ -39,7 +39,7 @@ class TemplateDialogFragment : DialogFragment() {
 
     private fun setupCategorySpinner() {
         val categories = CategoryHelper.getAllCategories()
-        val categoryNames = listOf("None") + categories.map { it.displayName }
+        val categoryNames = listOf("None") + categories.map { it.name }
         
         val adapter = ArrayAdapter(
             requireContext(),
