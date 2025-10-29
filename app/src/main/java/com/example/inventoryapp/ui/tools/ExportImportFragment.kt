@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothSocket
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -29,7 +30,9 @@ import com.example.inventoryapp.utils.QRCodeGenerator
 import com.example.inventoryapp.utils.BluetoothPrinterHelper
 import com.example.inventoryapp.utils.AppLogger
 import com.example.inventoryapp.utils.FileHelper
+import com.google.gson.GsonBuilder
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -42,6 +45,16 @@ class ExportImportFragment : Fragment() {
     
     private lateinit var viewModel: ExportImportViewModel
     private var connectedPrinter: BluetoothSocket? = null
+    
+    // Repositories for direct access
+    private lateinit var productRepository: ProductRepository
+    private lateinit var packageRepository: PackageRepository
+    private lateinit var templateRepository: ProductTemplateRepository
+    
+    companion object {
+        private const val PREFS_NAME = "printer_preferences"
+        private const val KEY_PRINTER_MAC = "printer_mac_address"
+    }
 
     private val createFileLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -102,10 +115,14 @@ class ExportImportFragment : Fragment() {
 
     private fun setupViewModel() {
         val database = AppDatabase.getDatabase(requireContext())
+        productRepository = ProductRepository(database.productDao())
+        packageRepository = PackageRepository(database.packageDao(), database.productDao())
+        templateRepository = ProductTemplateRepository(database.productTemplateDao())
+        
         viewModel = ExportImportViewModel(
-            ProductRepository(database.productDao()),
-            PackageRepository(database.packageDao(), database.productDao()),
-            ProductTemplateRepository(database.productTemplateDao())
+            productRepository,
+            packageRepository,
+            templateRepository
         )
     }
 
@@ -309,9 +326,11 @@ class ExportImportFragment : Fragment() {
                 val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), macAddress)
                 if (socket != null) {
                     connectedPrinter = socket
+                    // Save MAC address to SharedPreferences for future use
+                    savePrinterMacAddress(macAddress)
                     binding.printerStatusText.text = "Connected: $macAddress"
                     binding.printTestButton.isEnabled = true
-                    Toast.makeText(requireContext(), "Printer connected successfully", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Printer connected and saved", Toast.LENGTH_SHORT).show()
                 } else {
                     binding.printerStatusText.text = "Failed to connect"
                     binding.printTestButton.isEnabled = false
@@ -324,40 +343,86 @@ class ExportImportFragment : Fragment() {
             }
         }
     }
+    
+    private fun savePrinterMacAddress(macAddress: String) {
+        requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_PRINTER_MAC, macAddress)
+            .apply()
+    }
+    
+    private fun getSavedPrinterMacAddress(): String? {
+        return requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_PRINTER_MAC, null)
+    }
+    
+    private fun printDirectlyToSavedPrinter(qrBitmap: Bitmap, header: String?, footer: String?) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val savedMac = getSavedPrinterMacAddress()
+                if (savedMac == null) {
+                    Toast.makeText(requireContext(), "No printer configured. Please scan printer QR first.", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+                
+                // Connect directly to saved MAC address
+                val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), savedMac)
+                if (socket != null) {
+                    val success = BluetoothPrinterHelper.printQRCode(socket, qrBitmap, header, footer)
+                    if (success) {
+                        Toast.makeText(requireContext(), "Print sent to $savedMac", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(requireContext(), "Print failed", Toast.LENGTH_SHORT).show()
+                    }
+                    socket.close()
+                } else {
+                    Toast.makeText(requireContext(), "Failed to connect to printer $savedMac", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     private fun printTestQRCode() {
-        connectedPrinter?.let { socket ->
-            viewLifecycleOwner.lifecycleScope.launch {
-                try {
-                    val testData = mapOf(
-                        "type" to "test",
-                        "timestamp" to System.currentTimeMillis(),
-                        "message" to "Test QR Code from Inventory App"
-                    )
-                    
-                    val qrBitmap = QRCodeGenerator.generateQRCode(testData, 384, 384)
-                    if (qrBitmap != null) {
-                        val success = BluetoothPrinterHelper.printQRCode(
-                            socket,
-                            qrBitmap,
-                            "INVENTORY APP",
-                            "Test Print"
-                        )
-                        
-                        if (success) {
-                            Toast.makeText(requireContext(), "Test QR code printed", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(requireContext(), "Print failed", Toast.LENGTH_SHORT).show()
-                        }
-                        qrBitmap.recycle()
-                    } else {
-                        Toast.makeText(requireContext(), "Failed to generate QR code", Toast.LENGTH_SHORT).show()
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // Check if we have a saved printer
+                val savedMac = getSavedPrinterMacAddress()
+                if (savedMac == null) {
+                    Toast.makeText(requireContext(), "No printer configured. Please scan printer QR first.", Toast.LENGTH_LONG).show()
+                    return@launch
                 }
+                
+                // Generate QR with full database export
+                val products = productRepository.getAllProducts().first()
+                val packages = packageRepository.getAllPackages().first()
+                val templates = templateRepository.getAllTemplates().first()
+                
+                val exportData = ExportData(
+                    products = products,
+                    packages = packages,
+                    templates = templates
+                )
+                
+                val gson = GsonBuilder().create()
+                val jsonContent = gson.toJson(exportData)
+                
+                val qrBitmap = QRCodeGenerator.generateQRCode(jsonContent, 384, 384)
+                if (qrBitmap != null) {
+                    printDirectlyToSavedPrinter(
+                        qrBitmap,
+                        "INVENTORY DATABASE",
+                        "${products.size}P ${packages.size}Pk ${templates.size}T"
+                    )
+                    qrBitmap.recycle()
+                } else {
+                    Toast.makeText(requireContext(), "Failed to generate QR code", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
-        } ?: Toast.makeText(requireContext(), "No printer connected", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun getExportFileName(extension: String): String {
