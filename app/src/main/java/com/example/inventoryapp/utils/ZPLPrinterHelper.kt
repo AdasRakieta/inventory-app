@@ -1,9 +1,7 @@
 package com.example.inventoryapp.utils
 
 import com.example.inventoryapp.ui.tools.ExportData
-import com.example.inventoryapp.data.local.entities.PackageEntity
-import com.example.inventoryapp.data.local.entities.ProductEntity
-import com.example.inventoryapp.data.local.entities.ProductTemplateEntity
+import java.util.Locale
 
 /**
  * Utility class for generating ZPL (Zebra Programming Language) commands
@@ -65,7 +63,10 @@ object ZPLPrinterHelper {
             exportData.packages.take(5).forEachIndexed { index, pkg ->
                 zpl.append("^FO50,$yPos^A0N,25,25^FD${index + 1}. ${pkg.name}^FS\n")
                 yPos += 30
-                zpl.append("^FO70,$yPos^A0N,20,20^FDStatus: ${if (pkg.shipped) "Shipped" else "Pending"}^FS\n")
+                val s = pkg.status
+                val lower = s.toLowerCase(Locale.getDefault())
+                val readableStatus = if (lower.isNotEmpty()) lower.substring(0, 1).toUpperCase(Locale.getDefault()) + lower.substring(1) else lower
+                zpl.append("^FO70,$yPos^A0N,20,20^FDStatus: $readableStatus^FS\n")
                 yPos += 30
                 
                 if (yPos > 1100) {
