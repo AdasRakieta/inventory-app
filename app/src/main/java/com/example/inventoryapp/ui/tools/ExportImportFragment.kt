@@ -390,11 +390,6 @@ class ExportImportFragment : Fragment() {
             }
         }
     }
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
 
     private fun printTestQRCode() {
         viewLifecycleOwner.lifecycleScope.launch {
