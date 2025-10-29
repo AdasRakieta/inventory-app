@@ -10,6 +10,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -177,9 +178,9 @@ class BulkProductScanFragment : Fragment() {
         
         // Create TextInputLayout
         val inputLayout = TextInputLayout(context).apply {
-            layoutParams = ViewGroup.MarginLayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 bottomMargin = 16
             }
@@ -189,9 +190,9 @@ class BulkProductScanFragment : Fragment() {
         
         // Create TextInputEditText
         val editText = TextInputEditText(inputLayout.context).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
             )
             maxLines = 1
             imeOptions = EditorInfo.IME_ACTION_DONE
