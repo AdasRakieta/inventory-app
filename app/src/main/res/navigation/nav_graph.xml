@@ -119,6 +119,15 @@
     <fragment
         android:id="@+id/exportImportFragment"
         android:name="com.example.inventoryapp.ui.tools.ExportImportFragment"
-        android:label="Export / Import" />
+        android:label="Export / Import">
+        <action
+            android:id="@+id/action_export_import_to_import_preview"
+            app:destination="@+id/importPreviewFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/importPreviewFragment"
+        android:name="com.example.inventoryapp.ui.tools.ImportPreviewFragment"
+        android:label="Import Preview" />
 
 </navigation>

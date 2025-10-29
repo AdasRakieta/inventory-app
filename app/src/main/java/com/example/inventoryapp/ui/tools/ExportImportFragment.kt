@@ -292,9 +292,8 @@ class ExportImportFragment : Fragment() {
     }
 
     private fun scanQRToImport() {
-        // Navigate to scanner
-        findNavController().navigate(R.id.scannerFragment)
-        Toast.makeText(requireContext(), "Scan QR code to import data", Toast.LENGTH_SHORT).show()
+        // Navigate to import preview instead of scanner
+        findNavController().navigate(R.id.action_export_import_to_import_preview)
     }
     
     private fun savePrinterMacAddress(macAddress: String) {
