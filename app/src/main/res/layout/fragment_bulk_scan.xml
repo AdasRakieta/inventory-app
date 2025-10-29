@@ -7,11 +7,12 @@
     android:layout_height="match_parent"
     android:background="@color/background">
 
-    <!-- Camera Preview -->
+    <!-- Camera Preview (hidden by default) -->
     <androidx.camera.view.PreviewView
         android:id="@+id/previewView"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@id/controlsCard"
         app:layout_constraintStart_toStartOf="parent"
@@ -23,12 +24,13 @@
         android:layout_width="250dp"
         android:layout_height="250dp"
         android:background="@android:color/transparent"
+        android:visibility="gone"
         app:layout_constraintTop_toTopOf="@id/previewView"
         app:layout_constraintBottom_toBottomOf="@id/previewView"
         app:layout_constraintStart_toStartOf="@id/previewView"
         app:layout_constraintEnd_toEndOf="@id/previewView" />
 
-    <!-- Status Text -->
+    <!-- Status Text (for camera mode) -->
     <TextView
         android:id="@+id/statusText"
         android:layout_width="wrap_content"
@@ -41,9 +43,33 @@
         android:textColor="@android:color/white"
         android:textSize="16sp"
         android:textStyle="bold"
+        android:visibility="gone"
         app:layout_constraintTop_toTopOf="@id/previewView"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Manual Entry Container (visible by default) -->
+    <ScrollView
+        android:id="@+id/manualEntryContainer"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/controlsCard"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:id="@+id/productsInputContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Product inputs will be added dynamically here -->
+
+        </LinearLayout>
+
+    </ScrollView>
 
     <!-- Controls Card -->
     <com.google.android.material.card.MaterialCardView
@@ -78,10 +104,22 @@
                 android:id="@+id/lastScannedText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Ready to scan..."
+                android:text="Ready to add products..."
                 android:textSize="14sp"
                 android:textColor="@color/text_secondary"
                 android:layout_marginBottom="16dp" />
+
+            <!-- Toggle Scan Mode Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/toggleScanModeButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton.Icon"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="Scan with Camera"
+                android:textAllCaps="false"
+                app:icon="@android:drawable/ic_menu_camera"
+                app:iconGravity="start" />
 
             <!-- Action Buttons -->
             <LinearLayout
