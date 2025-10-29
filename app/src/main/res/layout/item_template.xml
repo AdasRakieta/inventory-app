@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+<<<<<<< HEAD
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
     app:cardUseCompatPadding="true">
+=======
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardElevation="2dp"
+    app:cardCornerRadius="8dp">
+>>>>>>> 38e7ca868b963369e9e301f0dc67297dce0cab91
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -13,6 +22,7 @@
         android:padding="16dp">
 
         <TextView
+<<<<<<< HEAD
             android:id="@+id/templateName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -28,6 +38,33 @@
             android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
             android:textColor="@android:color/darker_gray"
             android:text="Category" />
+=======
+            android:id="@+id/templateNameText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            tools:text="Scanner Model XYZ" />
+
+        <TextView
+            android:id="@+id/templateDescriptionText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary"
+            tools:text="Handheld barcode scanner" />
+
+        <TextView
+            android:id="@+id/templateDateText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="12sp"
+            android:textColor="@color/text_tertiary"
+            tools:text="Created: Jan 15, 2024" />
+>>>>>>> 38e7ca868b963369e9e301f0dc67297dce0cab91
 
     </LinearLayout>
 

@@ -50,6 +50,14 @@
 
     <!-- Templates / Catalog -->
     <string name="title_templates">Product Templates</string>
+    <string name="template_name">Template Name</string>
+    <string name="template_category">Category</string>
+    <string name="template_description">Description (optional)</string>
+    <string name="template_add">Add Template</string>
+    <string name="template_edit">Edit Template</string>
+    <string name="template_delete_confirm">Delete this template?</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
 
     <!-- Export / Import -->
     <string name="title_export_import">Export / Import</string>
