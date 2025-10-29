@@ -137,22 +137,30 @@
                     android:textSize="16sp"
                     android:layout_marginBottom="12dp" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/scanPrinterQrButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/printerMacInputLayout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Scan Printer QR Code"
-                    app:icon="@android:drawable/ic_menu_camera" />
+                    android:hint="Printer MAC Address (AA:BB:CC:DD:EE:FF)"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/printerMacEditText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="text"
+                        android:maxLines="1"
+                        android:text="" />
+
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/printTestButton"
+                    android:id="@+id/printQrCodeButton"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Print Test QR Code"
-                    android:enabled="false"
+                    android:text="Print QR Code"
                     app:icon="@android:drawable/ic_menu_send" />
 
                 <TextView

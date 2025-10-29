@@ -143,12 +143,8 @@ class ExportImportFragment : Fragment() {
             scanQRToImport()
         }
 
-        binding.scanPrinterQrButton.setOnClickListener {
-            requestBluetoothPermissionsAndScan()
-        }
-
-        binding.printTestButton.setOnClickListener {
-            printTestQRCode()
+        binding.printQrCodeButton.setOnClickListener {
+            printQRCodeToEnteredMac()
         }
     }
 
@@ -282,71 +278,6 @@ class ExportImportFragment : Fragment() {
         findNavController().navigate(R.id.scannerFragment)
         Toast.makeText(requireContext(), "Scan QR code to import data", Toast.LENGTH_SHORT).show()
     }
-
-    private fun requestBluetoothPermissionsAndScan() {
-        // For targetSdk 30, BLUETOOTH and BLUETOOTH_ADMIN are automatically granted at install
-        // No runtime permission request needed - just check if Bluetooth is enabled
-        val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
-        
-        if (bluetoothAdapter == null) {
-            Toast.makeText(requireContext(), "Bluetooth not available on this device", Toast.LENGTH_SHORT).show()
-            return
-        }
-        
-        if (!bluetoothAdapter.isEnabled) {
-            Toast.makeText(requireContext(), "Please enable Bluetooth in device settings", Toast.LENGTH_LONG).show()
-            // Optionally, prompt user to enable Bluetooth
-            try {
-                val enableBtIntent = android.content.Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE)
-                startActivity(enableBtIntent)
-            } catch (e: Exception) {
-                // If we can't request Bluetooth enable, just inform user
-                Toast.makeText(requireContext(), "Enable Bluetooth manually in Settings", Toast.LENGTH_LONG).show()
-            }
-            return
-        }
-        
-        // Bluetooth is available and enabled, proceed to scan
-        scanForPrinterQR()
-    }
-
-    private fun scanForPrinterQR() {
-        // Navigate to scanner to scan printer MAC address QR
-        Toast.makeText(requireContext(), "Scan printer QR code with MAC address", Toast.LENGTH_LONG).show()
-        // TODO: Implement QR scanner result handling for MAC address
-        // For now, show a sample connection
-        connectToPrinterViaMac("00:11:22:33:44:55")
-    }
-
-    private fun connectToPrinterViaMac(macAddress: String) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                binding.printerStatusText.text = "Connecting to printer...\nMAC: $macAddress"
-                
-                // Log for debugging
-                android.util.Log.d("ExportImport", "Attempting to connect to MAC: $macAddress")
-                
-                val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), macAddress)
-                if (socket != null) {
-                    connectedPrinter = socket
-                    // Save MAC address to SharedPreferences for future use
-                    savePrinterMacAddress(macAddress)
-                    binding.printerStatusText.text = "✅ Connected: $macAddress\n(Zebra ZQ310 Plus compatible)"
-                    binding.printTestButton.isEnabled = true
-                    Toast.makeText(requireContext(), "Printer connected and saved!\nTry printing now.", Toast.LENGTH_LONG).show()
-                } else {
-                    binding.printerStatusText.text = "❌ Failed to connect\nMAC: $macAddress"
-                    binding.printTestButton.isEnabled = false
-                    Toast.makeText(requireContext(), "Connection failed. Check:\n1. Bluetooth is ON\n2. Printer is ON\n3. MAC address is correct", Toast.LENGTH_LONG).show()
-                }
-            } catch (e: Exception) {
-                binding.printerStatusText.text = "❌ Error: ${e.message}"
-                binding.printTestButton.isEnabled = false
-                Toast.makeText(requireContext(), "Connection error: ${e.message}", Toast.LENGTH_LONG).show()
-                android.util.Log.e("ExportImport", "Connection error", e)
-            }
-        }
-    }
     
     private fun savePrinterMacAddress(macAddress: String) {
         requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -391,6 +322,101 @@ class ExportImportFragment : Fragment() {
         }
     }
 
+    
+    private fun printQRCodeToEnteredMac() {
+        val macAddress = binding.printerMacEditText.text.toString().trim()
+        
+        // Validate MAC address format
+        if (macAddress.isEmpty()) {
+            Toast.makeText(requireContext(), "Please enter printer MAC address", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        // Basic MAC address validation (AA:BB:CC:DD:EE:FF format)
+        val macPattern = "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$".toRegex()
+        if (!macPattern.matches(macAddress)) {
+            Toast.makeText(requireContext(), "Invalid MAC address format. Use: AA:BB:CC:DD:EE:FF", Toast.LENGTH_LONG).show()
+            return
+        }
+        
+        // Check Bluetooth availability
+        val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        if (bluetoothAdapter == null) {
+            Toast.makeText(requireContext(), "Bluetooth not available on this device", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        if (!bluetoothAdapter.isEnabled) {
+            Toast.makeText(requireContext(), "Please enable Bluetooth first", Toast.LENGTH_LONG).show()
+            try {
+                val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                startActivity(enableBtIntent)
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Enable Bluetooth manually in Settings", Toast.LENGTH_LONG).show()
+            }
+            return
+        }
+        
+        // Print QR code to entered MAC address
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                binding.printerStatusText.text = "Connecting to printer...\nMAC: $macAddress"
+                
+                // Save MAC address for future use
+                savePrinterMacAddress(macAddress)
+                
+                // Generate QR with full database export
+                val products = productRepository.getAllProducts().first()
+                val packages = packageRepository.getAllPackages().first()
+                val templates = templateRepository.getAllTemplates().first()
+                
+                val exportData = ExportData(
+                    products = products,
+                    packages = packages,
+                    templates = templates
+                )
+                
+                val gson = GsonBuilder().create()
+                val jsonContent = gson.toJson(exportData)
+                
+                val qrBitmap = QRCodeGenerator.generateQRCode(jsonContent, 384, 384)
+                if (qrBitmap != null) {
+                    // Connect and print
+                    android.util.Log.d("ExportImport", "Printing to MAC: $macAddress")
+                    val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), macAddress)
+                    if (socket != null) {
+                        val success = BluetoothPrinterHelper.printQRCode(
+                            socket, 
+                            qrBitmap,
+                            "INVENTORY DATABASE",
+                            "${products.size}P ${packages.size}Pk ${templates.size}T"
+                        )
+                        socket.close()
+                        
+                        if (success) {
+                            binding.printerStatusText.text = "✅ Print sent to:\n$macAddress"
+                            Toast.makeText(requireContext(), "✅ QR code printed successfully!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            binding.printerStatusText.text = "❌ Print failed"
+                            Toast.makeText(requireContext(), "❌ Print failed - check printer", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        binding.printerStatusText.text = "❌ Failed to connect\nMAC: $macAddress"
+                        Toast.makeText(requireContext(), "❌ Connection failed. Check:\n1. Bluetooth ON\n2. Printer ON\n3. MAC address correct\n4. Printer in range", Toast.LENGTH_LONG).show()
+                    }
+                    qrBitmap.recycle()
+                } else {
+                    binding.printerStatusText.text = "❌ QR generation failed"
+                    Toast.makeText(requireContext(), "Failed to generate QR code", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                binding.printerStatusText.text = "❌ Error: ${e.message}"
+                Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_LONG).show()
+                android.util.Log.e("ExportImport", "Print error", e)
+            }
+        }
+    }
+    
     private fun printTestQRCode() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
