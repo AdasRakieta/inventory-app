@@ -321,25 +321,29 @@ class ExportImportFragment : Fragment() {
     private fun connectToPrinterViaMac(macAddress: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                binding.printerStatusText.text = "Connecting to printer..."
+                binding.printerStatusText.text = "Connecting to printer...\nMAC: $macAddress"
+                
+                // Log for debugging
+                android.util.Log.d("ExportImport", "Attempting to connect to MAC: $macAddress")
                 
                 val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), macAddress)
                 if (socket != null) {
                     connectedPrinter = socket
                     // Save MAC address to SharedPreferences for future use
                     savePrinterMacAddress(macAddress)
-                    binding.printerStatusText.text = "Connected: $macAddress"
+                    binding.printerStatusText.text = "✅ Connected: $macAddress\n(Zebra ZQ310 Plus compatible)"
                     binding.printTestButton.isEnabled = true
-                    Toast.makeText(requireContext(), "Printer connected and saved", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Printer connected and saved!\nTry printing now.", Toast.LENGTH_LONG).show()
                 } else {
-                    binding.printerStatusText.text = "Failed to connect"
+                    binding.printerStatusText.text = "❌ Failed to connect\nMAC: $macAddress"
                     binding.printTestButton.isEnabled = false
-                    Toast.makeText(requireContext(), "Failed to connect to printer", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Connection failed. Check:\n1. Bluetooth is ON\n2. Printer is ON\n3. MAC address is correct", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
-                binding.printerStatusText.text = "Error: ${e.message}"
+                binding.printerStatusText.text = "❌ Error: ${e.message}"
                 binding.printTestButton.isEnabled = false
-                Toast.makeText(requireContext(), "Connection error: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Connection error: ${e.message}", Toast.LENGTH_LONG).show()
+                android.util.Log.e("ExportImport", "Connection error", e)
             }
         }
     }
@@ -365,19 +369,27 @@ class ExportImportFragment : Fragment() {
                     return@launch
                 }
                 
+                android.util.Log.d("ExportImport", "Printing to saved MAC: $savedMac")
+                
                 // Connect directly to saved MAC address
                 val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), savedMac)
                 if (socket != null) {
                     val success = BluetoothPrinterHelper.printQRCode(socket, qrBitmap, header, footer)
                     if (success) {
-                        Toast.makeText(requireContext(), "Print sent to $savedMac", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "✅ Print sent to $savedMac", Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(requireContext(), "Print failed", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "❌ Print failed - check printer", Toast.LENGTH_SHORT).show()
                     }
                     socket.close()
                 } else {
-                    Toast.makeText(requireContext(), "Failed to connect to printer $savedMac", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), "❌ Failed to connect to printer\nMAC: $savedMac\n\nCheck:\n1. Printer is ON\n2. Bluetooth enabled\n3. In range", Toast.LENGTH_LONG).show()
                 }
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_LONG).show()
+                android.util.Log.e("ExportImport", "Print error", e)
+            }
+        }
+    }
             } catch (e: Exception) {
                 Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
             }

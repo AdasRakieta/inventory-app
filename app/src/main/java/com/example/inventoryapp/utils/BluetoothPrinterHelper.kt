@@ -86,6 +86,7 @@ class BluetoothPrinterHelper {
         
         /**
          * Connect to printer by MAC address scanned from QR code
+         * Enhanced with fallback mechanisms for Zebra printers (e.g., ZQ310 Plus)
          */
         suspend fun connectToPrinter(context: Context, macAddress: String): BluetoothSocket? = withContext(Dispatchers.IO) {
             try {
@@ -101,18 +102,54 @@ class BluetoothPrinterHelper {
                 }
                 
                 val device = bluetoothAdapter.getRemoteDevice(macAddress)
-                @Suppress("MissingPermission")
-                val socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
                 
                 // Cancel discovery to improve connection speed
                 @Suppress("MissingPermission")
                 bluetoothAdapter.cancelDiscovery()
                 
-                @Suppress("MissingPermission")
-                socket.connect()
-                @Suppress("MissingPermission")
-                Log.d(TAG, "Connected to printer: ${device.name}")
-                socket
+                // Try multiple connection methods for better compatibility
+                // Method 1: Standard SPP connection (works for most printers)
+                var socket: BluetoothSocket? = null
+                try {
+                    @Suppress("MissingPermission")
+                    socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+                    socket.connect()
+                    @Suppress("MissingPermission")
+                    Log.d(TAG, "Connected to printer via SPP: ${device.name}")
+                    return@withContext socket
+                } catch (e: Exception) {
+                    socket?.close()
+                    Log.w(TAG, "SPP connection failed, trying fallback method", e)
+                }
+                
+                // Method 2: Insecure RFCOMM connection (works for Zebra and some other printers)
+                try {
+                    @Suppress("MissingPermission")
+                    socket = device.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
+                    socket.connect()
+                    @Suppress("MissingPermission")
+                    Log.d(TAG, "Connected to printer via insecure RFCOMM: ${device.name}")
+                    return@withContext socket
+                } catch (e: Exception) {
+                    socket?.close()
+                    Log.w(TAG, "Insecure RFCOMM connection failed, trying reflection method", e)
+                }
+                
+                // Method 3: Reflection-based connection (channel 1, works for many Zebra printers)
+                try {
+                    @Suppress("MissingPermission")
+                    val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                    socket = method.invoke(device, 1) as BluetoothSocket
+                    socket.connect()
+                    @Suppress("MissingPermission")
+                    Log.d(TAG, "Connected to printer via reflection (channel 1): ${device.name}")
+                    return@withContext socket
+                } catch (e: Exception) {
+                    socket?.close()
+                    Log.e(TAG, "All connection methods failed", e)
+                }
+                
+                null
             } catch (e: SecurityException) {
                 Log.e(TAG, "Security exception - missing Bluetooth permissions", e)
                 null
