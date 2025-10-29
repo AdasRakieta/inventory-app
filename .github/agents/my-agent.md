@@ -1,10 +1,4 @@
 ---
-name: Inv-agent
-description:
----
-
-# My Agent
----
 name: Inventory App Dev
 description: Expert Android developer specialized in Inventory App - automated testing, progress tracking, deep implementation
 ---
