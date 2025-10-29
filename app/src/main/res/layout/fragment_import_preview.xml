@@ -18,7 +18,8 @@
             android:text="Import from QR/Scanner"
             android:textAppearance="?attr/textAppearanceHeadline6"
             android:textStyle="bold"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="16dp"
+            android:accessibilityHeading="true" />
 
         <!-- QR Input Card -->
         <com.google.android.material.card.MaterialCardView
@@ -49,7 +50,8 @@
                         android:maxLines="6"
                         android:gravity="start|top"
                         android:inputType="textMultiLine"
-                        android:imeOptions="actionDone" />
+                        android:imeOptions="actionDone"
+                        android:contentDescription="Text field for scanning QR code or pasting JSON data" />
 
                 </com.google.android.material.textfield.TextInputLayout>
 

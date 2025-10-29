@@ -246,13 +246,14 @@ class ImportPreviewFragment : Fragment() {
                 for (product in exportData.products) {
                     try {
                         // Skip products with null/blank serial numbers
-                        if (product.serialNumber.isNullOrBlank()) {
+                        val serialNumber = product.serialNumber
+                        if (serialNumber.isNullOrBlank()) {
                             AppLogger.w("Import Preview", "Skipping product with empty SN: ${product.name}")
                             continue
                         }
                         
                         // Check if product with this serial number exists
-                        val existingProduct = productRepository.getProductBySerialNumber(product.serialNumber)
+                        val existingProduct = productRepository.getProductBySerialNumber(serialNumber)
                         
                         if (existingProduct != null) {
                             // Update existing product
@@ -262,7 +263,7 @@ class ImportPreviewFragment : Fragment() {
                             )
                             productRepository.updateProduct(updatedProduct)
                             productsUpdated++
-                            AppLogger.d("Import Preview", "Updated product: ${product.name} (SN: ${product.serialNumber})")
+                            AppLogger.d("Import Preview", "Updated product: ${product.name} (SN: $serialNumber)")
                         } else {
                             // Insert new product
                             val newProduct = product.copy(
@@ -272,7 +273,7 @@ class ImportPreviewFragment : Fragment() {
                             )
                             productRepository.insertProduct(newProduct)
                             productsAdded++
-                            AppLogger.d("Import Preview", "Added product: ${product.name} (SN: ${product.serialNumber})")
+                            AppLogger.d("Import Preview", "Added product: ${product.name} (SN: $serialNumber)")
                         }
                     } catch (e: Exception) {
                         AppLogger.w("Import Preview", "Failed to import product: ${product.name}", e)
