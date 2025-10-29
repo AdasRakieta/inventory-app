@@ -34,30 +34,12 @@ class BluetoothPrinterHelper {
         private val LINE_FEED = byteArrayOf(0x0A) // New line
         
         /**
-         * Check if Bluetooth permissions are granted
-         */
-        private fun hasBluetoothPermissions(context: Context): Boolean {
-            return ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.BLUETOOTH
-            ) == PackageManager.PERMISSION_GRANTED &&
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.BLUETOOTH_ADMIN
-            ) == PackageManager.PERMISSION_GRANTED
-        }
-        
-        /**
          * Scan for paired Bluetooth devices
          * Returns list of printer-like devices (based on name patterns)
+         * Note: BLUETOOTH and BLUETOOTH_ADMIN are normal permissions on API ≤30 (auto-granted at install)
          */
         suspend fun scanPrinters(context: Context): List<BluetoothDevice> = withContext(Dispatchers.IO) {
             try {
-                if (!hasBluetoothPermissions(context)) {
-                    Log.w(TAG, "Bluetooth permissions not granted")
-                    return@withContext emptyList()
-                }
-                
                 val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
                 if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
                     Log.w(TAG, "Bluetooth not available or not enabled")
@@ -87,14 +69,10 @@ class BluetoothPrinterHelper {
         /**
          * Connect to printer by MAC address scanned from QR code
          * Enhanced with fallback mechanisms for Zebra printers (e.g., ZQ310 Plus)
+         * Note: BLUETOOTH and BLUETOOTH_ADMIN are normal permissions on API ≤30 (auto-granted at install)
          */
         suspend fun connectToPrinter(context: Context, macAddress: String): BluetoothSocket? = withContext(Dispatchers.IO) {
             try {
-                if (!hasBluetoothPermissions(context)) {
-                    Log.w(TAG, "Bluetooth permissions not granted")
-                    return@withContext null
-                }
-                
                 val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
                 if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
                     Log.w(TAG, "Bluetooth not available or not enabled")
