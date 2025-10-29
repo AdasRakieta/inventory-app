@@ -63,4 +63,10 @@
     <string name="title_export_import">Export / Import</string>
     <string name="action_export">Export</string>
     <string name="action_import">Import</string>
+
+    <!-- Bulk Scanning -->
+    <string name="bulk_scan_title">Bulk Scan Products</string>
+    <string name="bulk_scan_instruction">Scan serial numbers for products</string>
+    <string name="bulk_scan_finish">Finish</string>
+    <string name="bulk_scan_scanned_count">Scanned: %d products</string>
 </resources>

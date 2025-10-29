@@ -8,6 +8,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.navigation.fragment.findNavController
 import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentTemplatesBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
@@ -50,7 +51,7 @@ class TemplatesFragment : Fragment() {
     private fun setupRecyclerView() {
         adapter = TemplatesAdapter(
             onTemplateClick = { template ->
-                showEditTemplateDialog(template)
+                navigateToTemplateDetails(template)
             },
             onTemplateLongClick = { template ->
                 showDeleteConfirmation(template)
@@ -83,12 +84,10 @@ class TemplatesFragment : Fragment() {
         dialog.show(childFragmentManager, "AddTemplateDialog")
     }
 
-    private fun showEditTemplateDialog(template: com.example.inventoryapp.data.local.entities.ProductTemplateEntity) {
-        val dialog = TemplateDialogFragment.newInstance(template)
-        dialog.setOnSaveListener { name, categoryId, description ->
-            viewModel.updateTemplate(template.id, name, categoryId, description)
-        }
-        dialog.show(childFragmentManager, "EditTemplateDialog")
+    private fun navigateToTemplateDetails(template: com.example.inventoryapp.data.local.entities.ProductTemplateEntity) {
+        val action = TemplatesFragmentDirections
+            .actionTemplatesToTemplateDetails(template.id)
+        findNavController().navigate(action)
     }
 
     private fun showDeleteConfirmation(template: com.example.inventoryapp.data.local.entities.ProductTemplateEntity) {

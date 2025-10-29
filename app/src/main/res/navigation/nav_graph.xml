@@ -89,7 +89,32 @@
     <fragment
         android:id="@+id/templatesFragment"
         android:name="com.example.inventoryapp.ui.templates.TemplatesFragment"
-        android:label="Templates" />
+        android:label="Templates">
+        <action
+            android:id="@+id/action_templates_to_template_details"
+            app:destination="@id/templateDetailsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/templateDetailsFragment"
+        android:name="com.example.inventoryapp.ui.templates.TemplateDetailsFragment"
+        android:label="Template Details">
+        <argument
+            android:name="templateId"
+            app:argType="long" />
+        <action
+            android:id="@+id/action_template_details_to_bulk_scan"
+            app:destination="@id/bulkProductScanFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/bulkProductScanFragment"
+        android:name="com.example.inventoryapp.ui.templates.BulkProductScanFragment"
+        android:label="Bulk Scan">
+        <argument
+            android:name="templateId"
+            app:argType="long" />
+    </fragment>
 
     <fragment
         android:id="@+id/exportImportFragment"
