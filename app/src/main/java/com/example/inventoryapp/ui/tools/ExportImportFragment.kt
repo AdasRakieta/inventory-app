@@ -342,31 +342,11 @@ class ExportImportFragment : Fragment() {
 
     
     private fun requestBluetoothPermissionsAndPrint() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+ (API 31+): Need runtime permissions for BLUETOOTH_SCAN and BLUETOOTH_CONNECT
-            android.util.Log.d("ExportImport", "Bluetooth permissions check: API 31+, checking permissions")
-            
-            val permissions = arrayOf(
-                Manifest.permission.BLUETOOTH_SCAN,
-                Manifest.permission.BLUETOOTH_CONNECT
-            )
-            
-            val allGranted = permissions.all {
-                ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED
-            }
-            
-            if (allGranted) {
-                android.util.Log.d("ExportImport", "Bluetooth permissions already granted, proceeding")
-                proceedWithPrinting()
-            } else {
-                android.util.Log.d("ExportImport", "Requesting Bluetooth permissions")
-                bluetoothPermissionLauncher.launch(permissions)
-            }
-        } else {
-            // Android 11 and below: Normal permissions, auto-granted at install
-            android.util.Log.d("ExportImport", "Bluetooth permissions check: API 30 or below, auto-granted")
-            proceedWithPrinting()
-        }
+        // For SDK 30 (Android 11): Bluetooth permissions are normal permissions, auto-granted at install
+        // Android 12+ (API 31+) would require BLUETOOTH_SCAN and BLUETOOTH_CONNECT runtime permissions
+        // but this app targets SDK 30, so we directly proceed
+        android.util.Log.d("ExportImport", "Bluetooth permissions check: SDK 30, auto-granted")
+        proceedWithPrinting()
     }
     
     private fun proceedWithPrinting() {

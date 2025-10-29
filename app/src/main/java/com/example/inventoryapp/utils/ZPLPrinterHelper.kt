@@ -1,9 +1,9 @@
 package com.example.inventoryapp.utils
 
-import com.example.inventoryapp.data.model.ExportData
-import com.example.inventoryapp.data.model.PackageEntity
-import com.example.inventoryapp.data.model.ProductEntity
-import com.example.inventoryapp.data.model.ProductTemplateEntity
+import com.example.inventoryapp.ui.tools.ExportData
+import com.example.inventoryapp.data.local.entities.PackageEntity
+import com.example.inventoryapp.data.local.entities.ProductEntity
+import com.example.inventoryapp.data.local.entities.ProductTemplateEntity
 
 /**
  * Utility class for generating ZPL (Zebra Programming Language) commands
