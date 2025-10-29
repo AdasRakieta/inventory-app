@@ -96,6 +96,24 @@ class ExportImportFragment : Fragment() {
         }
     }
 
+    // Bluetooth permission launcher for Android 12+ (API 31+)
+    private val bluetoothPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.all { it.value }
+        if (allGranted) {
+            android.util.Log.d("ExportImport", "Bluetooth permissions granted, proceeding with print")
+            proceedWithPrinting()
+        } else {
+            Toast.makeText(
+                requireContext(), 
+                "Bluetooth permissions are required for printing to Bluetooth printer",
+                Toast.LENGTH_LONG
+            ).show()
+            android.util.Log.w("ExportImport", "Bluetooth permissions denied")
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -323,7 +341,35 @@ class ExportImportFragment : Fragment() {
     }
 
     
-    private fun printQRCodeToEnteredMac() {
+    private fun requestBluetoothPermissionsAndPrint() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Android 12+ (API 31+): Need runtime permissions for BLUETOOTH_SCAN and BLUETOOTH_CONNECT
+            android.util.Log.d("ExportImport", "Bluetooth permissions check: API 31+, checking permissions")
+            
+            val permissions = arrayOf(
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_CONNECT
+            )
+            
+            val allGranted = permissions.all {
+                ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED
+            }
+            
+            if (allGranted) {
+                android.util.Log.d("ExportImport", "Bluetooth permissions already granted, proceeding")
+                proceedWithPrinting()
+            } else {
+                android.util.Log.d("ExportImport", "Requesting Bluetooth permissions")
+                bluetoothPermissionLauncher.launch(permissions)
+            }
+        } else {
+            // Android 11 and below: Normal permissions, auto-granted at install
+            android.util.Log.d("ExportImport", "Bluetooth permissions check: API 30 or below, auto-granted")
+            proceedWithPrinting()
+        }
+    }
+    
+    private fun proceedWithPrinting() {
         val macAddress = binding.printerMacEditText.text.toString().trim()
         
         // Validate MAC address format
@@ -415,6 +461,11 @@ class ExportImportFragment : Fragment() {
                 android.util.Log.e("ExportImport", "Print error", e)
             }
         }
+    }
+    
+    private fun printQRCodeToEnteredMac() {
+        // Check and request Bluetooth permissions (Android 12+ only)
+        requestBluetoothPermissionsAndPrint()
     }
     
     private fun printTestQRCode() {
