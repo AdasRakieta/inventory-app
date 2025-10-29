@@ -83,17 +83,6 @@ class ExportImportFragment : Fragment() {
         }
     }
 
-    private val bluetoothPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.values.all { it }
-        if (allGranted) {
-            scanForPrinterQR()
-        } else {
-            Toast.makeText(requireContext(), "Bluetooth permissions required", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -278,21 +267,30 @@ class ExportImportFragment : Fragment() {
     }
 
     private fun requestBluetoothPermissionsAndScan() {
-        // For targetSdk 30, always use legacy Bluetooth permissions
-        val permissions = arrayOf(
-            Manifest.permission.BLUETOOTH,
-            Manifest.permission.BLUETOOTH_ADMIN
-        )
-
-        val missingPermissions = permissions.filter {
-            ContextCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED
+        // For targetSdk 30, BLUETOOTH and BLUETOOTH_ADMIN are automatically granted at install
+        // No runtime permission request needed - just check if Bluetooth is enabled
+        val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+        
+        if (bluetoothAdapter == null) {
+            Toast.makeText(requireContext(), "Bluetooth not available on this device", Toast.LENGTH_SHORT).show()
+            return
         }
-
-        if (missingPermissions.isEmpty()) {
-            scanForPrinterQR()
-        } else {
-            bluetoothPermissionLauncher.launch(missingPermissions.toTypedArray())
+        
+        if (!bluetoothAdapter.isEnabled) {
+            Toast.makeText(requireContext(), "Please enable Bluetooth in device settings", Toast.LENGTH_LONG).show()
+            // Optionally, prompt user to enable Bluetooth
+            try {
+                val enableBtIntent = android.content.Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                startActivity(enableBtIntent)
+            } catch (e: Exception) {
+                // If we can't request Bluetooth enable, just inform user
+                Toast.makeText(requireContext(), "Enable Bluetooth manually in Settings", Toast.LENGTH_LONG).show()
+            }
+            return
         }
+        
+        // Bluetooth is available and enabled, proceed to scan
+        scanForPrinterQR()
     }
 
     private fun scanForPrinterQR() {
