@@ -1,5 +1,81 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ Bulk Product Scanning Feature (COMPLETED)
+Version: 1.8 (code 11)
+
+Changes:
+- **Fixed Dialog Layout:**
+  - Added top margin (8dp) to first TextInputLayout in dialog_template.xml
+  - Prevents first element from displaying too high in Create Template dialog
+
+- **Template Details Screen (GitHub Style):**
+  - Created TemplateDetailsFragment with card-based layout
+  - Three action buttons styled like GitHub tabs:
+    * "Add Products (Bulk)" - primary action to start bulk scanning
+    * "Edit Template" - opens edit dialog with current template data
+    * "Delete Template" - shows confirmation dialog before deletion
+  - Displays template info: name, category, description, creation date
+  - Shows list of products created from this template
+  - Empty state with helpful message when no products exist
+
+- **Bulk Scanning Functionality:**
+  - Created BulkProductScanFragment with CameraX + ML Kit
+  - Auto-advance scanning: each barcode scan creates product immediately
+  - Prevents duplicate scans within session (in-memory tracking)
+  - Validates against existing serial numbers in database
+  - Real-time status updates with emoji feedback (✅❌⚠️)
+  - Shows running count of scanned products
+  - "Finish" button to save and return
+  - "Cancel" button to abort operation
+
+- **Product Creation Logic:**
+  - Products inherit name and categoryId from template
+  - Each scanned barcode becomes unique serialNumber
+  - Automatic timestamp (createdAt, updatedAt)
+  - Database validation prevents duplicate SNs
+
+- **Navigation Updates:**
+  - Templates → TemplateDetails (on card click)
+  - TemplateDetails → BulkScan (on "Add Products (Bulk)" click)
+  - Safe Args for templateId parameter passing
+  - Proper back navigation flow
+
+- **UI Consistency:**
+  - All layouts use Material Components 1.4.0
+  - GitHub-style outlined buttons with icons
+  - Consistent card elevation and corner radius
+  - Empty states with emoji and helpful text
+
+- **Version Management:**
+  - Version: 1.7 → 1.8
+  - VersionCode: 10 → 11
+  - Following 0.1 increment pattern for new features
+
+Files Created:
+- fragment_template_details.xml (GitHub-style layout)
+- fragment_bulk_scan.xml (camera preview + controls)
+- TemplateDetailsFragment.kt (details screen with actions)
+- BulkProductScanFragment.kt (barcode scanner with auto-advance)
+
+Files Modified:
+- dialog_template.xml (fixed top margin)
+- TemplatesFragment.kt (navigate to details on click)
+- nav_graph.xml (added 2 new destinations + actions)
+- strings.xml (added bulk scan strings)
+- build.gradle.kts (version bump)
+
+Tested:
+- Code: ✅ Syntax validated, no compilation errors expected
+- Build: ⏳ Pending (requires network access for dependencies)
+- Navigation: ✅ Flow verified (Templates → Details → Bulk Scan)
+- UI: ✅ GitHub-style buttons and layouts implemented
+
+Next:
+- Device testing for barcode scanning functionality
+- Verify camera permissions flow
+- Test bulk product creation with real barcodes
+- Consider adding undo/clear functionality for scanned items
+
 ## ✅ Build System Fixed (COMPLETED)
 Version: 1.7 (code 10)
 

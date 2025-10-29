@@ -158,7 +158,7 @@ class TemplateDetailsFragment : Fragment() {
 
     private fun navigateToBulkScan() {
         val action = TemplateDetailsFragmentDirections
-            .actionTemplateDetailsToBlkScan(args.templateId)
+            .actionTemplateDetailsToBulkScan(args.templateId)
         findNavController().navigate(action)
     }
 
