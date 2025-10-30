@@ -34,7 +34,12 @@ fun getAdbPath(): String {
     
     if (androidHome != null) {
         val adbExecutable = if (isWindows()) "adb.exe" else "adb"
-        return "$androidHome/platform-tools/$adbExecutable"
+        val adbPath = "$androidHome${File.separator}platform-tools${File.separator}$adbExecutable"
+        
+        // Validate that the path exists before returning it
+        if (File(adbPath).exists()) {
+            return adbPath
+        }
     }
     
     // Fallback: assume adb is in PATH
@@ -210,9 +215,11 @@ If you have an existing checkout with the old Windows-specific configuration:
 Uses `System.getProperty("os.name").lowercase().contains("windows")` to detect Windows. All other platforms (Linux, macOS, etc.) use Unix-style commands.
 
 ### ADB Path Resolution Priority
-1. `ANDROID_HOME` environment variable (standard)
-2. `ANDROID_SDK_ROOT` environment variable (legacy)
+1. `ANDROID_HOME` environment variable (standard) - validated to exist
+2. `ANDROID_SDK_ROOT` environment variable (legacy) - validated to exist
 3. Fallback to `adb` in system PATH
+
+The function uses `File.separator` for cross-platform path construction and validates that the resolved path exists before using it.
 
 ### Command Execution
 - **Windows:** `commandLine("cmd", "/c", adbPath, ...)`

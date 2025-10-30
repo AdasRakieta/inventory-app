@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -180,7 +182,12 @@ fun getAdbPath(): String {
     
     if (androidHome != null) {
         val adbExecutable = if (isWindows()) "adb.exe" else "adb"
-        return "$androidHome/platform-tools/$adbExecutable"
+        val adbPath = "$androidHome${File.separator}platform-tools${File.separator}$adbExecutable"
+        
+        // Validate that the path exists before returning it
+        if (File(adbPath).exists()) {
+            return adbPath
+        }
     }
     
     // Fallback: assume adb is in PATH
