@@ -42,6 +42,7 @@
     <string name="ok">OK</string>
     <string name="error">Error</string>
     <string name="success">Success</string>
+    <string name="debug_info_title">Debug Information</string>
     
     <!-- Errors -->
     <string name="error_empty_field">This field cannot be empty</string>

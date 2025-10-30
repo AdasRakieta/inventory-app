@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.okmobile.ok_mobile_bluefletch">
+    <uses-permission android:name="com.android.launcher.permission.READ_SETTINGS" />
+    <uses-permission android:name="com.android.launcher.permission.WRITE_SETTINGS" />
+    <queries>
+        <provider
+            android:authorities="com.bluefletch.launcherprovider"
+            tools:replace="android:authorities" />
+    </queries>
+</manifest>

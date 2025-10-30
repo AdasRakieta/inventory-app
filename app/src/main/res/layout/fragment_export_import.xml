@@ -235,8 +235,17 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:text="Scan for Paired Printers"
+                    android:text="Scan for Devices"
                     app:icon="@android:drawable/ic_menu_search" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/selectDeviceButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Select Device"
+                    app:icon="@android:drawable/ic_menu_manage" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/printQrCodeButton"

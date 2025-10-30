@@ -32,7 +32,11 @@ import com.example.inventoryapp.utils.QRCodeGenerator
 import com.example.inventoryapp.utils.BluetoothPrinterHelper
 import com.example.inventoryapp.utils.AppLogger
 import com.example.inventoryapp.utils.FileHelper
-import com.example.inventoryapp.utils.ZebraPrinterHelper
+import com.example.inventoryapp.printer.ZebraPrinterManager
+import com.example.inventoryapp.printer.ZplContentGenerator
+import com.example.inventoryapp.utils.DeviceInfo
+import com.example.inventoryapp.utils.DeviceType
+import com.example.inventoryapp.utils.ConnectionType
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
@@ -49,7 +53,7 @@ class ExportImportFragment : Fragment() {
     
     private lateinit var viewModel: ExportImportViewModel
     private var connectedPrinter: BluetoothSocket? = null
-    private lateinit var zebraPrinterHelper: ZebraPrinterHelper
+    private lateinit var zebraPrinterManager: ZebraPrinterManager
     
     // Repositories for direct access
     private lateinit var productRepository: ProductRepository
@@ -145,8 +149,8 @@ class ExportImportFragment : Fragment() {
         packageRepository = PackageRepository(database.packageDao(), database.productDao())
         templateRepository = ProductTemplateRepository(database.productTemplateDao())
         
-        // Initialize Zebra printer helper
-        zebraPrinterHelper = ZebraPrinterHelper()
+        // Initialize Zebra printer manager
+        zebraPrinterManager = ZebraPrinterManager(requireContext())
         
         viewModel = ExportImportViewModel(
             productRepository,
@@ -191,11 +195,15 @@ class ExportImportFragment : Fragment() {
         }
 
         binding.scanPrintersButton.setOnClickListener {
-            scanForPairedPrinters()
+            startDeviceDiscovery()
         }
 
         binding.printZebraButton.setOnClickListener {
             printOnZebraPrinter()
+        }
+
+        binding.selectDeviceButton.setOnClickListener {
+            startDeviceDiscovery()
         }
     }
 
@@ -377,11 +385,10 @@ class ExportImportFragment : Fragment() {
         android.util.Log.d("ExportImport", "Device SDK: ${Build.VERSION.SDK_INT}, Android 12+ check: ${Build.VERSION.SDK_INT >= 31}")
 
         if (Build.VERSION.SDK_INT >= 31) {
-            // Android 12+ (API 31+): BLUETOOTH_SCAN, BLUETOOTH_CONNECT and ACCESS_FINE_LOCATION are runtime permissions
+            // Android 12+ (API 31+): BLUETOOTH_SCAN and BLUETOOTH_CONNECT are runtime permissions
             val permissions = arrayOf(
                 "android.permission.BLUETOOTH_SCAN",
-                "android.permission.BLUETOOTH_CONNECT",
-                "android.permission.ACCESS_FINE_LOCATION"
+                "android.permission.BLUETOOTH_CONNECT"
             )
 
             val missingPermissions = permissions.filter {
@@ -473,29 +480,32 @@ class ExportImportFragment : Fragment() {
         binding.printerStatusText.text = "Connecting to Zebra printer..."
         binding.printZebraButton.isEnabled = false
 
-        // Print sample data directly (connection will be tested during printing)
-        printSampleZplToZebra(macAddress)
-    }
-    
-    private fun proceedWithZebraWifiPrinting(ipAddress: String, port: Int) {
-        // Show loading
-        binding.printerStatusText.text = "Connecting to Zebra printer over WiFi..."
-        binding.printZebraButton.isEnabled = false
+        // Print test label using new simplified approach
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val zplContent = ZplContentGenerator.generateTestLabel()
+                val error = zebraPrinterManager.printDocument(macAddress, zplContent)
 
-        // Test connection first
-        zebraPrinterHelper.testWifiConnection(ipAddress, port) { success, error ->
-            if (success) {
-                // Connection successful, now print sample data
-                printSampleZplToZebraWifi(ipAddress, port)
-            } else {
                 requireActivity().runOnUiThread {
-                    binding.printerStatusText.text = "WiFi connection failed: $error"
                     binding.printZebraButton.isEnabled = true
-                    Toast.makeText(requireContext(), "WiFi connection failed: $error", Toast.LENGTH_SHORT).show()
+                    if (error == null) {
+                        binding.printerStatusText.text = "Print successful!"
+                        Toast.makeText(requireContext(), "Print sent to Zebra printer", Toast.LENGTH_SHORT).show()
+                    } else {
+                        binding.printerStatusText.text = "Print failed: $error"
+                        Toast.makeText(requireContext(), "Print failed: $error", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                requireActivity().runOnUiThread {
+                    binding.printZebraButton.isEnabled = true
+                    binding.printerStatusText.text = "Print error: ${e.message}"
+                    Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
+
     
     private fun proceedWithPrinting() {
         val macAddress = binding.printerMacEditText.text.toString().trim()
@@ -637,65 +647,41 @@ class ExportImportFragment : Fragment() {
         }
     }
 
-    private fun scanForPairedPrinters() {
-        val isBluetoothSelected = binding.bluetoothRadioButton.isChecked
+    private fun startDeviceDiscovery() {
+        if (!zebraPrinterManager.hasBluetoothPermissions()) {
+            Toast.makeText(requireContext(), "Bluetooth permissions required. Please grant permission and try again.", Toast.LENGTH_LONG).show()
+            // Request permissions
+            requestBluetoothPermissionsAndPrint()
+            return
+        }
 
-        if (isBluetoothSelected) {
-            scanBluetoothPrinters()
+        if (!zebraPrinterManager.isBluetoothEnabled()) {
+            Toast.makeText(requireContext(), "Please enable Bluetooth to discover devices", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val pairedDevices = zebraPrinterManager.getPairedDevices()
+        binding.printerStatusText.text = "Found ${pairedDevices.size} paired Bluetooth devices"
+
+        if (pairedDevices.isNotEmpty()) {
+            showPairedDevicesDialog(pairedDevices)
         } else {
-            scanWifiPrinters()
+            Toast.makeText(requireContext(), "No paired Bluetooth devices found. Make sure your Zebra printer is paired.", Toast.LENGTH_SHORT).show()
         }
     }
+    
+    private fun showPairedDevicesDialog(devices: List<BluetoothDevice>) {
+        val deviceNames = devices.map { "${it.name ?: "Unknown"} (${it.address})" }.toTypedArray()
 
-    private fun scanBluetoothPrinters() {
-        // Show loading
-        binding.printerStatusText.text = "Scanning for Bluetooth printers..."
-        binding.scanPrintersButton.isEnabled = false
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val printers = BluetoothPrinterHelper.scanPrinters(requireContext())
-
-                requireActivity().runOnUiThread {
-                    binding.scanPrintersButton.isEnabled = true
-
-                    if (printers.isEmpty()) {
-                        binding.printerStatusText.text = "No Bluetooth printers found"
-                        Toast.makeText(requireContext(), "No paired Bluetooth printers found", Toast.LENGTH_SHORT).show()
-                    } else {
-                        showBluetoothPrinterSelectionDialog(printers)
-                    }
-                }
-            } catch (e: Exception) {
-                requireActivity().runOnUiThread {
-                    binding.scanPrintersButton.isEnabled = true
-                    binding.printerStatusText.text = "Bluetooth scan failed: ${e.message}"
-                    Toast.makeText(requireContext(), "Failed to scan Bluetooth printers", Toast.LENGTH_SHORT).show()
-                }
+        AlertDialog.Builder(requireContext())
+            .setTitle("Select Bluetooth Device")
+            .setItems(deviceNames) { _, which ->
+                val selectedDevice = devices[which]
+                binding.printerMacEditText.setText(selectedDevice.address)
+                Toast.makeText(requireContext(), "Selected: ${selectedDevice.name}", Toast.LENGTH_SHORT).show()
             }
-        }
-    }
-
-    private fun scanWifiPrinters() {
-        // Show loading
-        binding.printerStatusText.text = "Scanning for WiFi printers..."
-        binding.scanPrintersButton.isEnabled = false
-
-        // Try to detect current subnet
-        val subnet = detectCurrentSubnet()
-
-        zebraPrinterHelper.discoverWifiPrinters(subnet) { printers ->
-            requireActivity().runOnUiThread {
-                binding.scanPrintersButton.isEnabled = true
-
-                if (printers.isEmpty()) {
-                    binding.printerStatusText.text = "No WiFi printers found on network $subnet.0/24"
-                    Toast.makeText(requireContext(), "No Zebra printers found on network", Toast.LENGTH_SHORT).show()
-                } else {
-                    showWifiPrinterSelectionDialog(printers)
-                }
-            }
-        }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun detectCurrentSubnet(): String {
@@ -725,39 +711,7 @@ class ExportImportFragment : Fragment() {
         }
     }
 
-    private fun showBluetoothPrinterSelectionDialog(printers: List<android.bluetooth.BluetoothDevice>) {
-        val printerNames = printers.map { device ->
-            "${device.name ?: "Unknown"} (${device.address})"
-        }.toTypedArray()
 
-        AlertDialog.Builder(requireContext())
-            .setTitle("Select Bluetooth Printer")
-            .setItems(printerNames) { _, which ->
-                val selectedPrinter = printers[which]
-                binding.printerMacEditText.setText(selectedPrinter.address)
-                binding.printerStatusText.text = "Selected: ${selectedPrinter.name ?: "Unknown"}"
-                Toast.makeText(requireContext(), "Printer selected: ${selectedPrinter.name}", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun showWifiPrinterSelectionDialog(printers: List<String>) {
-        val printerNames = printers.map { ip ->
-            "Zebra Printer ($ip)"
-        }.toTypedArray()
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("Select WiFi Printer")
-            .setItems(printerNames) { _, which ->
-                val selectedIp = printers[which]
-                binding.printerIpEditText.setText(selectedIp)
-                binding.printerStatusText.text = "Selected: $selectedIp"
-                Toast.makeText(requireContext(), "Printer selected: $selectedIp", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
 
     private fun printOnZebraPrinter() {
         android.util.Log.d("ExportImport", "printOnZebraPrinter called, activity: ${activity != null}, isAdded: $isAdded")
@@ -781,67 +735,12 @@ class ExportImportFragment : Fragment() {
             // Check and request Bluetooth permissions before proceeding
             requestBluetoothPermissionsAndPrint()
         } else {
-            // WiFi connection
-            val ipAddress = binding.printerIpEditText.text.toString().trim()
-            val portText = binding.printerPortEditText.text.toString().trim()
-
-            if (ipAddress.isEmpty()) {
-                Toast.makeText(requireContext(), "Please enter printer IP address", Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            val port = portText.toIntOrNull() ?: 9100
-            if (port < 1 || port > 65535) {
-                Toast.makeText(requireContext(), "Invalid port number", Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            // For WiFi, we don't need special permissions, proceed directly
-            proceedWithZebraWifiPrinting(ipAddress, port)
+            // WiFi connection - not supported in simplified version
+            Toast.makeText(requireContext(), "WiFi printing not supported in this version", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun printSampleZplToZebra(macAddress: String) {
-        // Create sample ZPL for testing
-        val sampleZpl = ZebraPrinterHelper.createTestZpl(
-            productName = "Test Product",
-            barcode = "123456789"
-        )
 
-        zebraPrinterHelper.printDocument(macAddress, sampleZpl) { error ->
-            requireActivity().runOnUiThread {
-                binding.printZebraButton.isEnabled = true
-                if (error == null) {
-                    binding.printerStatusText.text = "Print successful!"
-                    Toast.makeText(requireContext(), "Print sent to Zebra printer", Toast.LENGTH_SHORT).show()
-                } else {
-                    binding.printerStatusText.text = "Print failed: $error"
-                    Toast.makeText(requireContext(), "Print failed: $error", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
-    private fun printSampleZplToZebraWifi(ipAddress: String, port: Int) {
-        // Create sample ZPL for testing
-        val sampleZpl = ZebraPrinterHelper.createTestZpl(
-            productName = "Test Product (WiFi)",
-            barcode = "123456789"
-        )
-
-        zebraPrinterHelper.printDocumentOverWifi(ipAddress, port, sampleZpl) { error ->
-            requireActivity().runOnUiThread {
-                binding.printZebraButton.isEnabled = true
-                if (error == null) {
-                    binding.printerStatusText.text = "WiFi print successful!"
-                    Toast.makeText(requireContext(), "Print sent to Zebra printer over WiFi", Toast.LENGTH_SHORT).show()
-                } else {
-                    binding.printerStatusText.text = "WiFi print failed: $error"
-                    Toast.makeText(requireContext(), "WiFi print failed: $error", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
 
     private fun isValidMacAddress(mac: String): Boolean {
         val macPattern = Regex("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$")
@@ -856,7 +755,6 @@ class ExportImportFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         connectedPrinter?.let { BluetoothPrinterHelper.disconnect(it) }
-        zebraPrinterHelper.shutdown()
         _binding = null
     }
 }

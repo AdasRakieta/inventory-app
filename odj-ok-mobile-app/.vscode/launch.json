@@ -1,0 +1,129 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Dev",
+      "cwd": "apps/primary_app",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "dev",
+        "--dart-define=FLAVOR=dev",
+        "--dart-define=CONFIG_TYPE=kaufland"
+      ]
+    },
+    {
+      "name": "Dev Release",
+      "cwd": "apps/primary_app",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "dev",
+        "--dart-define=FLAVOR=dev",
+        "--release",
+        "--dart-define=CONFIG_TYPE=kaufland"
+      ]
+    },
+    {
+      "name": "Dev Lidl",
+      "cwd": "apps/primary_app",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "dev",
+        "--dart-define=FLAVOR=dev",
+        "--dart-define=CONFIG_TYPE=lidl"
+      ]
+    },
+    {
+      "name": "Offline",
+      "cwd": "apps/primary_app",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "offline",
+        "--dart-define=FLAVOR=offline",
+        "--dart-define=CONFIG_TYPE=kaufland"
+      ]
+    },
+    {
+      "name": "TST",
+      "cwd": "apps/primary_app",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "tst",
+        "--dart-define=FLAVOR=tst",
+        "--dart-define=CONFIG_TYPE=kaufland"
+      ]
+    },
+    {
+      "name": "TST Lidl",
+      "cwd": "apps/primary_app",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "tst",
+        "--dart-define=FLAVOR=tst",
+        "--dart-define=CONFIG_TYPE=lidl"
+      ]
+    },
+    {
+      "name": "UAT",
+      "cwd": "apps/primary_app",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "uat",
+        "--dart-define=FLAVOR=uat",
+        "--dart-define=CONFIG_TYPE=kaufland"
+      ]
+    },
+    {
+      "name": "UAT Lidl",
+      "cwd": "apps/primary_app",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "uat",
+        "--dart-define=FLAVOR=uat",
+        "--dart-define=CONFIG_TYPE=lidl"
+      ]
+    },
+    {
+      "name": "PRD",
+      "cwd": "apps/primary_app",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "prd",
+        "--dart-define=FLAVOR=prd",
+        "--dart-define=CONFIG_TYPE=kaufland"
+      ]
+    },
+    {
+      "name": "PRD Lidl",
+      "cwd": "apps/primary_app",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor", "prd",
+        "--dart-define=FLAVOR=prd",
+        "--dart-define=CONFIG_TYPE=lidl"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+name: ok_mobile_app
+description: "A new Flutter project."
+publish_to: "none"
+
+version: 0.0.1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  melos: ^6.3.2
+  very_good_analysis: ^7.0.0
+
+flutter:
+  uses-material-design: true
+
+flutter_intl:
+  enabled: true
+  arb_dir: packages/ok_mobile_translations/lib/l10n
+  output_dir: packages/ok_mobile_translations/lib/generated

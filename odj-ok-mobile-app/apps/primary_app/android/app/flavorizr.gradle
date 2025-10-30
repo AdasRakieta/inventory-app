@@ -1,0 +1,46 @@
+android {
+    flavorDimensions += "flavor-type"
+
+    productFlavors {
+        dev {
+            dimension "flavor-type"
+            applicationId "com.ok.mobile.dev"
+            signingConfig signingConfigs.release
+            resValue "string", "app_name", "OK Mobile Dev"
+            resValue "string", "auth_path", "/lvGC0B4SWYU8tNPHg/bdMjQinZQ="
+            resValue "string", "redirect_host_name", "com.ok.mobile.dev"
+        }
+        offline {
+            dimension "flavor-type"
+            applicationId "com.ok.mobile.offline"
+            signingConfig signingConfigs.debug
+            resValue "string", "app_name", "OK Mobile Offline"
+            resValue "string", "auth_path", "/lvGC0B4SWYU8tNPHg/bdMjQinZQ="
+            resValue "string", "redirect_host_name", "com.ok.mobile.offline"
+        }
+        prd {
+            dimension "flavor-type"
+            applicationId "com.ok.mobile"
+            signingConfig signingConfigs.release
+            resValue "string", "app_name", "OK Mobile"
+            resValue "string", "auth_path", "/lvGC0B4SWYU8tNPHg/bdMjQinZQ="
+            resValue "string", "redirect_host_name", "com.ok.mobile"
+        }
+        tst {
+            dimension "flavor-type"
+            applicationId "com.ok.mobile.tst"
+            signingConfig signingConfigs.release
+            resValue "string", "app_name", "OK Mobile Tst"
+            resValue "string", "auth_path", "/lvGC0B4SWYU8tNPHg/bdMjQinZQ="
+            resValue "string", "redirect_host_name", "com.ok.mobile.stage"
+        }
+        uat {
+            dimension "flavor-type"
+            applicationId "com.ok.mobile.uat"
+            signingConfig signingConfigs.release
+            resValue "string", "app_name", "OK Mobile UAT"
+            resValue "string", "auth_path", "/lvGC0B4SWYU8tNPHg/bdMjQinZQ="
+            resValue "string", "redirect_host_name", "com.ok.mobile.uat"
+        }
+    }
+}
