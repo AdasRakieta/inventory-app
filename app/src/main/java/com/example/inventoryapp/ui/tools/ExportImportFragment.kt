@@ -400,10 +400,10 @@ class ExportImportFragment : Fragment() {
 
             // Check if any permissions are permanently denied
             val permanentlyDenied = missingPermissions.filter { !shouldShowRequestPermissionRationale(it) }
-            if (permanentlyDenied.isNotEmpty()) {
+            if (permanentlyDenied.isNotEmpty() && missingPermissions.isNotEmpty()) {
                 android.util.Log.w("ExportImport", "Permissions permanently denied: $permanentlyDenied")
-                // Try legacy permissions instead of opening settings
-                tryLegacyBluetoothPermissions()
+                // Show dialog to open app settings
+                showPermissionSettingsDialog()
                 return
             }
 
@@ -430,47 +430,22 @@ class ExportImportFragment : Fragment() {
         proceedWithZebraPrinting()
     }
     
-    private fun tryLegacyBluetoothPermissions() {
-        android.util.Log.d("ExportImport", "Trying legacy Bluetooth permissions")
-
-        // Check legacy permissions (these might be available even if new ones are blocked)
-        val legacyPermissions = arrayOf(
-            "android.permission.BLUETOOTH",
-            "android.permission.BLUETOOTH_ADMIN"
-        )
-
-        val missingLegacyPermissions = legacyPermissions.filter {
-            val granted = ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED
-            android.util.Log.d("ExportImport", "Legacy permission $it granted: $granted")
-            !granted
-        }
-
-        if (missingLegacyPermissions.isNotEmpty()) {
-            android.util.Log.d("ExportImport", "Legacy permissions missing: $missingLegacyPermissions")
-
-            // For devices with MDM restrictions, try to proceed anyway if Bluetooth is enabled
-            // Some Zebra SDK operations might work without explicit permissions if Bluetooth is on
-            val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-            if (bluetoothAdapter != null && bluetoothAdapter.isEnabled) {
-                android.util.Log.d("ExportImport", "Bluetooth is enabled, trying to proceed without permissions")
-                Toast.makeText(
-                    requireContext(),
-                    "Bluetooth permissions blocked, but Bluetooth is enabled. Trying to connect anyway...",
-                    Toast.LENGTH_SHORT
-                ).show()
-                proceedWithZebraPrinting()
-            } else {
-                android.util.Log.w("ExportImport", "Bluetooth not enabled or not available")
-                Toast.makeText(
-                    requireContext(),
-                    "Bluetooth permissions blocked by administrator and Bluetooth is not enabled. Please enable Bluetooth or contact IT administrator.",
-                    Toast.LENGTH_LONG
-                ).show()
+    private fun showPermissionSettingsDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Bluetooth Permissions Required")
+            .setMessage("Bluetooth permissions are required to connect to the Zebra printer. Please enable them in app settings.")
+            .setPositiveButton("Open Settings") { _, _ ->
+                try {
+                    val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = android.net.Uri.fromParts("package", requireContext().packageName, null)
+                    }
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(requireContext(), "Cannot open settings: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             }
-        } else {
-            android.util.Log.d("ExportImport", "Legacy Bluetooth permissions are granted")
-            proceedWithZebraPrinting()
-        }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
     
     private fun proceedWithZebraPrinting() {

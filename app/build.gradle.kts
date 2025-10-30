@@ -7,12 +7,12 @@ plugins {
 }
 
 android {
-    compileSdkVersion(30)
+    compileSdkVersion(33)
 
     defaultConfig {
         applicationId = "com.inventory.prd"
         minSdkVersion(26)
-        targetSdkVersion(30)
+        targetSdkVersion(33)
     versionCode = 22
     versionName = "1.9.1"
 
