@@ -302,32 +302,124 @@ class ExportImportFragment : Fragment() {
                 if (success) {
                     val jsonContent = file.readText()
                     
-                    // For large data, show warning
-                    if (jsonContent.length > 2000) {
-                        AlertDialog.Builder(requireContext())
-                            .setTitle("Large Database")
-                            .setMessage("Database is too large for QR code. Use file export instead or export individual items.")
-                            .setPositiveButton("OK", null)
-                            .show()
-                        AppLogger.w("QR Share", "Database too large for QR code: ${jsonContent.length} chars")
-                        return@launch
-                    }
+                    AppLogger.d("QR Share", "Data size: ${jsonContent.length} chars")
                     
-                    val qrBitmap = QRCodeGenerator.generateQRCode(jsonContent, 512, 512)
+                    // Generate QR with automatic compression
+                    val qrBitmap = QRCodeGenerator.generateQRCode(jsonContent, 800, 800)
+                    
                     if (qrBitmap != null) {
                         binding.qrCodeImage.setImageBitmap(qrBitmap)
                         binding.qrCodeImage.visibility = View.VISIBLE
-                        AppLogger.logAction("QR Code Generated Successfully")
-                        Toast.makeText(requireContext(), "QR Code generated. Scan to import.", Toast.LENGTH_LONG).show()
+                        AppLogger.logAction("QR Code Generated Successfully (with compression if needed)")
+                        
+                        val sizeInfo = if (jsonContent.length > 2000) {
+                            "Large dataset - compressed for QR"
+                        } else {
+                            "QR Code ready to scan"
+                        }
+                        
+                        Toast.makeText(requireContext(), sizeInfo, Toast.LENGTH_LONG).show()
                     } else {
-                        AppLogger.e("QR Share", "Failed to generate QR bitmap")
-                        Toast.makeText(requireContext(), "Failed to generate QR code", Toast.LENGTH_SHORT).show()
+                        // If single QR fails, try multi-part
+                        showMultiPartQROption(jsonContent)
                     }
                 }
                 file.delete()
             } catch (e: Exception) {
                 AppLogger.logError("QR Share", e)
                 Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    private fun showMultiPartQROption(jsonContent: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Large Database")
+            .setMessage("Database is very large. Options:\n\n1. Generate multiple QR codes (for printing)\n2. Use file export instead\n3. Export individual packages")
+            .setPositiveButton("Multi-Part QR") { _, _ ->
+                generateMultiPartQR(jsonContent)
+            }
+            .setNegativeButton("File Export") { _, _ ->
+                exportDataAsJson()
+            }
+            .setNeutralButton("Cancel", null)
+            .show()
+    }
+    
+    private fun generateMultiPartQR(jsonContent: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val qrBitmaps = QRCodeGenerator.generateMultiPartQRCodes(jsonContent, 800, 800)
+                
+                if (qrBitmaps.isNotEmpty()) {
+                    AppLogger.logAction("Generated ${qrBitmaps.size} multi-part QR codes")
+                    
+                    // Show first QR
+                    binding.qrCodeImage.setImageBitmap(qrBitmaps[0])
+                    binding.qrCodeImage.visibility = View.VISIBLE
+                    
+                    Toast.makeText(
+                        requireContext(), 
+                        "Generated ${qrBitmaps.size} QR codes. Showing part 1/${qrBitmaps.size}\n\nPrint all codes for complete import.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    
+                    // Option to print all parts
+                    if (qrBitmaps.size > 1) {
+                        showPrintAllPartsOption(qrBitmaps)
+                    }
+                } else {
+                    Toast.makeText(requireContext(), "Failed to generate QR codes. Use file export.", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                AppLogger.logError("Multi-Part QR", e)
+                Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    private fun showPrintAllPartsOption(qrBitmaps: List<Bitmap>) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Print All Parts?")
+            .setMessage("Print all ${qrBitmaps.size} QR code parts to Zebra printer?")
+            .setPositiveButton("Print All") { _, _ ->
+                printMultiPartQRCodes(qrBitmaps)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun printMultiPartQRCodes(qrBitmaps: List<Bitmap>) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val savedMac = getSavedPrinterMacAddress()
+                if (savedMac == null) {
+                    Toast.makeText(requireContext(), "No printer configured. Please configure printer first.", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+                
+                val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), savedMac)
+                if (socket != null) {
+                    var successCount = 0
+                    qrBitmaps.forEachIndexed { index, bitmap ->
+                        val header = "Database Export - Part ${index + 1}/${qrBitmaps.size}"
+                        val footer = "Scan all parts in order"
+                        val success = BluetoothPrinterHelper.printQRCode(socket, bitmap, header, footer)
+                        if (success) successCount++
+                    }
+                    socket.close()
+                    
+                    Toast.makeText(
+                        requireContext(), 
+                        "✅ Printed $successCount/${qrBitmaps.size} QR codes",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    Toast.makeText(requireContext(), "❌ Failed to connect to printer", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                AppLogger.logError("Multi-Part Print", e)
+                Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -475,8 +567,19 @@ class ExportImportFragment : Fragment() {
                 val jsonData = tempFile.readText()
                 tempFile.delete() // Clean up temp file
 
-                // Generate QR code label with exported data
-                val zplContent = ZplContentGenerator.generateQRCodeLabel(jsonData)
+                // Compress data if needed (automatic based on size)
+                val qrData = if (jsonData.length > 2000) {
+                    // Use compression for large data
+                    QRCodeGenerator.compressAndEncode(jsonData)
+                } else {
+                    // Use raw JSON for small data
+                    jsonData
+                }
+                
+                AppLogger.d("ZebraPrint", "Original data: ${jsonData.length} chars, QR data: ${qrData.length} chars")
+
+                // Generate QR code label with compressed data
+                val zplContent = ZplContentGenerator.generateQRCodeLabel(qrData)
                 val error = zebraPrinterManager.printDocument(macAddress, zplContent)
 
                 requireActivity().runOnUiThread {
@@ -623,7 +726,15 @@ class ExportImportFragment : Fragment() {
                 val gson = GsonBuilder().create()
                 val jsonContent = gson.toJson(exportData)
                 
-                val qrBitmap = QRCodeGenerator.generateQRCode(jsonContent, 384, 384)
+                // Use automatic compression based on data size
+                val qrData = if (jsonContent.length > 2000) {
+                    QRCodeGenerator.compressAndEncode(jsonContent)
+                } else {
+                    jsonContent
+                }
+                AppLogger.d("TestQRPrint", "Original: ${jsonContent.length} chars, QR: ${qrData.length} chars")
+                
+                val qrBitmap = QRCodeGenerator.generateQRCode(qrData, 384, 384)
                 if (qrBitmap != null) {
                     printDirectlyToSavedPrinter(
                         qrBitmap,

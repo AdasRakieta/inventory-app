@@ -59,11 +59,19 @@ class PackageListFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        adapter = PackagesAdapter { packageEntity ->
-            val action = PackageListFragmentDirections
-                .actionPackagesToPackageDetails(packageEntity.id)
-            findNavController().navigate(action)
-        }
+        adapter = PackagesAdapter(
+            onPackageClick = { packageEntity ->
+                val action = PackageListFragmentDirections
+                    .actionPackagesToPackageDetails(packageEntity.id)
+                findNavController().navigate(action)
+            },
+            onPackageLongClick = { packageEntity ->
+                adapter.enterSelectionMode()
+                adapter.toggleSelection(packageEntity.id)
+                updateSelectionUI()
+                true
+            }
+        )
         
         binding.packagesRecyclerView.apply {
             layoutManager = LinearLayoutManager(requireContext())
@@ -73,12 +81,67 @@ class PackageListFragment : Fragment() {
 
     private fun setupClickListeners() {
         binding.addPackageFab.setOnClickListener {
-            showCreatePackageDialog()
+            if (adapter.selectionMode) {
+                exitSelectionMode()
+            } else {
+                showCreatePackageDialog()
+            }
         }
         
         binding.emptyAddButton.setOnClickListener {
             showCreatePackageDialog()
         }
+    }
+
+    private fun updateSelectionUI() {
+        if (adapter.selectionMode) {
+            val count = adapter.getSelectedCount()
+            binding.addPackageFab.setImageResource(android.R.drawable.ic_menu_delete)
+            binding.addPackageFab.setOnClickListener {
+                if (count > 0) {
+                    showDeleteConfirmationDialog()
+                } else {
+                    exitSelectionMode()
+                }
+            }
+        } else {
+            binding.addPackageFab.setImageResource(android.R.drawable.ic_input_add)
+            binding.addPackageFab.setOnClickListener {
+                showCreatePackageDialog()
+            }
+        }
+    }
+
+    private fun showDeleteConfirmationDialog() {
+        val count = adapter.getSelectedCount()
+        AlertDialog.Builder(requireContext())
+            .setTitle("Delete Packages")
+            .setMessage("Are you sure you want to delete $count selected package(s)?")
+            .setPositiveButton("Delete") { _, _ ->
+                deleteSelectedPackages()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun deleteSelectedPackages() {
+        val selectedIds = adapter.getSelectedPackages()
+        viewLifecycleOwner.lifecycleScope.launch {
+            selectedIds.forEach { packageId ->
+                viewModel.deletePackage(packageId)
+            }
+            Toast.makeText(
+                requireContext(),
+                "Deleted ${selectedIds.size} package(s)",
+                Toast.LENGTH_SHORT
+            ).show()
+            exitSelectionMode()
+        }
+    }
+
+    private fun exitSelectionMode() {
+        adapter.clearSelection()
+        updateSelectionUI()
     }
 
     private fun setupSearchBar() {

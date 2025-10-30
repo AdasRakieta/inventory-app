@@ -2,11 +2,4 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Brand background color -->
     <item android:drawable="@color/primary" />
-
-    <!-- Centered logo -->
-    <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/ic_app_logo" />
-    </item>
 </layer-list>

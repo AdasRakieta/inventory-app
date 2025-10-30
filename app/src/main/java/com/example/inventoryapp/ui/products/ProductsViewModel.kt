@@ -136,6 +136,13 @@ class ProductsViewModel(
             AppLogger.logAction("Product Deleted", "Name: ${product.name}")
         }
     }
+    
+    fun deleteProduct(productId: Long) {
+        viewModelScope.launch {
+            productRepository.deleteProductById(productId)
+            AppLogger.logAction("Product Deleted", "ID: $productId")
+        }
+    }
 }
 
 class ProductsViewModelFactory(

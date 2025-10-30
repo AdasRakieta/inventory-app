@@ -29,6 +29,9 @@ class PackageRepository(
     suspend fun deletePackage(packageEntity: PackageEntity) =
         packageDao.deletePackage(packageEntity)
     
+    suspend fun deletePackageById(packageId: Long) =
+        packageDao.deletePackageById(packageId)
+    
     suspend fun addProductToPackage(packageId: Long, productId: Long) =
         packageDao.addProductToPackage(PackageProductCrossRef(packageId, productId))
     

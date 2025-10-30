@@ -7,14 +7,14 @@ plugins {
 }
 
 android {
-    compileSdkVersion(33)
+    compileSdkVersion(31)
 
     defaultConfig {
         applicationId = "com.inventory.prd"
         minSdkVersion(26)
-        targetSdkVersion(33)
-        versionCode = 35
-        versionName = "1.10.7"
+        targetSdkVersion(31)
+        versionCode = 38
+        versionName = "1.11.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

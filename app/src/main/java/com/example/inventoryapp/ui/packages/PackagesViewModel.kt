@@ -71,6 +71,12 @@ class PackagesViewModel(
             packageRepository.deletePackage(packageEntity)
         }
     }
+    
+    fun deletePackage(packageId: Long) {
+        viewModelScope.launch {
+            packageRepository.deletePackageById(packageId)
+        }
+    }
 }
 
 class PackagesViewModelFactory(

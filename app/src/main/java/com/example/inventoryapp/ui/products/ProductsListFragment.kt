@@ -6,6 +6,7 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -60,11 +61,19 @@ class ProductsListFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        adapter = ProductsAdapter { product ->
-            val action = ProductsListFragmentDirections
-                .actionProductsToProductDetails(product.id)
-            findNavController().navigate(action)
-        }
+        adapter = ProductsAdapter(
+            onProductClick = { product ->
+                val action = ProductsListFragmentDirections
+                    .actionProductsToProductDetails(product.id)
+                findNavController().navigate(action)
+            },
+            onProductLongClick = { product ->
+                adapter.enterSelectionMode()
+                adapter.toggleSelection(product.id)
+                updateSelectionUI()
+                true
+            }
+        )
         
         binding.productsRecyclerView.apply {
             layoutManager = LinearLayoutManager(requireContext())
@@ -74,12 +83,68 @@ class ProductsListFragment : Fragment() {
 
     private fun setupClickListeners() {
         binding.addProductFab.setOnClickListener {
-            findNavController().navigate(R.id.action_products_to_add_product)
+            if (adapter.selectionMode) {
+                exitSelectionMode()
+            } else {
+                findNavController().navigate(R.id.action_products_to_add_product)
+            }
         }
         
         binding.emptyAddButton.setOnClickListener {
             findNavController().navigate(R.id.action_products_to_add_product)
         }
+    }
+
+    private fun updateSelectionUI() {
+        if (adapter.selectionMode) {
+            val count = adapter.getSelectedCount()
+            binding.addProductFab.setImageResource(android.R.drawable.ic_menu_delete)
+            binding.addProductFab.setOnClickListener {
+                if (count > 0) {
+                    showDeleteConfirmationDialog()
+                } else {
+                    exitSelectionMode()
+                }
+            }
+            // You can add a selection counter TextView here if needed
+        } else {
+            binding.addProductFab.setImageResource(android.R.drawable.ic_input_add)
+            binding.addProductFab.setOnClickListener {
+                findNavController().navigate(R.id.action_products_to_add_product)
+            }
+        }
+    }
+
+    private fun showDeleteConfirmationDialog() {
+        val count = adapter.getSelectedCount()
+        AlertDialog.Builder(requireContext())
+            .setTitle("Delete Products")
+            .setMessage("Are you sure you want to delete $count selected product(s)?")
+            .setPositiveButton("Delete") { _, _ ->
+                deleteSelectedProducts()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun deleteSelectedProducts() {
+        val selectedIds = adapter.getSelectedProducts()
+        viewLifecycleOwner.lifecycleScope.launch {
+            selectedIds.forEach { productId ->
+                viewModel.deleteProduct(productId)
+            }
+            Toast.makeText(
+                requireContext(),
+                "Deleted ${selectedIds.size} product(s)",
+                Toast.LENGTH_SHORT
+            ).show()
+            exitSelectionMode()
+        }
+    }
+
+    private fun exitSelectionMode() {
+        adapter.clearSelection()
+        updateSelectionUI()
     }
 
     private fun setupSearchBar() {

@@ -23,6 +23,9 @@ interface PackageDao {
 
     @Delete
     suspend fun deletePackage(packageEntity: PackageEntity)
+    
+    @Query("DELETE FROM packages WHERE id = :packageId")
+    suspend fun deletePackageById(packageId: Long)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addProductToPackage(crossRef: PackageProductCrossRef)

@@ -8,6 +8,7 @@ import com.example.inventoryapp.data.repository.ProductTemplateRepository
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.local.entities.PackageEntity
 import com.example.inventoryapp.data.local.entities.ProductTemplateEntity
+import com.example.inventoryapp.data.local.entities.PackageProductCrossRef
 import com.example.inventoryapp.utils.AppLogger
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -19,12 +20,16 @@ import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
 
+/**
+ * Enhanced export data structure with relationships
+ */
 data class ExportData(
-    val version: Int = 1,
+    val version: Int = 2, // Incremented version for new structure
     val exportedAt: Long = System.currentTimeMillis(),
     val products: List<ProductEntity>,
     val packages: List<PackageEntity>,
-    val templates: List<ProductTemplateEntity>
+    val templates: List<ProductTemplateEntity>,
+    val packageProductRelations: List<PackageProductCrossRef> = emptyList() // Product-Package relations
 )
 
 class ExportImportViewModel(
@@ -48,11 +53,26 @@ class ExportImportViewModel(
             val products = productRepository.getAllProducts().first()
             val packages = packageRepository.getAllPackages().first()
             val templates = templateRepository.getAllTemplates().first()
+            
+            // Collect all package-product relationships
+            val packageProductRelations = mutableListOf<PackageProductCrossRef>()
+            packages.forEach { pkg ->
+                val productsInPackage = packageRepository.getProductsInPackage(pkg.id).first()
+                productsInPackage.forEach { product ->
+                    packageProductRelations.add(
+                        PackageProductCrossRef(
+                            packageId = pkg.id,
+                            productId = product.id
+                        )
+                    )
+                }
+            }
 
             val exportData = ExportData(
                 products = products,
                 packages = packages,
-                templates = templates
+                templates = templates,
+                packageProductRelations = packageProductRelations
             )
 
             // Ensure parent directory exists
@@ -62,7 +82,7 @@ class ExportImportViewModel(
                 gson.toJson(exportData, writer)
             }
 
-            val message = "Export successful: ${products.size} products, ${packages.size} packages, ${templates.size} templates"
+            val message = "Export successful: ${products.size} products, ${packages.size} packages, ${templates.size} templates, ${packageProductRelations.size} relations"
             _status.value = message
             AppLogger.logAction("Export Completed", message)
             true
@@ -123,8 +143,9 @@ class ExportImportViewModel(
             var importedProducts = 0
             var importedPackages = 0
             var importedTemplates = 0
+            var importedRelations = 0
 
-            // Import templates first (no dependencies)
+            // Step 1: Import templates first (no dependencies)
             exportData.templates.forEach { template ->
                 try {
                     templateRepository.insertTemplate(template.copy(id = 0))
@@ -134,27 +155,50 @@ class ExportImportViewModel(
                 }
             }
 
-            // Import products
+            // Step 2: Import products and track ID mapping (old ID -> new ID)
+            val productIdMap = mutableMapOf<Long, Long>()
             exportData.products.forEach { product ->
                 try {
-                    productRepository.insertProduct(product.copy(id = 0))
+                    val oldId = product.id
+                    val newId = productRepository.insertProduct(product.copy(id = 0))
+                    productIdMap[oldId] = newId
                     importedProducts++
                 } catch (e: Exception) {
                     AppLogger.w("Import", "Skipped product: ${product.name}", e)
                 }
             }
 
-            // Import packages
+            // Step 3: Import packages and track ID mapping (old ID -> new ID)
+            val packageIdMap = mutableMapOf<Long, Long>()
             exportData.packages.forEach { pkg ->
                 try {
-                    packageRepository.insertPackage(pkg.copy(id = 0))
+                    val oldId = pkg.id
+                    val newId = packageRepository.insertPackage(pkg.copy(id = 0))
+                    packageIdMap[oldId] = newId
                     importedPackages++
                 } catch (e: Exception) {
                     AppLogger.w("Import", "Skipped package: ${pkg.name}", e)
                 }
             }
 
-            val message = "Import successful: $importedProducts products, $importedPackages packages, $importedTemplates templates"
+            // Step 4: Import package-product relationships using mapped IDs
+            exportData.packageProductRelations.forEach { relation ->
+                try {
+                    val newPackageId = packageIdMap[relation.packageId]
+                    val newProductId = productIdMap[relation.productId]
+                    
+                    if (newPackageId != null && newProductId != null) {
+                        packageRepository.addProductToPackage(newPackageId, newProductId)
+                        importedRelations++
+                    } else {
+                        AppLogger.w("Import", "Skipped relation - package ${relation.packageId} or product ${relation.productId} not found")
+                    }
+                } catch (e: Exception) {
+                    AppLogger.w("Import", "Skipped relation: package ${relation.packageId} -> product ${relation.productId}", e)
+                }
+            }
+
+            val message = "Import successful: $importedProducts products, $importedPackages packages, $importedTemplates templates, $importedRelations relations"
             _status.value = message
             AppLogger.logAction("Import Completed", message)
             true

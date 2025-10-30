@@ -148,6 +148,9 @@ class ImportPreviewFragment : Fragment() {
 
             // Step 5: Remove any remaining extra whitespace
             cleanJson = cleanJson.trim()
+            
+            // Step 6: Check for GZIP compression and decompress
+            cleanJson = com.example.inventoryapp.utils.QRCodeGenerator.decodeAndDecompress(cleanJson)
 
             // Debug: Log first 300 chars of cleaned JSON
             val preview = if (cleanJson.length > 300) cleanJson.take(300) + "..." else cleanJson
@@ -254,8 +257,9 @@ class ImportPreviewFragment : Fragment() {
                 var productsUpdated = 0
                 var packagesAdded = 0
                 var templatesAdded = 0
+                var relationsAdded = 0
                 
-                // Import templates first
+                // Step 1: Import templates first
                 for (template in exportData.templates) {
                     try {
                         val newTemplate = template.copy(
@@ -270,9 +274,11 @@ class ImportPreviewFragment : Fragment() {
                     }
                 }
                 
-                // Import products with duplicate handling
+                // Step 2: Import products with duplicate handling and track ID mapping
+                val productIdMap = mutableMapOf<Long, Long>() // old ID -> new ID
                 for (product in exportData.products) {
                     try {
+                        val oldId = product.id
                         // Skip products with null/blank serial numbers
                         val serialNumber = product.serialNumber
                         if (serialNumber.isNullOrBlank()) {
@@ -290,6 +296,7 @@ class ImportPreviewFragment : Fragment() {
                                 updatedAt = System.currentTimeMillis()
                             )
                             productRepository.updateProduct(updatedProduct)
+                            productIdMap[oldId] = existingProduct.id
                             productsUpdated++
                             AppLogger.d("Import Preview", "Updated product: ${product.name} (SN: $serialNumber)")
                         } else {
@@ -299,7 +306,8 @@ class ImportPreviewFragment : Fragment() {
                                 createdAt = System.currentTimeMillis(),
                                 updatedAt = System.currentTimeMillis()
                             )
-                            productRepository.insertProduct(newProduct)
+                            val newId = productRepository.insertProduct(newProduct)
+                            productIdMap[oldId] = newId
                             productsAdded++
                             AppLogger.d("Import Preview", "Added product: ${product.name} (SN: $serialNumber)")
                         }
@@ -308,22 +316,43 @@ class ImportPreviewFragment : Fragment() {
                     }
                 }
                 
-                // Import packages
+                // Step 3: Import packages and track ID mapping
+                val packageIdMap = mutableMapOf<Long, Long>() // old ID -> new ID
                 for (pkg in exportData.packages) {
                     try {
+                        val oldId = pkg.id
                         val newPackage = pkg.copy(
                             id = 0,
                             createdAt = System.currentTimeMillis()
                         )
-                        packageRepository.insertPackage(newPackage)
+                        val newId = packageRepository.insertPackage(newPackage)
+                        packageIdMap[oldId] = newId
                         packagesAdded++
                     } catch (e: Exception) {
                         AppLogger.w("Import Preview", "Failed to import package: ${pkg.name}", e)
                     }
                 }
                 
+                // Step 4: Import package-product relationships using mapped IDs
+                for (relation in exportData.packageProductRelations) {
+                    try {
+                        val newPackageId = packageIdMap[relation.packageId]
+                        val newProductId = productIdMap[relation.productId]
+                        
+                        if (newPackageId != null && newProductId != null) {
+                            packageRepository.addProductToPackage(newPackageId, newProductId)
+                            relationsAdded++
+                            AppLogger.d("Import Preview", "Added relation: Package $newPackageId -> Product $newProductId")
+                        } else {
+                            AppLogger.w("Import Preview", "Skipped relation - package ${relation.packageId} or product ${relation.productId} not mapped")
+                        }
+                    } catch (e: Exception) {
+                        AppLogger.w("Import Preview", "Failed to import relation: ${relation.packageId} -> ${relation.productId}", e)
+                    }
+                }
+                
                 val message = "Imported: $productsAdded new, $productsUpdated updated products\n" +
-                             "$packagesAdded packages, $templatesAdded templates"
+                             "$packagesAdded packages, $templatesAdded templates, $relationsAdded relations"
                 
                 Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
                 AppLogger.logAction("Import Preview", "Import completed: $message")
@@ -356,6 +385,7 @@ class ImportPreviewFragment : Fragment() {
         val products: List<com.example.inventoryapp.data.local.entities.ProductEntity> = emptyList(),
         val packages: List<com.example.inventoryapp.data.local.entities.PackageEntity> = emptyList(),
         val templates: List<com.example.inventoryapp.data.local.entities.ProductTemplateEntity> = emptyList(),
+        val packageProductRelations: List<com.example.inventoryapp.data.local.entities.PackageProductCrossRef> = emptyList(),
         val exportedAt: Long? = null,
         val version: Int? = null
     )

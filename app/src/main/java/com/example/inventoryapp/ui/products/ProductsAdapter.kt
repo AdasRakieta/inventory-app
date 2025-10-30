@@ -3,9 +3,11 @@ package com.example.inventoryapp.ui.products
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.ItemProductBinding
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.local.entities.PackageEntity
@@ -17,8 +19,37 @@ data class ProductWithPackage(
 )
 
 class ProductsAdapter(
-    private val onProductClick: (ProductEntity) -> Unit
+    private val onProductClick: (ProductEntity) -> Unit,
+    private val onProductLongClick: (ProductEntity) -> Boolean = { false }
 ) : ListAdapter<ProductWithPackage, ProductsAdapter.ProductViewHolder>(ProductDiffCallback()) {
+
+    private val selectedProducts = mutableSetOf<Long>()
+    var selectionMode = false
+        private set
+
+    fun toggleSelection(productId: Long) {
+        if (selectedProducts.contains(productId)) {
+            selectedProducts.remove(productId)
+        } else {
+            selectedProducts.add(productId)
+        }
+        notifyDataSetChanged()
+    }
+
+    fun getSelectedProducts(): Set<Long> = selectedProducts.toSet()
+
+    fun clearSelection() {
+        selectedProducts.clear()
+        selectionMode = false
+        notifyDataSetChanged()
+    }
+
+    fun enterSelectionMode() {
+        selectionMode = true
+        notifyDataSetChanged()
+    }
+
+    fun getSelectedCount(): Int = selectedProducts.size
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductViewHolder {
         val binding = ItemProductBinding.inflate(
@@ -26,8 +57,12 @@ class ProductsAdapter(
             parent,
             false
         )
-        return ProductViewHolder(binding, onProductClick)
+        return ProductViewHolder(binding, onProductClick, onProductLongClick, ::toggleSelection, ::isSelected, ::isInSelectionMode)
     }
+
+    private fun isSelected(productId: Long): Boolean = selectedProducts.contains(productId)
+    
+    private fun isInSelectionMode(): Boolean = selectionMode
 
     override fun onBindViewHolder(holder: ProductViewHolder, position: Int) {
         holder.bind(getItem(position))
@@ -35,7 +70,11 @@ class ProductsAdapter(
 
     class ProductViewHolder(
         private val binding: ItemProductBinding,
-        private val onProductClick: (ProductEntity) -> Unit
+        private val onProductClick: (ProductEntity) -> Unit,
+        private val onProductLongClick: (ProductEntity) -> Boolean,
+        private val onToggleSelection: (Long) -> Unit,
+        private val isSelected: (Long) -> Boolean,
+        private val isInSelectionMode: () -> Boolean
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(productWithPackage: ProductWithPackage) {
@@ -64,8 +103,33 @@ class ProductsAdapter(
                 binding.noSerialNumber.visibility = View.VISIBLE
             }
 
+            // Selection mode styling
+            if (isInSelectionMode()) {
+                if (isSelected(product.id)) {
+                    binding.root.setBackgroundColor(
+                        ContextCompat.getColor(binding.root.context, R.color.selection_highlight)
+                    )
+                } else {
+                    binding.root.setBackgroundColor(
+                        ContextCompat.getColor(binding.root.context, android.R.color.transparent)
+                    )
+                }
+            } else {
+                binding.root.setBackgroundColor(
+                    ContextCompat.getColor(binding.root.context, android.R.color.transparent)
+                )
+            }
+
             binding.root.setOnClickListener {
-                onProductClick(product)
+                if (isInSelectionMode()) {
+                    onToggleSelection(product.id)
+                } else {
+                    onProductClick(product)
+                }
+            }
+
+            binding.root.setOnLongClickListener {
+                onProductLongClick(product)
             }
         }
     }

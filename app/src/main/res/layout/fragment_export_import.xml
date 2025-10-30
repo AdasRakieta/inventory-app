@@ -101,13 +101,27 @@
                     android:text="Scan QR Code to Import"
                     app:icon="@android:drawable/ic_menu_camera" />
 
+                <TextView
+                    android:id="@+id/qrCodeInfoText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Large databases are automatically compressed"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
                 <ImageView
                     android:id="@+id/qrCodeImage"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:adjustViewBounds="true"
+                    android:scaleType="fitCenter"
                     android:layout_marginTop="16dp"
+                    android:minHeight="300dp"
                     android:visibility="gone"
+                    android:contentDescription="Generated QR Code"
                     tools:visibility="visible"
                     tools:src="@android:drawable/ic_menu_gallery" />
 

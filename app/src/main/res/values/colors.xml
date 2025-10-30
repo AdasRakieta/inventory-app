@@ -47,4 +47,7 @@
     <!-- Card colors -->
     <color name="card_background">#161B22</color>
     <color name="card_hover">#21262D</color>
+    
+    <!-- Selection highlight -->
+    <color name="selection_highlight">#1F3A5F</color>
 </resources>
