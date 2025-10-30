@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.kapt")
+    id("com.google.devtools.ksp") // Stosujemy KSP, wersja będzie w głównym pliku build.gradle
     id("kotlin-parcelize")
     id("androidx.navigation.safeargs.kotlin")
 }
@@ -13,8 +13,8 @@ android {
         applicationId = "com.inventory.prd"
         minSdkVersion(26)
         targetSdkVersion(33)
-    versionCode = 35
-    versionName = "1.10.7"
+        versionCode = 35
+        versionName = "1.10.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -28,20 +28,20 @@ android {
             )
         }
     }
-    
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-    
+
     kotlinOptions {
         jvmTarget = "1.8"
     }
-    
+
     buildFeatures {
         viewBinding = true
     }
-    
+
     packagingOptions {
         exclude("META-INF/DEPENDENCIES")
         exclude("META-INF/NOTICE*")
@@ -53,65 +53,63 @@ android {
 }
 
 dependencies {
-    // AndroidX Core
-    implementation("androidx.core:core-ktx:1.6.0")
-    implementation("androidx.appcompat:appcompat:1.3.1")
-    implementation("com.google.android.material:material:1.4.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.0")
+    // Wersje dostosowane do Gradle 6.7.1
+    implementation("androidx.core:core-ktx:1.7.0")
+    implementation("androidx.appcompat:appcompat:1.4.1")
+    implementation("com.google.android.material:material:1.5.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.3")
 
     // Lifecycle & ViewModel
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.3.1")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.3.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.3.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.1")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.4.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.4.1")
 
     // Navigation Component
-    implementation("androidx.navigation:navigation-fragment-ktx:2.3.5")
-    implementation("androidx.navigation:navigation-ui-ktx:2.3.5")
+    implementation("androidx.navigation:navigation-fragment-ktx:2.4.1")
+    implementation("androidx.navigation:navigation-ui-ktx:2.4.1")
 
     // RecyclerView
     implementation("androidx.recyclerview:recyclerview:1.2.1")
 
-    // Room Database
-    val roomVersion = "2.3.0"
+    // Room z KSP
+    val roomVersion = "2.4.2" // Stabilna wersja z KSP
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
-    kapt("androidx.room:room-compiler:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion") // Używamy KSP
 
-    // ML Kit Barcode Scanning (compatible with older AGP/Gradle)
-    implementation("com.google.mlkit:barcode-scanning:16.1.1")
+    // ML Kit
+    implementation("com.google.mlkit:barcode-scanning:17.0.2")
 
     // CameraX
-    val cameraXVersion = "1.0.1"
+    val cameraXVersion = "1.1.0"
     implementation("androidx.camera:camera-core:$cameraXVersion")
     implementation("androidx.camera:camera-camera2:$cameraXVersion")
     implementation("androidx.camera:camera-lifecycle:$cameraXVersion")
-    implementation("androidx.camera:camera-view:1.0.0-alpha27")
+    implementation("androidx.camera:camera-view:1.1.0-beta01")
 
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0")
 
-    // Gson for JSON serialization
-    implementation("com.google.code.gson:gson:2.8.7")
+    // Gson
+    implementation("com.google.code.gson:gson:2.8.9")
 
-    // ZXing for QR code generation
+    // ZXing
     implementation("com.google.zxing:core:3.4.1")
 
-    // Testing
+    // Testy
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.mockito:mockito-core:3.11.2")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:3.2.0")
+    testImplementation("org.mockito:mockito-core:4.4.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:4.0.0")
     testImplementation("androidx.room:room-testing:$roomVersion")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.0")
     testImplementation("androidx.arch.core:core-testing:2.1.0")
 
     androidTestImplementation("androidx.test.ext:junit:1.1.3")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.4.0")
     androidTestImplementation("androidx.test:runner:1.4.0")
     androidTestImplementation("androidx.test:rules:1.4.0")
-}
 
-// Zebra Printer SDK dependencies
-dependencies {
+    // Zależności Zebra (pozostawione bez zmian)
     implementation(files("../ok_mobile_zebra_printer/android/libs/ZSDK_ANDROID_API.jar"))
     implementation(files("../ok_mobile_zebra_printer/android/libs/commons-io-2.2.jar"))
     implementation(files("../ok_mobile_zebra_printer/android/libs/commons-lang3-3.4.jar"))
@@ -129,7 +127,7 @@ dependencies {
     implementation(files("../ok_mobile_zebra_printer/android/libs/snmp6_1z.jar"))
 }
 
-// Custom tasks for quick development workflow
+// Niestandardowe zadania (poprawione ścieżki)
 tasks.register("deployDebug") {
     group = "custom"
     description = "Build, install and launch debug APK on connected device"
@@ -137,7 +135,7 @@ tasks.register("deployDebug") {
     doLast {
         exec {
             workingDir = project.rootDir
-            commandLine("cmd", "/c", "C:\\Users\\%USERNAME%\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe", "shell", "am", "start", "-n", "com.inventory.prd/com.example.inventoryapp.ui.main.SplashActivity")
+            commandLine("cmd", "/c", "C:/Users/%USERNAME%/AppData/Local/Android/Sdk/platform-tools/adb.exe", "shell", "am", "start", "-n", "com.inventory.prd/com.example.inventoryapp.ui.main.SplashActivity")
         }
     }
 }
@@ -154,7 +152,7 @@ tasks.register("runOnDevice") {
     doLast {
         exec {
             workingDir = project.rootDir
-            commandLine("cmd", "/c", "C:\\Users\\%USERNAME%\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe", "shell", "am", "start", "-n", "com.inventory.prd/com.example.inventoryapp.ui.main.SplashActivity")
+            commandLine("cmd", "/c", "C:/Users/%USERNAME%/AppData/Local/Android/Sdk/platform-tools/adb.exe", "shell", "am", "start", "-n", "com.inventory.prd/com.example.inventoryapp.ui.main.SplashActivity")
         }
     }
 }

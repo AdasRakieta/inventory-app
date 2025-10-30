@@ -10,24 +10,26 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.example.inventoryapp.R
-import com.example.inventoryapp.databinding.FragmentAddProductBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
+import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductRepository
+import com.example.inventoryapp.databinding.FragmentAddProductBinding
 import com.example.inventoryapp.utils.CategoryHelper
 
 class AddProductFragment : Fragment() {
 
     private var _binding: FragmentAddProductBinding? = null
     private val binding get() = _binding!!
-    
+
     private lateinit var viewModel: ProductsViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         val database = AppDatabase.getDatabase(requireContext())
         val repository = ProductRepository(database.productDao())
-        val factory = ProductsViewModelFactory(repository)
+        val packageRepository = PackageRepository(database.packageDao(), database.productDao())
+        val factory = ProductsViewModelFactory(repository, packageRepository)
         val vm: ProductsViewModel by viewModels { factory }
         viewModel = vm
     }
@@ -50,13 +52,13 @@ class AddProductFragment : Fragment() {
 
     private fun setupCategoryDropdown() {
         val categories = CategoryHelper.getCategoryNames()
-        
+
         val adapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_dropdown_item_1line,
             categories
         )
-        
+
         binding.categoryInput.setAdapter(adapter)
     }
 
@@ -65,11 +67,11 @@ class AddProductFragment : Fragment() {
             // TODO: Navigate to scanner with result callback
             Toast.makeText(requireContext(), "Scanner integration coming soon!", Toast.LENGTH_SHORT).show()
         }
-        
+
         binding.saveButton.setOnClickListener {
             saveProduct()
         }
-        
+
         binding.cancelButton.setOnClickListener {
             findNavController().navigateUp()
         }
@@ -80,7 +82,7 @@ class AddProductFragment : Fragment() {
         val serialNumber = binding.serialNumberInput.text.toString().trim()
         val description = binding.descriptionInput.text.toString().trim().takeIf { it.isNotEmpty() }
         val categoryName = binding.categoryInput.text.toString().trim()
-        
+
         when {
             name.isEmpty() -> {
                 binding.productNameLayout.error = "Product name is required"
@@ -93,27 +95,27 @@ class AddProductFragment : Fragment() {
             else -> {
                 binding.productNameLayout.error = null
                 binding.serialNumberLayout.error = null
-                
+
                 // Map category name to ID
                 val categoryId = if (categoryName.isNotEmpty()) {
                     CategoryHelper.getCategoryIdByName(categoryName)
                 } else {
                     null
                 }
-                
+
                 viewModel.addProduct(
                     name = name,
                     categoryId = categoryId,
                     serialNumber = serialNumber,
                     description = null // TODO: Add description field to ProductEntity
                 )
-                
+
                 Toast.makeText(
                     requireContext(),
                     "Product added successfully!",
                     Toast.LENGTH_SHORT
                 ).show()
-                
+
                 findNavController().navigateUp()
             }
         }
