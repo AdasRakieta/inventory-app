@@ -41,6 +41,15 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    
+    packagingOptions {
+        exclude("META-INF/DEPENDENCIES")
+        exclude("META-INF/NOTICE*")
+        exclude("META-INF/LICENSE*")
+        exclude("META-INF/*.SF")
+        exclude("META-INF/*.DSA")
+        exclude("META-INF/*.RSA")
+    }
 }
 
 dependencies {
@@ -99,4 +108,53 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.4.0")
     androidTestImplementation("androidx.test:runner:1.4.0")
     androidTestImplementation("androidx.test:rules:1.4.0")
+}
+
+// Zebra Printer SDK dependencies
+dependencies {
+    implementation(files("../ok_mobile_zebra_printer/android/libs/ZSDK_ANDROID_API.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/commons-io-2.2.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/commons-lang3-3.4.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/commons-net-3.1.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/commons-validator-1.4.0.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/core-1.53.0.0.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/httpcore-4.3.1.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/httpmime-4.3.2.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/jackson-annotations-2.2.3.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/jackson-core-2.2.3.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/jackson-databind-2.2.3.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/opencsv-2.2.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/pkix-1.53.0.0.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/prov-1.53.0.0.jar"))
+    implementation(files("../ok_mobile_zebra_printer/android/libs/snmp6_1z.jar"))
+}
+
+// Custom tasks for quick development workflow
+tasks.register("deployDebug") {
+    group = "custom"
+    description = "Build, install and launch debug APK on connected device"
+    dependsOn("installDebug")
+    doLast {
+        exec {
+            workingDir = project.rootDir
+            commandLine("cmd", "/c", "C:\\Users\\%USERNAME%\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe", "shell", "am", "start", "-n", "com.inventory.prd/com.example.inventoryapp.ui.main.SplashActivity")
+        }
+    }
+}
+
+tasks.register("quickDeploy") {
+    group = "custom"
+    description = "Quick build and install debug APK on connected device (no clean)"
+    dependsOn("assembleDebug", "installDebug")
+}
+
+tasks.register("runOnDevice") {
+    group = "custom"
+    description = "Launch app on connected device (assumes app is already installed)"
+    doLast {
+        exec {
+            workingDir = project.rootDir
+            commandLine("cmd", "/c", "C:\\Users\\%USERNAME%\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe", "shell", "am", "start", "-n", "com.inventory.prd/com.example.inventoryapp.ui.main.SplashActivity")
+        }
+    }
 }

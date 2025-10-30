@@ -163,6 +163,15 @@
                     android:text="Print QR Code"
                     app:icon="@android:drawable/ic_menu_send" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/printZebraButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Print on Zebra Printer"
+                    app:icon="@android:drawable/ic_menu_send" />
+
                 <TextView
                     android:id="@+id/printerStatusText"
                     android:layout_width="match_parent"

@@ -30,6 +30,7 @@ import com.example.inventoryapp.utils.QRCodeGenerator
 import com.example.inventoryapp.utils.BluetoothPrinterHelper
 import com.example.inventoryapp.utils.AppLogger
 import com.example.inventoryapp.utils.FileHelper
+import com.example.inventoryapp.utils.ZebraPrinterHelper
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
@@ -45,6 +46,7 @@ class ExportImportFragment : Fragment() {
     
     private lateinit var viewModel: ExportImportViewModel
     private var connectedPrinter: BluetoothSocket? = null
+    private lateinit var zebraPrinterHelper: ZebraPrinterHelper
     
     // Repositories for direct access
     private lateinit var productRepository: ProductRepository
@@ -137,6 +139,9 @@ class ExportImportFragment : Fragment() {
         packageRepository = PackageRepository(database.packageDao(), database.productDao())
         templateRepository = ProductTemplateRepository(database.productTemplateDao())
         
+        // Initialize Zebra printer helper
+        zebraPrinterHelper = ZebraPrinterHelper()
+        
         viewModel = ExportImportViewModel(
             productRepository,
             packageRepository,
@@ -163,6 +168,10 @@ class ExportImportFragment : Fragment() {
 
         binding.printQrCodeButton.setOnClickListener {
             printQRCodeToEnteredMac()
+        }
+
+        binding.printZebraButton.setOnClickListener {
+            printOnZebraPrinter()
         }
     }
 
@@ -488,6 +497,64 @@ class ExportImportFragment : Fragment() {
         }
     }
 
+    private fun printOnZebraPrinter() {
+        val macAddress = binding.printerMacEditText.text.toString().trim()
+
+        if (macAddress.isEmpty()) {
+            Toast.makeText(requireContext(), "Please enter printer MAC address", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (!isValidMacAddress(macAddress)) {
+            Toast.makeText(requireContext(), "Invalid MAC address format", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Show loading
+        binding.printerStatusText.text = "Connecting to printer..."
+        binding.printZebraButton.isEnabled = false
+
+        // Test connection first
+        zebraPrinterHelper.testConnection(macAddress) { success, error ->
+            if (success) {
+                // Connection successful, now print sample data
+                printSampleZplToZebra(macAddress)
+            } else {
+                requireActivity().runOnUiThread {
+                    binding.printerStatusText.text = "Connection failed: $error"
+                    binding.printZebraButton.isEnabled = true
+                    Toast.makeText(requireContext(), "Connection failed: $error", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun printSampleZplToZebra(macAddress: String) {
+        // Create sample ZPL for testing
+        val sampleZpl = ZebraPrinterHelper.createTestZpl(
+            productName = "Test Product",
+            barcode = "123456789"
+        )
+
+        zebraPrinterHelper.printDocument(macAddress, sampleZpl) { error ->
+            requireActivity().runOnUiThread {
+                binding.printZebraButton.isEnabled = true
+                if (error == null) {
+                    binding.printerStatusText.text = "Print successful!"
+                    Toast.makeText(requireContext(), "Print sent to Zebra printer", Toast.LENGTH_SHORT).show()
+                } else {
+                    binding.printerStatusText.text = "Print failed: $error"
+                    Toast.makeText(requireContext(), "Print failed: $error", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun isValidMacAddress(mac: String): Boolean {
+        val macPattern = Regex("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$")
+        return macPattern.matches(mac)
+    }
+
     private fun getExportFileName(extension: String): String {
         val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
         return "inventory_export_${dateFormat.format(Date())}.$extension"
@@ -496,6 +563,7 @@ class ExportImportFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         connectedPrinter?.let { BluetoothPrinterHelper.disconnect(it) }
+        zebraPrinterHelper.shutdown()
         _binding = null
     }
 }
