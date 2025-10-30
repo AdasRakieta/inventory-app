@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -103,16 +104,19 @@ class ExportImportFragment : Fragment() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.all { it.value }
+        android.util.Log.d("ExportImport", "Permission results: $permissions, all granted: $allGranted")
+
         if (allGranted) {
             android.util.Log.d("ExportImport", "Bluetooth permissions granted, proceeding with print")
-            proceedWithPrinting()
+            proceedWithZebraPrinting()
         } else {
+            val deniedPermissions = permissions.filter { !it.value }.keys
             Toast.makeText(
-                requireContext(), 
-                "Bluetooth permissions are required for printing to Bluetooth printer",
+                requireContext(),
+                "Bluetooth permissions are required for printing to Bluetooth printer. Denied: $deniedPermissions",
                 Toast.LENGTH_LONG
             ).show()
-            android.util.Log.w("ExportImport", "Bluetooth permissions denied")
+            android.util.Log.w("ExportImport", "Bluetooth permissions denied: $deniedPermissions")
         }
     }
 
@@ -150,6 +154,20 @@ class ExportImportFragment : Fragment() {
     }
 
     private fun setupButtons() {
+        // Setup connection type radio group
+        binding.connectionTypeRadioGroup.setOnCheckedChangeListener { _, checkedId ->
+            when (checkedId) {
+                R.id.bluetoothRadioButton -> {
+                    binding.bluetoothSection.visibility = View.VISIBLE
+                    binding.wifiSection.visibility = View.GONE
+                }
+                R.id.wifiRadioButton -> {
+                    binding.bluetoothSection.visibility = View.GONE
+                    binding.wifiSection.visibility = View.VISIBLE
+                }
+            }
+        }
+
         binding.exportButton.setOnClickListener {
             showExportOptions()
         }
@@ -350,11 +368,127 @@ class ExportImportFragment : Fragment() {
 
     
     private fun requestBluetoothPermissionsAndPrint() {
-        // For SDK 30 (Android 11): Bluetooth permissions are normal permissions, auto-granted at install
-        // Android 12+ (API 31+) would require BLUETOOTH_SCAN and BLUETOOTH_CONNECT runtime permissions
-        // but this app targets SDK 30, so we directly proceed
-        android.util.Log.d("ExportImport", "Bluetooth permissions check: SDK 30, auto-granted")
-        proceedWithPrinting()
+        android.util.Log.d("ExportImport", "Device SDK: ${Build.VERSION.SDK_INT}, Android 12+ check: ${Build.VERSION.SDK_INT >= 31}")
+
+        if (Build.VERSION.SDK_INT >= 31) {
+            // Android 12+ (API 31+): BLUETOOTH_SCAN, BLUETOOTH_CONNECT and ACCESS_FINE_LOCATION are runtime permissions
+            val permissions = arrayOf(
+                "android.permission.BLUETOOTH_SCAN",
+                "android.permission.BLUETOOTH_CONNECT",
+                "android.permission.ACCESS_FINE_LOCATION"
+            )
+
+            val missingPermissions = permissions.filter {
+                val granted = ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED
+                val shouldShowRationale = shouldShowRequestPermissionRationale(it)
+                android.util.Log.d("ExportImport", "Permission $it granted: $granted, shouldShowRationale: $shouldShowRationale")
+                !granted
+            }
+
+            // Check if any permissions are permanently denied
+            val permanentlyDenied = missingPermissions.filter { !shouldShowRequestPermissionRationale(it) }
+            if (permanentlyDenied.isNotEmpty()) {
+                android.util.Log.w("ExportImport", "Permissions permanently denied: $permanentlyDenied")
+                // Try legacy permissions instead of opening settings
+                tryLegacyBluetoothPermissions()
+                return
+            }
+
+            android.util.Log.d("ExportImport", "Missing permissions: ${missingPermissions.size}")
+
+            if (missingPermissions.isNotEmpty()) {
+                android.util.Log.d("ExportImport", "Requesting Bluetooth runtime permissions for Android 12+")
+                try {
+                    bluetoothPermissionLauncher.launch(missingPermissions.toTypedArray())
+                    android.util.Log.d("ExportImport", "Permission launcher launched successfully")
+                } catch (e: Exception) {
+                    android.util.Log.e("ExportImport", "Error launching permission request", e)
+                    Toast.makeText(requireContext(), "Error requesting permissions: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+                return
+            } else {
+                android.util.Log.d("ExportImport", "All Bluetooth permissions already granted")
+            }
+        } else {
+            // For SDK < 31: Bluetooth permissions are normal permissions, auto-granted at install
+            android.util.Log.d("ExportImport", "Bluetooth permissions auto-granted for Android < 12")
+        }
+
+        proceedWithZebraPrinting()
+    }
+    
+    private fun tryLegacyBluetoothPermissions() {
+        android.util.Log.d("ExportImport", "Trying legacy Bluetooth permissions")
+
+        // Check legacy permissions (these might be available even if new ones are blocked)
+        val legacyPermissions = arrayOf(
+            "android.permission.BLUETOOTH",
+            "android.permission.BLUETOOTH_ADMIN"
+        )
+
+        val missingLegacyPermissions = legacyPermissions.filter {
+            val granted = ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED
+            android.util.Log.d("ExportImport", "Legacy permission $it granted: $granted")
+            !granted
+        }
+
+        if (missingLegacyPermissions.isNotEmpty()) {
+            android.util.Log.d("ExportImport", "Legacy permissions missing: $missingLegacyPermissions")
+
+            // For devices with MDM restrictions, try to proceed anyway if Bluetooth is enabled
+            // Some Zebra SDK operations might work without explicit permissions if Bluetooth is on
+            val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+            if (bluetoothAdapter != null && bluetoothAdapter.isEnabled) {
+                android.util.Log.d("ExportImport", "Bluetooth is enabled, trying to proceed without permissions")
+                Toast.makeText(
+                    requireContext(),
+                    "Bluetooth permissions blocked, but Bluetooth is enabled. Trying to connect anyway...",
+                    Toast.LENGTH_SHORT
+                ).show()
+                proceedWithZebraPrinting()
+            } else {
+                android.util.Log.w("ExportImport", "Bluetooth not enabled or not available")
+                Toast.makeText(
+                    requireContext(),
+                    "Bluetooth permissions blocked by administrator and Bluetooth is not enabled. Please enable Bluetooth or contact IT administrator.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        } else {
+            android.util.Log.d("ExportImport", "Legacy Bluetooth permissions are granted")
+            proceedWithZebraPrinting()
+        }
+    }
+    
+    private fun proceedWithZebraPrinting() {
+        val macAddress = binding.printerMacEditText.text.toString().trim()
+
+        // Show loading
+        binding.printerStatusText.text = "Connecting to Zebra printer..."
+        binding.printZebraButton.isEnabled = false
+
+        // Print sample data directly (connection will be tested during printing)
+        printSampleZplToZebra(macAddress)
+    }
+    
+    private fun proceedWithZebraWifiPrinting(ipAddress: String, port: Int) {
+        // Show loading
+        binding.printerStatusText.text = "Connecting to Zebra printer over WiFi..."
+        binding.printZebraButton.isEnabled = false
+
+        // Test connection first
+        zebraPrinterHelper.testWifiConnection(ipAddress, port) { success, error ->
+            if (success) {
+                // Connection successful, now print sample data
+                printSampleZplToZebraWifi(ipAddress, port)
+            } else {
+                requireActivity().runOnUiThread {
+                    binding.printerStatusText.text = "WiFi connection failed: $error"
+                    binding.printZebraButton.isEnabled = true
+                    Toast.makeText(requireContext(), "WiFi connection failed: $error", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
     
     private fun proceedWithPrinting() {
@@ -498,34 +632,44 @@ class ExportImportFragment : Fragment() {
     }
 
     private fun printOnZebraPrinter() {
-        val macAddress = binding.printerMacEditText.text.toString().trim()
+        android.util.Log.d("ExportImport", "printOnZebraPrinter called, activity: ${activity != null}, isAdded: $isAdded")
 
-        if (macAddress.isEmpty()) {
-            Toast.makeText(requireContext(), "Please enter printer MAC address", Toast.LENGTH_SHORT).show()
-            return
-        }
+        val isBluetoothSelected = binding.bluetoothRadioButton.isChecked
 
-        if (!isValidMacAddress(macAddress)) {
-            Toast.makeText(requireContext(), "Invalid MAC address format", Toast.LENGTH_SHORT).show()
-            return
-        }
+        if (isBluetoothSelected) {
+            // Bluetooth connection
+            val macAddress = binding.printerMacEditText.text.toString().trim()
 
-        // Show loading
-        binding.printerStatusText.text = "Connecting to printer..."
-        binding.printZebraButton.isEnabled = false
-
-        // Test connection first
-        zebraPrinterHelper.testConnection(macAddress) { success, error ->
-            if (success) {
-                // Connection successful, now print sample data
-                printSampleZplToZebra(macAddress)
-            } else {
-                requireActivity().runOnUiThread {
-                    binding.printerStatusText.text = "Connection failed: $error"
-                    binding.printZebraButton.isEnabled = true
-                    Toast.makeText(requireContext(), "Connection failed: $error", Toast.LENGTH_SHORT).show()
-                }
+            if (macAddress.isEmpty()) {
+                Toast.makeText(requireContext(), "Please enter printer MAC address", Toast.LENGTH_SHORT).show()
+                return
             }
+
+            if (!isValidMacAddress(macAddress)) {
+                Toast.makeText(requireContext(), "Invalid MAC address format", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            // Check and request Bluetooth permissions before proceeding
+            requestBluetoothPermissionsAndPrint()
+        } else {
+            // WiFi connection
+            val ipAddress = binding.printerIpEditText.text.toString().trim()
+            val portText = binding.printerPortEditText.text.toString().trim()
+
+            if (ipAddress.isEmpty()) {
+                Toast.makeText(requireContext(), "Please enter printer IP address", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            val port = portText.toIntOrNull() ?: 9100
+            if (port < 1 || port > 65535) {
+                Toast.makeText(requireContext(), "Invalid port number", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            // For WiFi, we don't need special permissions, proceed directly
+            proceedWithZebraWifiPrinting(ipAddress, port)
         }
     }
 
@@ -545,6 +689,27 @@ class ExportImportFragment : Fragment() {
                 } else {
                     binding.printerStatusText.text = "Print failed: $error"
                     Toast.makeText(requireContext(), "Print failed: $error", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun printSampleZplToZebraWifi(ipAddress: String, port: Int) {
+        // Create sample ZPL for testing
+        val sampleZpl = ZebraPrinterHelper.createTestZpl(
+            productName = "Test Product (WiFi)",
+            barcode = "123456789"
+        )
+
+        zebraPrinterHelper.printDocumentOverWifi(ipAddress, port, sampleZpl) { error ->
+            requireActivity().runOnUiThread {
+                binding.printZebraButton.isEnabled = true
+                if (error == null) {
+                    binding.printerStatusText.text = "WiFi print successful!"
+                    Toast.makeText(requireContext(), "Print sent to Zebra printer over WiFi", Toast.LENGTH_SHORT).show()
+                } else {
+                    binding.printerStatusText.text = "WiFi print failed: $error"
+                    Toast.makeText(requireContext(), "WiFi print failed: $error", Toast.LENGTH_SHORT).show()
                 }
             }
         }

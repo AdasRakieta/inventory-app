@@ -4,6 +4,7 @@ import android.os.Handler
 import android.os.Looper
 import com.zebra.sdk.comm.BluetoothConnectionInsecure
 import com.zebra.sdk.comm.Connection
+import com.zebra.sdk.comm.TcpConnection
 import com.zebra.sdk.printer.ZebraPrinterFactory
 import com.zebra.sdk.printer.ZebraPrinterLinkOs
 import java.util.concurrent.Executors
@@ -69,14 +70,69 @@ class ZebraPrinterHelper {
     }
 
     /**
-     * Test printer connection
-     * @param macAddress MAC address of the printer
-     * @param callback Callback with connection status
+     * Print ZPL document to Zebra printer over WiFi
+     * @param ipAddress IP address of the printer (e.g., "192.168.1.100")
+     * @param port Port number (default 9100 for Zebra printers)
+     * @param zplMessage ZPL formatted print data
+     * @param labelLength Label length setting (optional)
+     * @param callback Callback with result or error message
      */
-    fun testConnection(macAddress: String, callback: (Boolean, String?) -> Unit) {
+    fun printDocumentOverWifi(
+        ipAddress: String,
+        port: Int = 9100,
+        zplMessage: String,
+        labelLength: String? = null,
+        callback: (String?) -> Unit
+    ) {
         executor.execute {
             try {
-                val printerConn: Connection = BluetoothConnectionInsecure(macAddress)
+                // Create TCP connection
+                val printerConn: Connection = TcpConnection(ipAddress, port)
+
+                // Open connection
+                printerConn.open()
+
+                // Get printer instance
+                val linkOsPrinter: ZebraPrinterLinkOs = ZebraPrinterFactory.getLinkOsPrinter(printerConn)
+
+                // Set label length if provided
+                labelLength?.let {
+                    linkOsPrinter.setSetting("zpl.label_length", it)
+                }
+
+                // Send ZPL data
+                printerConn.write(zplMessage.toByteArray(charset("windows-1250")))
+
+                // Wait for printing to complete
+                Thread.sleep(1000)
+
+                // Close connection
+                printerConn.close()
+
+                // Success callback on main thread
+                Handler(Looper.getMainLooper()).post {
+                    callback(null) // null means success
+                }
+
+            } catch (e: Exception) {
+                // Error callback on main thread
+                Handler(Looper.getMainLooper()).post {
+                    callback(e.message ?: "Unknown error")
+                }
+            }
+        }
+    }
+
+    /**
+     * Test WiFi printer connection
+     * @param ipAddress IP address of the printer
+     * @param port Port number (default 9100)
+     * @param callback Callback with connection status
+     */
+    fun testWifiConnection(ipAddress: String, port: Int = 9100, callback: (Boolean, String?) -> Unit) {
+        executor.execute {
+            try {
+                val printerConn: Connection = TcpConnection(ipAddress, port)
                 printerConn.open()
 
                 // Try to get printer info

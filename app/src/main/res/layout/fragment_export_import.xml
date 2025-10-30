@@ -132,27 +132,102 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Bluetooth Printer"
+                    android:text="Zebra Printer Connection"
                     android:textStyle="bold"
                     android:textSize="16sp"
                     android:layout_marginBottom="12dp" />
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/printerMacInputLayout"
+                <RadioGroup
+                    android:id="@+id/connectionTypeRadioGroup"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Printer MAC Address (AA:BB:CC:DD:EE:FF)"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp">
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/printerMacEditText"
+                    <RadioButton
+                        android:id="@+id/bluetoothRadioButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Bluetooth"
+                        android:checked="true" />
+
+                    <RadioButton
+                        android:id="@+id/wifiRadioButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="WiFi" />
+
+                </RadioGroup>
+
+                <!-- Bluetooth Section -->
+                <LinearLayout
+                    android:id="@+id/bluetoothSection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="text"
-                        android:maxLines="1"
-                        android:text="" />
+                        android:hint="Printer MAC Address (AA:BB:CC:DD:EE:FF)"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
-                </com.google.android.material.textfield.TextInputLayout>
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/printerMacEditText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="text"
+                            android:maxLines="1"
+                            android:text="" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                </LinearLayout>
+
+                <!-- WiFi Section -->
+                <LinearLayout
+                    android:id="@+id/wifiSection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Printer IP Address (192.168.1.100)"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/printerIpEditText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="text"
+                            android:maxLines="1"
+                            android:text="" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="Port (default: 9100)"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/printerPortEditText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"
+                            android:maxLines="1"
+                            android:text="9100" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/printQrCodeButton"
