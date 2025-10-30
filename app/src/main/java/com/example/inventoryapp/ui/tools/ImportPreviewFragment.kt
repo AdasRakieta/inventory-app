@@ -122,15 +122,37 @@ class ImportPreviewFragment : Fragment() {
         try {
             AppLogger.logAction("Import Preview", "Parsing JSON (${rawJson.length} chars)")
             
-            // Clean dirty JSON from QR codes
-            val cleanJson = rawJson
-                .replace("\\n", "")
-                .replace("\n", "")
-                .replace("\\\"", "\"")
-                .replace("\r", "")
-                .replace("\\\\", "\\")
+            // Step 1: Basic cleaning
+            var cleanJson = rawJson
                 .trim()
-            
+                .replace("\r\n", "")     // Remove Windows newlines
+                .replace("\n", "")       // Remove Unix newlines
+                .replace("\r", "")       // Remove carriage returns
+
+            // Step 2: Handle escaped characters from QR scanner
+            // QR scanners often return JSON with escaped newlines and quotes
+            cleanJson = cleanJson
+                .replace("\\n", "")      // Remove literal \n (two characters: backslash and 'n')
+                .replace("\\t", "")      // Remove literal \t
+                .replace("\\r", "")      // Remove literal \r
+
+            // Step 3: Fix escaped quotes
+            cleanJson = cleanJson.replace("\\\"", "\"")
+
+            // Step 4: Remove outer quotes if entire JSON is wrapped as a string
+            // This happens when QR code contains JSON as escaped string
+            while (cleanJson.startsWith("\"") && cleanJson.endsWith("\"") && cleanJson.length > 2) {
+                cleanJson = cleanJson.substring(1, cleanJson.length - 1)
+                cleanJson = cleanJson.replace("\\\"", "\"")  // Unescape quotes again
+            }
+
+            // Step 5: Remove any remaining extra whitespace
+            cleanJson = cleanJson.trim()
+
+            // Debug: Log first 300 chars of cleaned JSON
+            val preview = if (cleanJson.length > 300) cleanJson.take(300) + "..." else cleanJson
+            AppLogger.d("Import Preview", "Cleaned JSON: $preview")
+
             // Parse JSON
             val exportData = gson.fromJson(cleanJson, ExportData::class.java)
             
@@ -158,11 +180,17 @@ class ImportPreviewFragment : Fragment() {
             AppLogger.logAction("Import Preview", "Parsed successfully: ${exportData.products.size}P, ${exportData.packages.size}Pk")
             
         } catch (e: JsonSyntaxException) {
-            Toast.makeText(requireContext(), "Invalid JSON format: ${e.message}", Toast.LENGTH_LONG).show()
+            val errorMsg = e.message ?: "Unknown syntax error"
+            val jsonPreview = rawJson.take(100) + if (rawJson.length > 100) "..." else ""
+            val fullError = "JSON Syntax Error:\n$errorMsg\n\nJSON start: $jsonPreview"
+            Toast.makeText(requireContext(), fullError, Toast.LENGTH_LONG).show()
             AppLogger.logError("Import Preview - Parse JSON", e)
+            AppLogger.d("Import Preview", "Failed raw JSON: $rawJson")
         } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Parse error: ${e.message}", Toast.LENGTH_LONG).show()
+            val errorMsg = "Error: ${e.javaClass.simpleName}: ${e.message}"
+            Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_LONG).show()
             AppLogger.logError("Import Preview - Parse", e)
+            AppLogger.d("Import Preview", "Failed raw JSON: $rawJson")
         }
     }
     
@@ -320,4 +348,15 @@ class ImportPreviewFragment : Fragment() {
         super.onDestroyView()
         _binding = null
     }
+
+    /**
+     * Data class for parsing exported JSON from QR codes
+     */
+    data class ExportData(
+        val products: List<com.example.inventoryapp.data.local.entities.ProductEntity> = emptyList(),
+        val packages: List<com.example.inventoryapp.data.local.entities.PackageEntity> = emptyList(),
+        val templates: List<com.example.inventoryapp.data.local.entities.ProductTemplateEntity> = emptyList(),
+        val exportedAt: Long? = null,
+        val version: Int? = null
+    )
 }
