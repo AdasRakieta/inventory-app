@@ -8,6 +8,9 @@ import com.zebra.sdk.comm.TcpConnection
 import com.zebra.sdk.printer.ZebraPrinterFactory
 import com.zebra.sdk.printer.ZebraPrinterLinkOs
 import java.util.concurrent.Executors
+import java.net.InetAddress
+import java.net.NetworkInterface
+import java.util.concurrent.TimeUnit
 
 /**
  * Utility class for printing to Zebra printers via Bluetooth MAC address
@@ -150,6 +153,62 @@ class ZebraPrinterHelper {
                     callback(false, e.message ?: "Connection failed")
                 }
             }
+        }
+    }
+
+    /**
+     * Discover Zebra printers on the local network
+     * @param subnet Subnet to scan (e.g., "192.168.1")
+     * @param startIp Starting IP address (default 1)
+     * @param endIp Ending IP address (default 254)
+     * @param callback Callback with list of discovered printers (IP addresses)
+     */
+    fun discoverWifiPrinters(subnet: String = "192.168.1", startIp: Int = 1, endIp: Int = 254, callback: (List<String>) -> Unit) {
+        executor.execute {
+            val discoveredPrinters = mutableListOf<String>()
+
+            try {
+                // Scan IP range
+                for (i in startIp..endIp) {
+                    val ipAddress = "$subnet.$i"
+                    try {
+                        val inetAddress = InetAddress.getByName(ipAddress)
+                        if (inetAddress.isReachable(100)) { // 100ms timeout
+                            // Try to connect to port 9100 (standard Zebra port)
+                            if (testZebraPrinterConnection(ipAddress)) {
+                                discoveredPrinters.add(ipAddress)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Skip unreachable hosts
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle network scanning errors
+            }
+
+            Handler(Looper.getMainLooper()).post {
+                callback(discoveredPrinters)
+            }
+        }
+    }
+
+    /**
+     * Test connection to a potential Zebra printer
+     */
+    private fun testZebraPrinterConnection(ipAddress: String): Boolean {
+        return try {
+            val printerConn: Connection = TcpConnection(ipAddress, 9100)
+            printerConn.open()
+
+            // Try to get printer info to verify it's a Zebra printer
+            val linkOsPrinter: ZebraPrinterLinkOs = ZebraPrinterFactory.getLinkOsPrinter(printerConn)
+            val printerInfo = linkOsPrinter.printerControlLanguage
+
+            printerConn.close()
+            printerInfo != null
+        } catch (e: Exception) {
+            false
         }
     }
 

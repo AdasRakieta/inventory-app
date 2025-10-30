@@ -230,6 +230,15 @@
                 </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/scanPrintersButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Scan for Paired Printers"
+                    app:icon="@android:drawable/ic_menu_search" />
+
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/printQrCodeButton"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="match_parent"

@@ -3,6 +3,7 @@ package com.example.inventoryapp.ui.tools
 import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.Intent
@@ -39,6 +40,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import java.net.NetworkInterface
 
 class ExportImportFragment : Fragment() {
 
@@ -186,6 +188,10 @@ class ExportImportFragment : Fragment() {
 
         binding.printQrCodeButton.setOnClickListener {
             printQRCodeToEnteredMac()
+        }
+
+        binding.scanPrintersButton.setOnClickListener {
+            scanForPairedPrinters()
         }
 
         binding.printZebraButton.setOnClickListener {
@@ -629,6 +635,128 @@ class ExportImportFragment : Fragment() {
                 Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun scanForPairedPrinters() {
+        val isBluetoothSelected = binding.bluetoothRadioButton.isChecked
+
+        if (isBluetoothSelected) {
+            scanBluetoothPrinters()
+        } else {
+            scanWifiPrinters()
+        }
+    }
+
+    private fun scanBluetoothPrinters() {
+        // Show loading
+        binding.printerStatusText.text = "Scanning for Bluetooth printers..."
+        binding.scanPrintersButton.isEnabled = false
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val printers = BluetoothPrinterHelper.scanPrinters(requireContext())
+
+                requireActivity().runOnUiThread {
+                    binding.scanPrintersButton.isEnabled = true
+
+                    if (printers.isEmpty()) {
+                        binding.printerStatusText.text = "No Bluetooth printers found"
+                        Toast.makeText(requireContext(), "No paired Bluetooth printers found", Toast.LENGTH_SHORT).show()
+                    } else {
+                        showBluetoothPrinterSelectionDialog(printers)
+                    }
+                }
+            } catch (e: Exception) {
+                requireActivity().runOnUiThread {
+                    binding.scanPrintersButton.isEnabled = true
+                    binding.printerStatusText.text = "Bluetooth scan failed: ${e.message}"
+                    Toast.makeText(requireContext(), "Failed to scan Bluetooth printers", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun scanWifiPrinters() {
+        // Show loading
+        binding.printerStatusText.text = "Scanning for WiFi printers..."
+        binding.scanPrintersButton.isEnabled = false
+
+        // Try to detect current subnet
+        val subnet = detectCurrentSubnet()
+
+        zebraPrinterHelper.discoverWifiPrinters(subnet) { printers ->
+            requireActivity().runOnUiThread {
+                binding.scanPrintersButton.isEnabled = true
+
+                if (printers.isEmpty()) {
+                    binding.printerStatusText.text = "No WiFi printers found on network $subnet.0/24"
+                    Toast.makeText(requireContext(), "No Zebra printers found on network", Toast.LENGTH_SHORT).show()
+                } else {
+                    showWifiPrinterSelectionDialog(printers)
+                }
+            }
+        }
+    }
+
+    private fun detectCurrentSubnet(): String {
+        return try {
+            val interfaces = NetworkInterface.getNetworkInterfaces()
+            while (interfaces.hasMoreElements()) {
+                val networkInterface = interfaces.nextElement()
+                val addresses = networkInterface.inetAddresses
+
+                while (addresses.hasMoreElements()) {
+                    val address = addresses.nextElement()
+                    if (!address.isLoopbackAddress && address is java.net.Inet4Address) {
+                        val hostAddress = address.hostAddress
+                        // Extract subnet (first 3 octets)
+                        val parts = hostAddress.split(".")
+                        if (parts.size == 4) {
+                            return "${parts[0]}.${parts[1]}.${parts[2]}"
+                        }
+                    }
+                }
+            }
+            // Fallback to common subnet
+            "192.168.1"
+        } catch (e: Exception) {
+            // Fallback to common subnet
+            "192.168.1"
+        }
+    }
+
+    private fun showBluetoothPrinterSelectionDialog(printers: List<android.bluetooth.BluetoothDevice>) {
+        val printerNames = printers.map { device ->
+            "${device.name ?: "Unknown"} (${device.address})"
+        }.toTypedArray()
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Select Bluetooth Printer")
+            .setItems(printerNames) { _, which ->
+                val selectedPrinter = printers[which]
+                binding.printerMacEditText.setText(selectedPrinter.address)
+                binding.printerStatusText.text = "Selected: ${selectedPrinter.name ?: "Unknown"}"
+                Toast.makeText(requireContext(), "Printer selected: ${selectedPrinter.name}", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showWifiPrinterSelectionDialog(printers: List<String>) {
+        val printerNames = printers.map { ip ->
+            "Zebra Printer ($ip)"
+        }.toTypedArray()
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Select WiFi Printer")
+            .setItems(printerNames) { _, which ->
+                val selectedIp = printers[which]
+                binding.printerIpEditText.setText(selectedIp)
+                binding.printerStatusText.text = "Selected: $selectedIp"
+                Toast.makeText(requireContext(), "Printer selected: $selectedIp", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun printOnZebraPrinter() {
