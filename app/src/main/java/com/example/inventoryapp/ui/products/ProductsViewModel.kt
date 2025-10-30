@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.repository.ProductRepository
+import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.utils.AppLogger
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -18,7 +19,8 @@ enum class ProductSortOrder {
 }
 
 class ProductsViewModel(
-    private val productRepository: ProductRepository
+    private val productRepository: ProductRepository,
+    private val packageRepository: PackageRepository
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -30,14 +32,31 @@ class ProductsViewModel(
     private val _sortOrder = MutableStateFlow(ProductSortOrder.NAME_ASC)
     val sortOrder: StateFlow<ProductSortOrder> = _sortOrder
 
-    private val allProducts: StateFlow<List<ProductEntity>> = productRepository.getAllProducts()
+    private val allProducts: StateFlow<List<ProductWithPackage>> = productRepository.getAllProducts()
+        .map { products ->
+            products.map { product ->
+                ProductWithPackage(product, null) // Initially without packages
+            }
+        }
+        .flatMapLatest { products ->
+            // For each product, combine with its package
+            if (products.isEmpty()) {
+                flowOf(emptyList())
+            } else {
+                val productFlows = products.map { productWithPackage ->
+                    packageRepository.getPackageForProduct(productWithPackage.productEntity.id)
+                        .map { pkg -> productWithPackage.copy(packageEntity = pkg) }
+                }
+                combine(productFlows) { it.toList() }
+            }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-    val products: StateFlow<List<ProductEntity>> = combine(
+    val products: StateFlow<List<ProductWithPackage>> = combine(
         allProducts,
         _searchQuery,
         _selectedCategoryId,
@@ -47,7 +66,8 @@ class ProductsViewModel(
         
         // Apply search filter
         if (query.isNotBlank()) {
-            filtered = filtered.filter { product ->
+            filtered = filtered.filter { productWithPackage ->
+                val product = productWithPackage.productEntity
                 product.name.contains(query, ignoreCase = true) ||
                 product.serialNumber?.contains(query, ignoreCase = true) == true
             }
@@ -55,16 +75,16 @@ class ProductsViewModel(
         
         // Apply category filter
         if (categoryId != null) {
-            filtered = filtered.filter { it.categoryId == categoryId }
+            filtered = filtered.filter { it.productEntity.categoryId == categoryId }
         }
         
         // Apply sorting
         when (sortOrder) {
-            ProductSortOrder.NAME_ASC -> filtered.sortedBy { it.name.toLowerCase() }
-            ProductSortOrder.NAME_DESC -> filtered.sortedByDescending { it.name.toLowerCase() }
-            ProductSortOrder.DATE_NEWEST -> filtered.sortedByDescending { it.createdAt }
-            ProductSortOrder.DATE_OLDEST -> filtered.sortedBy { it.createdAt }
-            ProductSortOrder.CATEGORY -> filtered.sortedBy { it.categoryId ?: Long.MAX_VALUE }
+            ProductSortOrder.NAME_ASC -> filtered.sortedBy { it.productEntity.name.toLowerCase() }
+            ProductSortOrder.NAME_DESC -> filtered.sortedByDescending { it.productEntity.name.toLowerCase() }
+            ProductSortOrder.DATE_NEWEST -> filtered.sortedByDescending { it.productEntity.createdAt }
+            ProductSortOrder.DATE_OLDEST -> filtered.sortedBy { it.productEntity.createdAt }
+            ProductSortOrder.CATEGORY -> filtered.sortedBy { it.productEntity.categoryId ?: Long.MAX_VALUE }
         }
     }.stateIn(
         scope = viewModelScope,
@@ -119,12 +139,13 @@ class ProductsViewModel(
 }
 
 class ProductsViewModelFactory(
-    private val productRepository: ProductRepository
+    private val productRepository: ProductRepository,
+    private val packageRepository: PackageRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ProductsViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ProductsViewModel(productRepository) as T
+            return ProductsViewModel(productRepository, packageRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

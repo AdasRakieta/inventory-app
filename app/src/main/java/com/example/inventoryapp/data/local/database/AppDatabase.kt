@@ -17,9 +17,10 @@ import com.example.inventoryapp.data.local.entities.*
         PackageProductCrossRef::class,
         ScanHistoryEntity::class,
         ProductTemplateEntity::class,
-        ScannerSettingsEntity::class
+        ScannerSettingsEntity::class,
+        ContractorEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -29,6 +30,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun scanHistoryDao(): ScanHistoryDao
     abstract fun productTemplateDao(): ProductTemplateDao
     abstract fun scannerSettingsDao(): ScannerSettingsDao
+    abstract fun contractorDao(): ContractorDao
 
     companion object {
         @Volatile
@@ -95,6 +97,29 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Migration 4 -> 5: Add contractors table and contractorId column to packages
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create contractors table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `contractors` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `contactPerson` TEXT,
+                        `email` TEXT,
+                        `phone` TEXT,
+                        `address` TEXT,
+                        `notes` TEXT,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+
+                // Add contractorId column to packages table
+                database.execSQL("ALTER TABLE packages ADD COLUMN contractorId INTEGER")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -102,7 +127,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "inventory_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

@@ -36,4 +36,8 @@ interface PackageDao {
 
     @Query("DELETE FROM package_product_cross_ref WHERE packageId = :packageId")
     suspend fun removeAllProductsFromPackage(packageId: Long)
+
+    @RewriteQueriesToDropUnusedColumns
+    @Query("SELECT * FROM packages INNER JOIN package_product_cross_ref ON packages.id = package_product_cross_ref.packageId WHERE package_product_cross_ref.productId = :productId LIMIT 1")
+    fun getPackageForProduct(productId: Long): Flow<PackageEntity?>
 }

@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.inventoryapp.databinding.ItemPackageBinding
+import com.example.inventoryapp.data.local.entities.ContractorEntity
 import com.example.inventoryapp.data.local.entities.PackageEntity
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -13,7 +14,8 @@ import java.util.Locale
 
 data class PackageWithCount(
     val packageEntity: PackageEntity,
-    val productCount: Int
+    val productCount: Int,
+    val contractor: ContractorEntity? = null
 )
 
 class PackagesAdapter(
@@ -51,6 +53,9 @@ class PackagesAdapter(
             // Product count
             val count = packageWithCount.productCount
             binding.productCount.text = if (count == 1) "1 product" else "$count products"
+            
+            // Contractor
+            binding.packageContractor.text = packageWithCount.contractor?.name ?: "No contractor"
 
             binding.root.setOnClickListener {
                 onPackageClick(pkg)

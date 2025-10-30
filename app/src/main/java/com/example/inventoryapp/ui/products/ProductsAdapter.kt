@@ -8,11 +8,17 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.inventoryapp.databinding.ItemProductBinding
 import com.example.inventoryapp.data.local.entities.ProductEntity
+import com.example.inventoryapp.data.local.entities.PackageEntity
 import com.example.inventoryapp.utils.CategoryHelper
+
+data class ProductWithPackage(
+    val productEntity: ProductEntity,
+    val packageEntity: PackageEntity? = null
+)
 
 class ProductsAdapter(
     private val onProductClick: (ProductEntity) -> Unit
-) : ListAdapter<ProductEntity, ProductsAdapter.ProductViewHolder>(ProductDiffCallback()) {
+) : ListAdapter<ProductWithPackage, ProductsAdapter.ProductViewHolder>(ProductDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductViewHolder {
         val binding = ItemProductBinding.inflate(
@@ -32,10 +38,22 @@ class ProductsAdapter(
         private val onProductClick: (ProductEntity) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(product: ProductEntity) {
+        fun bind(productWithPackage: ProductWithPackage) {
+            val product = productWithPackage.productEntity
+            val pkg = productWithPackage.packageEntity
+            
             binding.productName.text = product.name
             binding.productCategory.text = CategoryHelper.getCategoryName(product.categoryId)
             binding.categoryIcon.text = CategoryHelper.getCategoryIcon(product.categoryId)
+            
+            // Display package information
+            if (pkg != null) {
+                binding.packageInfo.text = pkg.name
+                binding.packageInfo.visibility = View.VISIBLE
+            } else {
+                binding.packageInfo.text = "Not in package"
+                binding.packageInfo.visibility = View.VISIBLE
+            }
             
             if (product.serialNumber != null) {
                 binding.serialNumberContainer.visibility = View.VISIBLE
@@ -52,12 +70,12 @@ class ProductsAdapter(
         }
     }
 
-    private class ProductDiffCallback : DiffUtil.ItemCallback<ProductEntity>() {
-        override fun areItemsTheSame(oldItem: ProductEntity, newItem: ProductEntity): Boolean {
-            return oldItem.id == newItem.id
+    private class ProductDiffCallback : DiffUtil.ItemCallback<ProductWithPackage>() {
+        override fun areItemsTheSame(oldItem: ProductWithPackage, newItem: ProductWithPackage): Boolean {
+            return oldItem.productEntity.id == newItem.productEntity.id
         }
 
-        override fun areContentsTheSame(oldItem: ProductEntity, newItem: ProductEntity): Boolean {
+        override fun areContentsTheSame(oldItem: ProductWithPackage, newItem: ProductWithPackage): Boolean {
             return oldItem == newItem
         }
     }

@@ -16,6 +16,7 @@ import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentProductsListBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.ProductRepository
+import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.utils.CategoryHelper
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -32,8 +33,9 @@ class ProductsListFragment : Fragment() {
         super.onCreate(savedInstanceState)
         
         val database = AppDatabase.getDatabase(requireContext())
-        val repository = ProductRepository(database.productDao())
-        val factory = ProductsViewModelFactory(repository)
+        val productRepository = ProductRepository(database.productDao())
+        val packageRepository = PackageRepository(database.packageDao(), database.productDao())
+        val factory = ProductsViewModelFactory(productRepository, packageRepository)
         val vm: ProductsViewModel by viewModels { factory }
         viewModel = vm
     }

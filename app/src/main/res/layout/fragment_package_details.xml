@@ -56,6 +56,20 @@
                     android:background="@color/surface"
                     android:paddingHorizontal="12dp"
                     android:paddingVertical="6dp"
+                    android:layout_gravity="center"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/packageContractorText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="No contractor assigned"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:background="@color/surface"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
                     android:layout_gravity="center" />
 
             </LinearLayout>
@@ -114,15 +128,35 @@
                     android:padding="16dp"
                     android:visibility="visible" />
 
-                <!-- Add Products Button -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/addProductsButton"
-                    style="@style/Widget.App.Button.Outlined"
+                <!-- Add Products Buttons Row -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Add Products"
-                    android:textAllCaps="false"
-                    android:layout_marginTop="8dp" />
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp">
+
+                    <!-- Add Products Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/addProductsButton"
+                        style="@style/Widget.App.Button.Outlined"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Add Existing"
+                        android:textAllCaps="false"
+                        android:layout_marginEnd="8dp" />
+
+                    <!-- Add New Product Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/addNewProductButton"
+                        style="@style/Widget.App.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Add New"
+                        android:textAllCaps="false" />
+
+                </LinearLayout>
 
             </LinearLayout>
 
@@ -212,6 +246,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Edit Package"
+            android:textAllCaps="false"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/changeStatusButton"
+            style="@style/Widget.App.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Change Status"
             android:textAllCaps="false"
             android:layout_marginBottom="8dp" />
 

@@ -11,6 +11,7 @@ import com.example.inventoryapp.BuildConfig
 import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentHomeBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
+import com.example.inventoryapp.data.local.entities.CategoryEntity
 import com.example.inventoryapp.data.repository.ProductRepository
 import com.example.inventoryapp.data.repository.PackageRepository
 import kotlinx.coroutines.flow.collect
@@ -67,12 +68,36 @@ class HomeFragment : Fragment() {
         binding.exportImportCard.setOnClickListener {
             findNavController().navigate(R.id.action_home_to_export_import)
         }
+
+        // Contractors card - navigate to contractors list
+        binding.contractorsCard.setOnClickListener {
+            findNavController().navigate(R.id.action_home_to_contractors)
+        }
     }
 
     private fun loadStatistics() {
         val database = AppDatabase.getDatabase(requireContext())
         val productRepository = ProductRepository(database.productDao())
         val packageRepository = PackageRepository(database.packageDao(), database.productDao())
+        val categoryDao = database.categoryDao()
+
+        // Initialize default categories if none exist
+        viewLifecycleOwner.lifecycleScope.launch {
+            categoryDao.getAllCategories().collect { categories ->
+                if (categories.isEmpty()) {
+                    // Add default categories
+                    val defaultCategories = listOf(
+                        CategoryEntity(name = "Skaner"),
+                        CategoryEntity(name = "Drukarka"),
+                        CategoryEntity(name = "Stacja dokująca skanera"),
+                        CategoryEntity(name = "Stacja dokująca drukarki")
+                    )
+                    defaultCategories.forEach { category ->
+                        categoryDao.insertCategory(category)
+                    }
+                }
+            }
+        }
 
         viewLifecycleOwner.lifecycleScope.launch {
             // Load product count

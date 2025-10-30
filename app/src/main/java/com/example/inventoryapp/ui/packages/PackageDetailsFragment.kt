@@ -5,7 +5,9 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.Spinner
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -15,8 +17,14 @@ import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.inventoryapp.databinding.FragmentPackageDetailsBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
+import com.example.inventoryapp.data.local.entities.CategoryEntity
+import com.example.inventoryapp.data.repository.ContractorRepository
 import com.example.inventoryapp.data.repository.PackageRepository
+import com.example.inventoryapp.data.repository.ProductRepository
+import com.example.inventoryapp.R
+import com.example.inventoryapp.utils.CategoryHelper
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -35,8 +43,10 @@ class PackageDetailsFragment : Fragment() {
         super.onCreate(savedInstanceState)
         
         val database = AppDatabase.getDatabase(requireContext())
-        val repository = PackageRepository(database.packageDao(), database.productDao())
-        val factory = PackageDetailsViewModelFactory(repository, args.packageId)
+        val packageRepository = PackageRepository(database.packageDao(), database.productDao())
+        val productRepository = ProductRepository(database.productDao())
+        val contractorRepository = ContractorRepository(database.contractorDao())
+        val factory = PackageDetailsViewModelFactory(packageRepository, productRepository, contractorRepository, args.packageId)
         val vm: PackageDetailsViewModel by viewModels { factory }
         viewModel = vm
     }
@@ -57,6 +67,7 @@ class PackageDetailsFragment : Fragment() {
         setupClickListeners()
         observePackage()
         observeProducts()
+        observeContractor()
     }
 
     private fun setupRecyclerView() {
@@ -77,8 +88,16 @@ class PackageDetailsFragment : Fragment() {
             findNavController().navigate(action)
         }
         
+        binding.addNewProductButton.setOnClickListener {
+            showAddNewProductDialog()
+        }
+        
         binding.editPackageButton.setOnClickListener {
             showEditPackageDialog()
+        }
+        
+        binding.changeStatusButton.setOnClickListener {
+            showChangeStatusDialog()
         }
         
         binding.deletePackageButton.setOnClickListener {
@@ -130,28 +149,72 @@ class PackageDetailsFragment : Fragment() {
         }
     }
 
+    private fun observeContractor() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.contractor.collect { contractor ->
+                binding.packageContractorText.text = contractor?.name ?: "No contractor assigned"
+            }
+        }
+    }
+
     private fun showEditPackageDialog() {
         val currentPackage = viewModel.packageEntity.value ?: return
-        
-        val editText = EditText(requireContext()).apply {
-            setText(currentPackage.name)
-            hint = "Package name"
-            setSingleLine(true)
-        }
-        
-        AlertDialog.Builder(requireContext())
-            .setTitle("Edit Package")
-            .setMessage("Enter a new name for this package")
-            .setView(editText)
-            .setPositiveButton("Save") { _, _ ->
-                val newName = editText.text.toString().trim()
-                if (newName.isNotEmpty()) {
-                    viewModel.updatePackageName(newName)
-                    Toast.makeText(requireContext(), "Package updated", Toast.LENGTH_SHORT).show()
+
+        val dialogView = layoutInflater.inflate(R.layout.dialog_edit_package, null)
+        val packageNameEdit = dialogView.findViewById<EditText>(R.id.packageNameEdit)
+        val contractorSpinner = dialogView.findViewById<Spinner>(R.id.contractorSpinner)
+
+        // Set current package name
+        packageNameEdit.setText(currentPackage.name)
+
+        // Load contractors for spinner
+        val database = AppDatabase.getDatabase(requireContext())
+        val contractorDao = database.contractorDao()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val contractors = contractorDao.getAllContractors().first()
+                val contractorList = mutableListOf<com.example.inventoryapp.data.local.entities.ContractorEntity?>()
+                contractorList.add(null) // "No contractor" option
+                contractorList.addAll(contractors.map { it as? com.example.inventoryapp.data.local.entities.ContractorEntity })
+
+                val adapter = ArrayAdapter(
+                    requireContext(),
+                    android.R.layout.simple_spinner_item,
+                    contractorList.map { it?.name ?: "No contractor assigned" }
+                )
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                contractorSpinner.adapter = adapter
+
+                // Set current contractor selection
+                val currentContractorIndex = contractorList.indexOfFirst { it?.id == currentPackage.contractorId }
+                if (currentContractorIndex >= 0) {
+                    contractorSpinner.setSelection(currentContractorIndex)
                 }
+
+                // Show dialog
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Edit Package")
+                    .setView(dialogView)
+                    .setPositiveButton("Save") { _, _ ->
+                        val newName = packageNameEdit.text.toString().trim()
+                        val selectedContractorIndex = contractorSpinner.selectedItemPosition
+                        val selectedContractor = if (selectedContractorIndex > 0) contractorList[selectedContractorIndex] else null
+
+                        if (newName.isNotEmpty()) {
+                            viewModel.updatePackageName(newName)
+                            viewModel.updatePackageContractor(selectedContractor?.id)
+                            Toast.makeText(requireContext(), "Package updated", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(requireContext(), "Package name cannot be empty", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Error loading contractors: ${e.message}", Toast.LENGTH_SHORT).show()
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        }
     }
 
     private fun showRemoveProductDialog(product: com.example.inventoryapp.data.local.entities.ProductEntity) {
@@ -176,6 +239,39 @@ class PackageDetailsFragment : Fragment() {
                 viewModel.deletePackage()
                 Toast.makeText(requireContext(), "Package deleted", Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showAddNewProductDialog() {
+        // Navigate to AddProductFragment with packageId to automatically assign product to this package
+        val action = PackageDetailsFragmentDirections.actionPackageDetailsFragmentToAddProductFragment(
+            packageId = args.packageId
+        )
+        findNavController().navigate(action)
+    }
+
+    private fun showChangeStatusDialog() {
+        val currentPackage = viewModel.packageEntity.value ?: return
+        
+        val statuses = arrayOf("PREPARATION", "READY", "SHIPPED", "DELIVERED")
+        val currentStatusIndex = statuses.indexOf(currentPackage.status)
+        
+        AlertDialog.Builder(requireContext())
+            .setTitle("Change Package Status")
+            .setSingleChoiceItems(statuses, currentStatusIndex) { dialog, which ->
+                val selectedStatus = statuses[which]
+                
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        viewModel.updatePackageStatus(selectedStatus)
+                        Toast.makeText(requireContext(), "Status updated to $selectedStatus", Toast.LENGTH_SHORT).show()
+                        dialog.dismiss()
+                    } catch (e: Exception) {
+                        Toast.makeText(requireContext(), "Error updating status: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
             .setNegativeButton("Cancel", null)
             .show()

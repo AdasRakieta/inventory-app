@@ -175,19 +175,30 @@ class BulkProductScanFragment : Fragment() {
     private fun addProductInputField() {
         val context = requireContext()
         val productNumber = scannedCount + 1
-        
-        // Create TextInputLayout
-        val inputLayout = TextInputLayout(context).apply {
+
+        // Create horizontal container for input field and delete button
+        val horizontalContainer = LinearLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 bottomMargin = 16
             }
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+        }
+
+        // Create TextInputLayout (takes most of the space)
+        val inputLayout = TextInputLayout(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                0, // width = 0 for weight
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f // weight = 1 to take remaining space
+            )
             hint = "$productNumber. Product"
             setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_OUTLINE)
         }
-        
+
         // Create TextInputEditText
         val editText = TextInputEditText(inputLayout.context).apply {
             layoutParams = LinearLayout.LayoutParams(
@@ -196,10 +207,10 @@ class BulkProductScanFragment : Fragment() {
             )
             maxLines = 1
             imeOptions = EditorInfo.IME_ACTION_DONE
-            
+
             // Handle enter key
             setOnEditorActionListener { _, actionId, event ->
-                if (actionId == EditorInfo.IME_ACTION_DONE || 
+                if (actionId == EditorInfo.IME_ACTION_DONE ||
                     (event?.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_ENTER)) {
                     val serialNumber = text.toString().trim()
                     if (serialNumber.isNotEmpty()) {
@@ -210,7 +221,7 @@ class BulkProductScanFragment : Fragment() {
                     false
                 }
             }
-            
+
             // Auto-focus for barcode scanners that act as keyboard
             addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -230,15 +241,71 @@ class BulkProductScanFragment : Fragment() {
                 }
             })
         }
-        
+
+        // Create delete button (X)
+        val deleteButton = androidx.appcompat.widget.AppCompatImageButton(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                resources.getDimensionPixelSize(com.google.android.material.R.dimen.design_fab_size_mini),
+                resources.getDimensionPixelSize(com.google.android.material.R.dimen.design_fab_size_mini)
+            ).apply {
+                marginStart = 8
+            }
+            setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+            contentDescription = "Delete this entry"
+            background = null
+            setColorFilter(ContextCompat.getColor(context, android.R.color.holo_red_dark))
+            setOnClickListener {
+                removeProductInputField(horizontalContainer, editText)
+            }
+        }
+
+        // Assemble the layout
         inputLayout.addView(editText)
-        binding.productsInputContainer.addView(inputLayout)
-        
+        horizontalContainer.addView(inputLayout)
+        horizontalContainer.addView(deleteButton)
+
+        binding.productsInputContainer.addView(horizontalContainer)
+
         // Store current input field reference
         currentInputField = editText
-        
+
         // Focus the new field
         editText.requestFocus()
+    }
+
+    private fun removeProductInputField(container: LinearLayout, editText: TextInputEditText) {
+        // Get the serial number from the field
+        val serialNumber = editText.text.toString().trim()
+
+        // If this field was already processed (has serial number), remove from scanned list
+        if (serialNumber.isNotEmpty() && scannedSerials.contains(serialNumber)) {
+            scannedSerials.remove(serialNumber)
+            scannedCount--
+
+            // Remove the product from database if it was added
+            viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    productRepository.deleteProductBySerialNumber(serialNumber)
+                    showStatus("🗑️ Removed: $serialNumber")
+                    updateUI()
+                } catch (e: Exception) {
+                    showStatus("❌ Error removing: ${e.message}")
+                }
+            }
+        }
+
+        // Remove the container from the layout
+        binding.productsInputContainer.removeView(container)
+
+        // If this was the current input field, clear the reference
+        if (currentInputField == editText) {
+            currentInputField = null
+        }
+
+        // If no more input fields, add a new empty one
+        if (binding.productsInputContainer.childCount == 0) {
+            addProductInputField()
+        }
     }
     
     private fun processManualEntry(serialNumber: String) {

@@ -25,6 +25,9 @@ class ProductRepository(private val productDao: ProductDao) {
     suspend fun deleteProduct(product: ProductEntity) =
         productDao.deleteProduct(product)
     
+    suspend fun deleteProductBySerialNumber(serialNumber: String) =
+        productDao.deleteProductBySerialNumber(serialNumber)
+    
     suspend fun updateSerialNumber(productId: Long, serialNumber: String) =
         productDao.updateSerialNumber(productId, serialNumber, System.currentTimeMillis())
     

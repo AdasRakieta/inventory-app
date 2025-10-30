@@ -15,6 +15,7 @@ import com.example.inventoryapp.databinding.FragmentTemplateDetailsBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.ProductRepository
 import com.example.inventoryapp.data.repository.ProductTemplateRepository
+import com.example.inventoryapp.ui.products.ProductWithPackage
 import com.example.inventoryapp.ui.products.ProductsAdapter
 import com.example.inventoryapp.utils.CategoryHelper
 import kotlinx.coroutines.flow.collect
@@ -140,6 +141,8 @@ class TemplateDetailsFragment : Fragment() {
                     productRepository.getAllProducts().collect { products ->
                         val filteredProducts = products.filter { product ->
                             product.name == it.name && product.categoryId == it.categoryId
+                        }.map { product ->
+                            ProductWithPackage(product, null) // Template products don't have packages
                         }
                         
                         if (filteredProducts.isEmpty()) {

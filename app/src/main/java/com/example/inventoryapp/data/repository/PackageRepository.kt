@@ -38,6 +38,9 @@ class PackageRepository(
     fun getProductsInPackage(packageId: Long): Flow<List<ProductEntity>> =
         packageDao.getProductsInPackage(packageId)
     
+    fun getPackageForProduct(productId: Long): Flow<PackageEntity?> =
+        packageDao.getPackageForProduct(productId)
+    
     suspend fun removeAllProductsFromPackage(packageId: Long) =
         packageDao.removeAllProductsFromPackage(packageId)
     

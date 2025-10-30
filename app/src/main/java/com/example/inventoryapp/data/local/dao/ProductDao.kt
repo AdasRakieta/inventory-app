@@ -28,6 +28,9 @@ interface ProductDao {
     @Delete
     suspend fun deleteProduct(product: ProductEntity)
 
+    @Query("DELETE FROM products WHERE serialNumber = :serialNumber")
+    suspend fun deleteProductBySerialNumber(serialNumber: String)
+
     @Query("UPDATE products SET serialNumber = :serialNumber, updatedAt = :updatedAt WHERE id = :productId")
     suspend fun updateSerialNumber(productId: Long, serialNumber: String, updatedAt: Long = System.currentTimeMillis())
 

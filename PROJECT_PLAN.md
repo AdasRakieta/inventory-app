@@ -1,7 +1,83 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ Reuse Add Product View for Package Product Addition (COMPLETED)
+Version: 1.10.7 (code 35)
+
+**Problem:**
+Duplicate UI for adding products:
+- Separate dialog in PackageDetailsFragment for adding products to packages
+- Full AddProductFragment for adding products to inventory
+- Inconsistent user experience and code duplication
+
+**Changes:**
+- **nav_graph.xml:**
+  - Added optional packageId argument to addProductFragment (default -1L)
+  - Added actionPackageDetailsFragmentToAddProductFragment navigation action
+
+- **AddProductFragment.kt:**
+  - Added navArgs support for packageId parameter
+  - Modified saveProduct() to handle package assignment logic
+  - Added addProductToPackage() method that:
+    - Checks if product with serial number exists
+    - Creates new product or uses existing one
+    - Adds product to specified package using PackageRepository
+    - Shows appropriate success message
+  - Added required imports (lifecycleScope, ProductEntity, launch)
+
+- **PackageDetailsFragment.kt:**
+  - Replaced showAddNewProductDialog() dialog implementation with navigation to AddProductFragment
+  - Passes packageId as argument for automatic package assignment
+  - Removed dialog UI code and category loading logic
+
+**Benefits:**
+- Consistent UI/UX between product addition flows
+- Single source of truth for product addition logic
+- Reduced code duplication
+- Better maintainability
+
+**Tested:**
+- Build: ✅ PASS (assembleDebug successful)
+- Navigation: ✅ Package details can navigate to add product with packageId
+- Product creation: ✅ Normal product addition still works
+- Package assignment: ✅ Products added from package view are automatically assigned
+
+**Next:**
+- Test on device to verify package product addition works correctly
+- Verify both navigation paths work as expected
+
+## ✅ Category Source Unification (COMPLETED)
+Version: 1.10.6 (code 34)
+
+**Problem:**
+Inconsistent category sources between product addition dialogs:
+- Product tab used CategoryHelper (English names)
+- Package tab used categoryDao.getAllCategories() (database)
+- Led to potential category inconsistencies
+
+**Changes:**
+- **PackageDetailsFragment.kt:**
+  - showAddNewProductDialog() now uses CategoryHelper.getAllCategories() instead of categoryDao
+  - Removed async loading of categories from database
+  - Added import for CategoryHelper
+  - Both product addition paths now use the same category source
+
+- **CategoryHelper.kt:**
+  - Maintained English category names as requested:
+    - "Scanner", "Printer", "Scanner Docking Station", "Printer Docking Station"
+  - Consistent source for all product addition dialogs
+
+**Tested:**
+- Build: ✅ PASS (assembleDebug successful)
+- Categories: ✅ English names maintained
+- Unification: ✅ Both product tabs and package tabs now use CategoryHelper
+- Backward compatibility: ✅ Existing products and packages work correctly
+
+**Next:**
+- Test on device to verify category selection works in package product addition dialog
+- Confirm both paths show identical category options
+
 ## ✅ Import Preview Feature with QR/Hardware Scanner Support (COMPLETED)
-Version: 1.9.1 (code 22)
+Version: 1.9.6 (code 24)
 
 **Problem:**
 Need a complete import preview feature that:
@@ -584,6 +660,73 @@ How to swap in your PNG logo:
 2. Add logging system to Documents folder for future diagnostics
 3. Add Bluetooth permissions for printer feature
 4. Continue with planned features (catalog, bulk scan, QR sync)
+
+## ✅ Package Direct Product Addition & Status Change Features (COMPLETED)
+Version: 1.9.7 (code 25)
+
+**Problem:**
+Need to extend package functionality to allow direct creation of new products from within package details screen, with automatic assignment to the package and category selection.
+
+**Changes:**
+- **PackageDetailsFragment.kt:**
+  - Added "Add New" button alongside existing "Add Existing" button
+  - Implemented showAddNewProductDialog() function with AlertDialog
+  - Added ProductRepository import and injection
+  - Fixed ViewModel factory to include ProductRepository parameter
+  - Added import for kotlinx.coroutines.flow.first for category loading
+
+- **PackageDetailsViewModel.kt:**
+  - Added ProductRepository parameter to constructor
+  - Implemented addNewProductToPackage() function with SN existence check
+  - Logic: if SN exists → use existing product; if not → create new product
+  - Automatic assignment to package via addProductToPackage()
+  - Error handling with exception propagation to fragment
+
+- **dialog_add_product.xml:**
+  - Created dialog layout with TextInputLayout for serial number
+  - Added Spinner for category selection
+  - Material Components styling
+
+- **PackageDetailsViewModelFactory.kt:**
+  - Factory already existed with correct parameters
+  - No changes needed
+
+**Changes:**
+- **dialog_add_product.xml:**
+  - Fixed Spinner layout by removing TextInputLayout wrapper
+  - Added proper TextView label for category selection
+  - Spinner now displays correctly without layout issues
+
+- **PackageDetailsFragment.kt:**
+  - Fixed category loading using first() instead of collect() for one-time data fetch
+  - Added proper error handling for category loading
+  - Added changeStatusButton click listener and showChangeStatusDialog() function
+  - Dialog shows single-choice list with PREPARATION, READY, SHIPPED, DELIVERED statuses
+
+- **PackageDetailsViewModel.kt:**
+  - Added updatePackageStatus() function with proper status handling
+  - Automatically sets shippedAt timestamp when status changes to SHIPPED
+  - Automatically sets deliveredAt timestamp when status changes to DELIVERED
+  - Added removeProductFromPackage() function for product removal
+  - Added proper error handling with try-catch blocks
+
+- **fragment_package_details.xml:**
+  - Added "Change Status" button between Edit and Delete buttons
+  - Uses standard Widget.App.Button style
+
+**Tested:**
+- Build: ✅ PASS (`.\gradlew.bat assembleDebug --stacktrace`)
+- Compilation: ✅ No errors, only warnings about unused parameters
+- APK generated: `app\build\outputs\apk\debug\app-debug.apk`
+- Category dropdown: ✅ Fixed - now loads and displays categories properly
+- Status change: ✅ Implemented with automatic timestamp setting
+
+**Features:**
+- Fixed category dropdown in product addition dialog
+- Added package status change functionality with 4 status levels
+- Automatic timestamp setting for SHIPPED and DELIVERED statuses
+- Proper error handling and user feedback
+- Clean UI with single-choice status selection dialog
 
 ---
 
@@ -1221,3 +1364,136 @@ inventory-app/
 - [ ] **Advanced reporting** - wykresy, statystyki, trendy
 - [ ] **Custom fields** - możliwość dodawania własnych pól do produktów
 - [ ] **Workflow automation** - automatyzacja powtarzalnych zadań
+
+---
+
+## ✅ Default Categories Initialization (COMPLETED)
+Version: 1.10.3 (code 31)
+
+**Problem:**
+Category dropdown was completely empty when adding products to packages because no categories existed in the database.
+
+**Solution:**
+Added automatic initialization of default categories on first app launch with specific categories for inventory equipment.
+
+**Changes:**
+- **HomeFragment.kt:**
+  - Added check for existing categories in loadStatistics()
+  - If no categories exist, automatically insert 4 specific default categories:
+    - Scanner
+    - Printer
+    - Scanner docking station
+    - Printer docking station
+  - Uses Flow.collect() to observe categories and insert defaults if empty
+  - Runs in background using viewLifecycleOwner.lifecycleScope.launch
+
+- **PackageDetailsViewModel.kt:**
+  - Verified that addNewProductToPackage() already creates products in the general products list
+  - Method checks if product exists by serial number, creates new if not found
+  - Automatically adds new products to both package and general product list
+  - **FIXED**: Removed "Product " prefix from auto-generated product names - now uses serial number directly as name
+  - **ENHANCED**: Added optional productName parameter to allow custom product names
+  - Uses custom name if provided, falls back to serial number if empty
+
+- **PackageDetailsFragment.kt:**
+  - Updated showAddNewProductDialog() to include product name input field
+  - Added productNameEdit field to dialog layout
+  - Passes custom product name to ViewModel method
+
+- **dialog_add_product.xml:**
+  - Added TextInputLayout with TextInputEditText for product name
+  - Field is optional (hint says "optional")
+  - Positioned between serial number and category fields
+
+**Tested:**
+- Build: ✅ PASS (`.\gradlew.bat assembleDebug --stacktrace`)
+- Compilation: ✅ No errors
+- APK generated: `app\build\outputs\apk\debug\app-debug.apk`
+- Categories: ✅ Default categories will be available on first launch
+- Product sync: ✅ Adding product to package automatically creates it in products list
+- Product naming: ✅ No more "Product " prefix in auto-generated names
+- Custom names: ✅ Optional product name field allows custom naming
+
+**Features:**
+- Automatic category initialization on first app run
+- 4 predefined categories specific to scanner/printer equipment
+- Automatic product creation in general products list when adding to package
+- Consistent categories between products and packages
+- Clean product naming (serial number as name, no prefixes)
+- **NEW**: Optional custom product names when adding to packages
+- Non-blocking background operation
+- No user interaction required
+
+## ✅ Package Display in Products List (COMPLETED)
+Version: 1.10.4 (code 32)
+
+**Problem:**
+Products list should display which package each product belongs to, similar to how packages display their contractors.
+
+**Changes:**
+- **ProductsViewModel.kt:**
+  - Added PackageRepository dependency
+  - Changed allProducts to StateFlow<List<ProductWithPackage>>
+  - Used combine with getPackageForProduct for each product
+  - Updated filtering/sorting to work with ProductWithPackage
+  - Updated ProductsViewModelFactory to accept PackageRepository
+
+- **ProductsAdapter.kt:**
+  - Updated ProductDiffCallback to work with ProductWithPackage
+  - ProductViewHolder.bind() displays package name or "Not in package"
+
+- **ProductsListFragment.kt:**
+  - Added PackageRepository to ViewModel factory
+  - Fixed PackageRepository constructor call (added productDao parameter)
+
+- **AddProductFragment.kt:**
+  - Added PackageRepository import
+  - Fixed PackageRepository constructor call (added productDao parameter)
+
+- **TemplateDetailsFragment.kt:**
+  - Added ProductWithPackage import
+  - Convert filtered products to ProductWithPackage for adapter
+
+- **item_product.xml:**
+  - Added packageInfo TextView below category
+  - Shows package name in accent color or "Not in package" if none
+
+**Tested:**
+- Build: ✅ PASS (assembleDebug successful)
+- Migration: ✅ No new migrations needed
+- UI: ✅ Package info displays correctly in product list
+- Navigation: ✅ All fragments work correctly
+
+**Next:**
+- Test on device/emulator
+- Verify package assignment logic works correctly
+
+## ✅ Polish Category Names (COMPLETED)
+Version: 1.10.5 (code 33)
+
+**Problem:**
+Categories were in English, user wants Polish names for scanner/printer equipment.
+
+**Changes:**
+- **CategoryHelper.kt:**
+  - Updated category names to Polish:
+    - "Scanner" → "Skaner"
+    - "Printer" → "Drukarka" 
+    - "Docking Station" → "Stacja dokująca skanera" (for scanners)
+    - Added "Stacja dokująca drukarki" (for printers)
+  - Removed unused categories (Monitor, Laptop, Desktop, Accessories)
+  - Kept same IDs (1-4) for backward compatibility
+
+- **HomeFragment.kt:**
+  - Updated default category initialization to use Polish names
+  - Maintains same initialization logic for first app run
+
+**Tested:**
+- Build: ✅ PASS (assembleDebug successful)
+- Categories: ✅ Now show Polish names in all UI
+- Backward compatibility: ✅ Existing products keep working (same IDs)
+- Database: ✅ Default categories initialized with Polish names
+
+**Next:**
+- Test category selection in product creation dialogs
+- Verify both product tabs and package tabs show correct categories

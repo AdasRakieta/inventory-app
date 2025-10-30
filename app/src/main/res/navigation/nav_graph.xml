@@ -23,6 +23,9 @@
         <action
             android:id="@+id/action_home_to_export_import"
             app:destination="@id/exportImportFragment" />
+        <action
+            android:id="@+id/action_home_to_contractors"
+            app:destination="@id/contractorsFragment" />
     </fragment>
 
     <fragment
@@ -45,7 +48,12 @@
     <fragment
         android:id="@+id/addProductFragment"
         android:name="com.example.inventoryapp.ui.products.AddProductFragment"
-        android:label="@string/product_add" />
+        android:label="@string/product_add">
+        <argument
+            android:name="packageId"
+            android:defaultValue="-1L"
+            app:argType="long" />
+    </fragment>
 
     <fragment
         android:id="@+id/productDetailsFragment"
@@ -75,6 +83,9 @@
         <action
             android:id="@+id/action_package_details_to_product_selection"
             app:destination="@id/productSelectionFragment" />
+        <action
+            android:id="@+id/actionPackageDetailsFragmentToAddProductFragment"
+            app:destination="@id/addProductFragment" />
     </fragment>
 
     <fragment
@@ -129,5 +140,19 @@
         android:id="@+id/importPreviewFragment"
         android:name="com.example.inventoryapp.ui.tools.ImportPreviewFragment"
         android:label="Import Preview" />
+
+    <fragment
+        android:id="@+id/contractorsFragment"
+        android:name="com.example.inventoryapp.ui.contractors.ContractorsFragment"
+        android:label="Contractors">
+        <action
+            android:id="@+id/action_contractors_to_add_contractor"
+            app:destination="@id/addContractorFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/addContractorFragment"
+        android:name="com.example.inventoryapp.ui.contractors.AddContractorFragment"
+        android:label="Add Contractor" />
 
 </navigation>

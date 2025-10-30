@@ -4,31 +4,35 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.inventoryapp.data.local.entities.PackageEntity
+import com.example.inventoryapp.data.repository.ContractorRepository
 import com.example.inventoryapp.data.repository.PackageRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class PackagesViewModel(
-    private val packageRepository: PackageRepository
+    private val packageRepository: PackageRepository,
+    private val contractorRepository: ContractorRepository
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
     private val allPackagesWithCount: StateFlow<List<PackageWithCount>> = 
-        packageRepository.getAllPackages()
-            .map { packages ->
-                packages.map { pkg ->
-                    // Product counts shown in package details screen
-                    // Keeping it simple in list view for performance
-                    PackageWithCount(pkg, 0)
+        combine(
+            packageRepository.getAllPackages(),
+            contractorRepository.getAllContractors()
+        ) { packages, contractors ->
+            packages.map { pkg ->
+                val contractor = pkg.contractorId?.let { contractorId ->
+                    contractors.find { it.id == contractorId }
                 }
+                PackageWithCount(pkg, 0, contractor)
             }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
-                initialValue = emptyList()
-            )
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     val packagesWithCount: StateFlow<List<PackageWithCount>> = combine(
         allPackagesWithCount,
@@ -70,12 +74,13 @@ class PackagesViewModel(
 }
 
 class PackagesViewModelFactory(
-    private val packageRepository: PackageRepository
+    private val packageRepository: PackageRepository,
+    private val contractorRepository: ContractorRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(PackagesViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return PackagesViewModel(packageRepository) as T
+            return PackagesViewModel(packageRepository, contractorRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

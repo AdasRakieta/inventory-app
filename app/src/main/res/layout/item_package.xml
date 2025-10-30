@@ -83,6 +83,20 @@
                 android:paddingVertical="4dp"
                 android:layout_marginEnd="8dp" />
 
+            <!-- Contractor Badge -->
+            <TextView
+                android:id="@+id/packageContractor"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="No contractor"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:background="@color/surface"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:layout_marginEnd="8dp" />
+
             <!-- Product Count -->
             <TextView
                 android:id="@+id/productCount"

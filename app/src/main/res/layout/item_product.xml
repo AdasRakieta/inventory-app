@@ -59,6 +59,17 @@
                     android:maxLines="1"
                     android:ellipsize="end" />
 
+                <TextView
+                    android:id="@+id/packageInfo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Package: Package Name"
+                    android:textSize="12sp"
+                    android:textColor="@color/accent"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:visibility="gone" />
+
             </LinearLayout>
 
         </LinearLayout>

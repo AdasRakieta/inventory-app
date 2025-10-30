@@ -14,11 +14,8 @@ object CategoryHelper {
     private val categories = listOf(
         Category(1L, "Scanner", "🔍"),
         Category(2L, "Printer", "🖨️"),
-        Category(3L, "Docking Station", "🔌"),
-        Category(4L, "Monitor", "🖥️"),
-        Category(5L, "Laptop", "💻"),
-        Category(6L, "Desktop", "🖳"),
-        Category(7L, "Accessories", "🎧")
+        Category(3L, "Scanner Docking Station", "🔌"),
+        Category(4L, "Printer Docking Station", "🔌")
     )
     
     fun getAllCategories(): List<Category> = categories
