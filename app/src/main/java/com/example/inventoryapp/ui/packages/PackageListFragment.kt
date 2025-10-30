@@ -1,14 +1,11 @@
 package com.example.inventoryapp.ui.packages
 
-import android.app.AlertDialog
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -94,26 +91,9 @@ class PackageListFragment : Fragment() {
     }
 
     private fun showCreatePackageDialog() {
-        val editText = EditText(requireContext()).apply {
-            hint = "Package name"
-            setSingleLine(true)
-        }
-        
-        AlertDialog.Builder(requireContext())
-            .setTitle("Create Package")
-            .setMessage("Enter a name for the new package")
-            .setView(editText)
-            .setPositiveButton("Create") { _, _ ->
-                val name = editText.text.toString().trim()
-                if (name.isNotEmpty()) {
-                    viewModel.createPackage(name)
-                    Toast.makeText(requireContext(), "Package created", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(requireContext(), "Package name cannot be empty", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        findNavController().navigate(
+            PackageListFragmentDirections.actionPackagesToAddPackage()
+        )
     }
 
     private fun observePackages() {

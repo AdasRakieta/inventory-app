@@ -48,12 +48,7 @@
     <fragment
         android:id="@+id/addProductFragment"
         android:name="com.example.inventoryapp.ui.products.AddProductFragment"
-        android:label="@string/product_add">
-        <argument
-            android:name="packageId"
-            android:defaultValue="-1L"
-            app:argType="long" />
-    </fragment>
+        android:label="@string/product_add" />
 
     <fragment
         android:id="@+id/productDetailsFragment"
@@ -71,7 +66,15 @@
         <action
             android:id="@+id/action_packages_to_package_details"
             app:destination="@id/packageDetailsFragment" />
+        <action
+            android:id="@+id/action_packages_to_add_package"
+            app:destination="@id/addPackageFragment" />
     </fragment>
+    
+    <fragment
+        android:id="@+id/addPackageFragment"
+        android:name="com.example.inventoryapp.ui.packages.AddPackageFragment"
+        android:label="Add Package" />
 
     <fragment
         android:id="@+id/packageDetailsFragment"
@@ -84,8 +87,17 @@
             android:id="@+id/action_package_details_to_product_selection"
             app:destination="@id/productSelectionFragment" />
         <action
-            android:id="@+id/actionPackageDetailsFragmentToAddProductFragment"
-            app:destination="@id/addProductFragment" />
+            android:id="@+id/action_package_details_to_add_product_to_package"
+            app:destination="@id/addProductToPackageFragment" />
+    </fragment>
+    
+    <fragment
+        android:id="@+id/addProductToPackageFragment"
+        android:name="com.example.inventoryapp.ui.packages.AddProductToPackageFragment"
+        android:label="Add Product to Package">
+        <argument
+            android:name="packageId"
+            app:argType="long" />
     </fragment>
 
     <fragment
@@ -104,7 +116,15 @@
         <action
             android:id="@+id/action_templates_to_template_details"
             app:destination="@id/templateDetailsFragment" />
+        <action
+            android:id="@+id/action_templates_to_add_template"
+            app:destination="@id/addTemplateFragment" />
     </fragment>
+    
+    <fragment
+        android:id="@+id/addTemplateFragment"
+        android:name="com.example.inventoryapp.ui.templates.AddTemplateFragment"
+        android:label="Add Template" />
 
     <fragment
         android:id="@+id/templateDetailsFragment"
@@ -148,11 +168,23 @@
         <action
             android:id="@+id/action_contractors_to_add_contractor"
             app:destination="@id/addContractorFragment" />
+        <action
+            android:id="@+id/action_contractors_to_edit_contractor"
+            app:destination="@id/editContractorFragment" />
     </fragment>
 
     <fragment
         android:id="@+id/addContractorFragment"
         android:name="com.example.inventoryapp.ui.contractors.AddContractorFragment"
         android:label="Add Contractor" />
+        
+    <fragment
+        android:id="@+id/editContractorFragment"
+        android:name="com.example.inventoryapp.ui.contractors.EditContractorFragment"
+        android:label="Edit Contractor">
+        <argument
+            android:name="contractorId"
+            app:argType="long" />
+    </fragment>
 
 </navigation>

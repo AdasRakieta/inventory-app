@@ -1,4 +1,4 @@
-package com.example.inventoryapp.ui.products
+package com.example.inventoryapp.ui.packages
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -8,20 +8,23 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import com.example.inventoryapp.R
-import com.example.inventoryapp.databinding.FragmentAddProductBinding
+import androidx.navigation.fragment.navArgs
+import com.example.inventoryapp.databinding.FragmentAddProductToPackageBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
-import com.example.inventoryapp.data.repository.ProductRepository
 import com.example.inventoryapp.data.repository.PackageRepository
+import com.example.inventoryapp.data.repository.ProductRepository
 import com.example.inventoryapp.utils.CategoryHelper
+import kotlinx.coroutines.launch
 
-class AddProductFragment : Fragment() {
+class AddProductToPackageFragment : Fragment() {
 
-    private var _binding: FragmentAddProductBinding? = null
+    private var _binding: FragmentAddProductToPackageBinding? = null
     private val binding get() = _binding!!
     
-    private lateinit var viewModel: ProductsViewModel
+    private val args: AddProductToPackageFragmentArgs by navArgs()
+    private lateinit var viewModel: PackageDetailsViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,8 +32,8 @@ class AddProductFragment : Fragment() {
         val database = AppDatabase.getDatabase(requireContext())
         val productRepository = ProductRepository(database.productDao())
         val packageRepository = PackageRepository(database.packageDao(), database.productDao())
-        val factory = ProductsViewModelFactory(productRepository, packageRepository)
-        val vm: ProductsViewModel by viewModels { factory }
+        val factory = PackageDetailsViewModelFactory(args.packageId, packageRepository, productRepository)
+        val vm: PackageDetailsViewModel by viewModels { factory }
         viewModel = vm
     }
 
@@ -39,7 +42,7 @@ class AddProductFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentAddProductBinding.inflate(inflater, container, false)
+        _binding = FragmentAddProductToPackageBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -80,21 +83,16 @@ class AddProductFragment : Fragment() {
     private fun saveProduct() {
         val name = binding.productNameInput.text.toString().trim()
         val serialNumber = binding.serialNumberInput.text.toString().trim()
-        val description = binding.descriptionInput.text.toString().trim().takeIf { it.isNotEmpty() }
         val categoryName = binding.categoryInput.text.toString().trim()
         
         when {
-            name.isEmpty() -> {
-                binding.productNameLayout.error = "Product name is required"
-                return
-            }
             serialNumber.isEmpty() -> {
                 binding.serialNumberLayout.error = "Serial number is required"
                 return
             }
             else -> {
-                binding.productNameLayout.error = null
                 binding.serialNumberLayout.error = null
+                binding.productNameLayout.error = null
                 
                 // Map category name to ID
                 val categoryId = if (categoryName.isNotEmpty()) {
@@ -103,20 +101,25 @@ class AddProductFragment : Fragment() {
                     null
                 }
                 
-                viewModel.addProduct(
-                    name = name,
-                    categoryId = categoryId,
-                    serialNumber = serialNumber,
-                    description = null // TODO: Add description field to ProductEntity
-                )
-                
-                Toast.makeText(
-                    requireContext(),
-                    "Product added successfully!",
-                    Toast.LENGTH_SHORT
-                ).show()
-                
-                findNavController().navigateUp()
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        viewModel.addNewProductToPackage(serialNumber, categoryId, name)
+                        
+                        Toast.makeText(
+                            requireContext(),
+                            "Product added to package successfully!",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        
+                        findNavController().navigateUp()
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            requireContext(),
+                            "Error: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
             }
         }
     }

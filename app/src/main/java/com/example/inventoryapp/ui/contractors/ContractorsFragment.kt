@@ -89,80 +89,15 @@ class ContractorsFragment : Fragment() {
     }
 
     private fun showAddContractorDialog() {
-        val dialogBinding = DialogAddContractorBinding.inflate(layoutInflater)
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("Add Contractor")
-            .setView(dialogBinding.root)
-            .setPositiveButton("Add") { _, _ ->
-                val name = dialogBinding.nameEdit.text.toString().trim()
-                val contactPerson = dialogBinding.contactPersonEdit.text.toString().trim()
-                val email = dialogBinding.emailEdit.text.toString().trim()
-                val phone = dialogBinding.phoneEdit.text.toString().trim()
-                val address = dialogBinding.addressEdit.text.toString().trim()
-                val notes = dialogBinding.notesEdit.text.toString().trim()
-
-                if (name.isEmpty()) {
-                    Toast.makeText(requireContext(), "Contractor name is required", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-
-                viewModel.addContractor(
-                    name = name,
-                    contactPerson = if (contactPerson.isNotEmpty()) contactPerson else null,
-                    email = if (email.isNotEmpty()) email else null,
-                    phone = if (phone.isNotEmpty()) phone else null,
-                    address = if (address.isNotEmpty()) address else null,
-                    notes = if (notes.isNotEmpty()) notes else null
-                )
-
-                Toast.makeText(requireContext(), "Contractor added", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        findNavController().navigate(
+            ContractorsFragmentDirections.actionContractorsToAddContractor()
+        )
     }
 
     private fun showEditContractorDialog(contractor: com.example.inventoryapp.data.local.entities.ContractorEntity) {
-        val dialogBinding = DialogAddContractorBinding.inflate(layoutInflater)
-
-        // Pre-fill fields
-        dialogBinding.nameEdit.setText(contractor.name)
-        dialogBinding.contactPersonEdit.setText(contractor.contactPerson ?: "")
-        dialogBinding.emailEdit.setText(contractor.email ?: "")
-        dialogBinding.phoneEdit.setText(contractor.phone ?: "")
-        dialogBinding.addressEdit.setText(contractor.address ?: "")
-        dialogBinding.notesEdit.setText(contractor.notes ?: "")
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("Edit Contractor")
-            .setView(dialogBinding.root)
-            .setPositiveButton("Update") { _, _ ->
-                val name = dialogBinding.nameEdit.text.toString().trim()
-                val contactPerson = dialogBinding.contactPersonEdit.text.toString().trim()
-                val email = dialogBinding.emailEdit.text.toString().trim()
-                val phone = dialogBinding.phoneEdit.text.toString().trim()
-                val address = dialogBinding.addressEdit.text.toString().trim()
-                val notes = dialogBinding.notesEdit.text.toString().trim()
-
-                if (name.isEmpty()) {
-                    Toast.makeText(requireContext(), "Contractor name is required", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-
-                val updatedContractor = contractor.copy(
-                    name = name,
-                    contactPerson = if (contactPerson.isNotEmpty()) contactPerson else null,
-                    email = if (email.isNotEmpty()) email else null,
-                    phone = if (phone.isNotEmpty()) phone else null,
-                    address = if (address.isNotEmpty()) address else null,
-                    notes = if (notes.isNotEmpty()) notes else null
-                )
-
-                viewModel.updateContractor(updatedContractor)
-                Toast.makeText(requireContext(), "Contractor updated", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        findNavController().navigate(
+            ContractorsFragmentDirections.actionContractorsToEditContractor(contractor.id)
+        )
     }
 
     private fun showDeleteConfirmationDialog(contractor: com.example.inventoryapp.data.local.entities.ContractorEntity) {

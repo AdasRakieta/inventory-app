@@ -8,7 +8,7 @@ class ContractorRepository(private val contractorDao: ContractorDao) {
 
     fun getAllContractors(): Flow<List<ContractorEntity>> = contractorDao.getAllContractors()
 
-    fun getContractorById(contractorId: Long): Flow<ContractorEntity?> = contractorDao.getContractorById(contractorId)
+    suspend fun getContractorById(contractorId: Long): ContractorEntity? = contractorDao.getContractorById(contractorId)
 
     suspend fun insertContractor(contractor: ContractorEntity): Long = contractorDao.insertContractor(contractor)
 

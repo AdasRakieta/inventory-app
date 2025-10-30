@@ -44,4 +44,8 @@ class ContractorsViewModel(private val contractorRepository: ContractorRepositor
             contractorRepository.deleteContractor(contractor)
         }
     }
+    
+    suspend fun getContractorById(id: Long): ContractorEntity? {
+        return contractorRepository.getContractorById(id)
+    }
 }

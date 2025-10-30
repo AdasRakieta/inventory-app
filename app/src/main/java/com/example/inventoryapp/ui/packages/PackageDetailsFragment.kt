@@ -5,9 +5,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
-import android.widget.EditText
-import android.widget.Spinner
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -17,12 +14,9 @@ import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.inventoryapp.databinding.FragmentPackageDetailsBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
-import com.example.inventoryapp.data.local.entities.CategoryEntity
 import com.example.inventoryapp.data.repository.ContractorRepository
 import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductRepository
-import com.example.inventoryapp.R
-import com.example.inventoryapp.utils.CategoryHelper
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -245,11 +239,9 @@ class PackageDetailsFragment : Fragment() {
     }
 
     private fun showAddNewProductDialog() {
-        // Navigate to AddProductFragment with packageId to automatically assign product to this package
-        val action = PackageDetailsFragmentDirections.actionPackageDetailsFragmentToAddProductFragment(
-            packageId = args.packageId
+        findNavController().navigate(
+            PackageDetailsFragmentDirections.actionPackageDetailsToAddProductToPackage(packageId)
         )
-        findNavController().navigate(action)
     }
 
     private fun showChangeStatusDialog() {

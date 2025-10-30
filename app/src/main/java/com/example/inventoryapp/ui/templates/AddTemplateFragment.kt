@@ -1,4 +1,4 @@
-package com.example.inventoryapp.ui.products
+package com.example.inventoryapp.ui.templates
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -9,28 +9,25 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
-import com.example.inventoryapp.R
-import com.example.inventoryapp.databinding.FragmentAddProductBinding
+import com.example.inventoryapp.databinding.FragmentAddTemplateBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
-import com.example.inventoryapp.data.repository.ProductRepository
-import com.example.inventoryapp.data.repository.PackageRepository
+import com.example.inventoryapp.data.repository.TemplateRepository
 import com.example.inventoryapp.utils.CategoryHelper
 
-class AddProductFragment : Fragment() {
+class AddTemplateFragment : Fragment() {
 
-    private var _binding: FragmentAddProductBinding? = null
+    private var _binding: FragmentAddTemplateBinding? = null
     private val binding get() = _binding!!
     
-    private lateinit var viewModel: ProductsViewModel
+    private lateinit var viewModel: TemplatesViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         val database = AppDatabase.getDatabase(requireContext())
-        val productRepository = ProductRepository(database.productDao())
-        val packageRepository = PackageRepository(database.packageDao(), database.productDao())
-        val factory = ProductsViewModelFactory(productRepository, packageRepository)
-        val vm: ProductsViewModel by viewModels { factory }
+        val templateRepository = TemplateRepository(database.templateDao())
+        val factory = TemplatesViewModelFactory(templateRepository)
+        val vm: TemplatesViewModel by viewModels { factory }
         viewModel = vm
     }
 
@@ -39,7 +36,7 @@ class AddProductFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentAddProductBinding.inflate(inflater, container, false)
+        _binding = FragmentAddTemplateBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -51,7 +48,7 @@ class AddProductFragment : Fragment() {
     }
 
     private fun setupCategoryDropdown() {
-        val categories = CategoryHelper.getCategoryNames()
+        val categories = listOf("None") + CategoryHelper.getCategoryNames()
         
         val adapter = ArrayAdapter(
             requireContext(),
@@ -60,16 +57,13 @@ class AddProductFragment : Fragment() {
         )
         
         binding.categoryInput.setAdapter(adapter)
+        // Set default to "None"
+        binding.categoryInput.setText("None", false)
     }
 
     private fun setupClickListeners() {
-        binding.scanSerialButton.setOnClickListener {
-            // TODO: Navigate to scanner with result callback
-            Toast.makeText(requireContext(), "Scanner integration coming soon!", Toast.LENGTH_SHORT).show()
-        }
-        
         binding.saveButton.setOnClickListener {
-            saveProduct()
+            saveTemplate()
         }
         
         binding.cancelButton.setOnClickListener {
@@ -77,42 +71,31 @@ class AddProductFragment : Fragment() {
         }
     }
 
-    private fun saveProduct() {
-        val name = binding.productNameInput.text.toString().trim()
-        val serialNumber = binding.serialNumberInput.text.toString().trim()
+    private fun saveTemplate() {
+        val name = binding.templateNameInput.text.toString().trim()
         val description = binding.descriptionInput.text.toString().trim().takeIf { it.isNotEmpty() }
         val categoryName = binding.categoryInput.text.toString().trim()
         
         when {
             name.isEmpty() -> {
-                binding.productNameLayout.error = "Product name is required"
-                return
-            }
-            serialNumber.isEmpty() -> {
-                binding.serialNumberLayout.error = "Serial number is required"
+                binding.templateNameLayout.error = "Template name is required"
                 return
             }
             else -> {
-                binding.productNameLayout.error = null
-                binding.serialNumberLayout.error = null
+                binding.templateNameLayout.error = null
                 
-                // Map category name to ID
-                val categoryId = if (categoryName.isNotEmpty()) {
+                // Map category name to ID (null if "None")
+                val categoryId = if (categoryName.isNotEmpty() && categoryName != "None") {
                     CategoryHelper.getCategoryIdByName(categoryName)
                 } else {
                     null
                 }
                 
-                viewModel.addProduct(
-                    name = name,
-                    categoryId = categoryId,
-                    serialNumber = serialNumber,
-                    description = null // TODO: Add description field to ProductEntity
-                )
+                viewModel.addTemplate(name, categoryId, description)
                 
                 Toast.makeText(
                     requireContext(),
-                    "Product added successfully!",
+                    "Template added successfully!",
                     Toast.LENGTH_SHORT
                 ).show()
                 

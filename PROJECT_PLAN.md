@@ -1,50 +1,5 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
-## ✅ Reuse Add Product View for Package Product Addition (COMPLETED)
-Version: 1.10.7 (code 35)
-
-**Problem:**
-Duplicate UI for adding products:
-- Separate dialog in PackageDetailsFragment for adding products to packages
-- Full AddProductFragment for adding products to inventory
-- Inconsistent user experience and code duplication
-
-**Changes:**
-- **nav_graph.xml:**
-  - Added optional packageId argument to addProductFragment (default -1L)
-  - Added actionPackageDetailsFragmentToAddProductFragment navigation action
-
-- **AddProductFragment.kt:**
-  - Added navArgs support for packageId parameter
-  - Modified saveProduct() to handle package assignment logic
-  - Added addProductToPackage() method that:
-    - Checks if product with serial number exists
-    - Creates new product or uses existing one
-    - Adds product to specified package using PackageRepository
-    - Shows appropriate success message
-  - Added required imports (lifecycleScope, ProductEntity, launch)
-
-- **PackageDetailsFragment.kt:**
-  - Replaced showAddNewProductDialog() dialog implementation with navigation to AddProductFragment
-  - Passes packageId as argument for automatic package assignment
-  - Removed dialog UI code and category loading logic
-
-**Benefits:**
-- Consistent UI/UX between product addition flows
-- Single source of truth for product addition logic
-- Reduced code duplication
-- Better maintainability
-
-**Tested:**
-- Build: ✅ PASS (assembleDebug successful)
-- Navigation: ✅ Package details can navigate to add product with packageId
-- Product creation: ✅ Normal product addition still works
-- Package assignment: ✅ Products added from package view are automatically assigned
-
-**Next:**
-- Test on device to verify package product addition works correctly
-- Verify both navigation paths work as expected
-
 ## ✅ Category Source Unification (COMPLETED)
 Version: 1.10.6 (code 34)
 
