@@ -3,7 +3,10 @@ package com.example.inventoryapp.utils
 import android.content.Context
 import android.os.Environment
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileWriter
@@ -18,6 +21,9 @@ object AppLogger {
     private const val TAG = "InventoryApp"
     private const val LOG_DIR = "inventory/logs"
     
+    // Coroutine scope for async file logging
+    private val logScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     enum class Level {
         DEBUG, INFO, WARNING, ERROR
     }
@@ -47,7 +53,7 @@ object AppLogger {
     /**
      * Log a message
      */
-    suspend fun log(level: Level, tag: String = TAG, message: String, throwable: Throwable? = null) {
+    fun log(level: Level, tag: String = TAG, message: String, throwable: Throwable? = null) {
         // Log to Logcat
         when (level) {
             Level.DEBUG -> Log.d(tag, message, throwable)
@@ -56,8 +62,8 @@ object AppLogger {
             Level.ERROR -> Log.e(tag, message, throwable)
         }
         
-        // Log to file
-        withContext(Dispatchers.IO) {
+        // Log to file asynchronously
+        logScope.launch {
             try {
                 val logFile = getLogFile()
                 val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(Date())
@@ -83,17 +89,17 @@ object AppLogger {
     /**
      * Convenience methods
      */
-    suspend fun d(tag: String = TAG, message: String) = log(Level.DEBUG, tag, message)
-    suspend fun i(tag: String = TAG, message: String) = log(Level.INFO, tag, message)
-    suspend fun w(tag: String = TAG, message: String, throwable: Throwable? = null) = 
+    fun d(tag: String = TAG, message: String) = log(Level.DEBUG, tag, message)
+    fun i(tag: String = TAG, message: String) = log(Level.INFO, tag, message)
+    fun w(tag: String = TAG, message: String, throwable: Throwable? = null) =
         log(Level.WARNING, tag, message, throwable)
-    suspend fun e(tag: String = TAG, message: String, throwable: Throwable? = null) = 
+    fun e(tag: String = TAG, message: String, throwable: Throwable? = null) =
         log(Level.ERROR, tag, message, throwable)
     
     /**
      * Log action events
      */
-    suspend fun logAction(action: String, details: String = "") {
+    fun logAction(action: String, details: String = "") {
         val message = if (details.isEmpty()) action else "$action: $details"
         log(Level.INFO, "Action", message)
     }
@@ -101,7 +107,7 @@ object AppLogger {
     /**
      * Log errors
      */
-    suspend fun logError(operation: String, error: Throwable) {
+    fun logError(operation: String, error: Throwable) {
         log(Level.ERROR, "Error", "Operation '$operation' failed", error)
     }
     
