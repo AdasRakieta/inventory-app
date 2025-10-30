@@ -452,20 +452,38 @@ class ExportImportFragment : Fragment() {
         val macAddress = binding.printerMacEditText.text.toString().trim()
 
         // Show loading
-        binding.printerStatusText.text = "Connecting to Zebra printer..."
+        binding.printerStatusText.text = "Exporting data and connecting to Zebra printer..."
         binding.printZebraButton.isEnabled = false
 
-        // Print test label using new simplified approach
+        // Export data to JSON and print QR code
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val zplContent = ZplContentGenerator.generateTestLabel()
+                // Export data to temporary JSON file
+                val tempFile = File(requireContext().cacheDir, "zebra_export_temp.json")
+                val exportSuccess = viewModel.exportToJson(tempFile)
+
+                if (!exportSuccess) {
+                    requireActivity().runOnUiThread {
+                        binding.printZebraButton.isEnabled = true
+                        binding.printerStatusText.text = "Export failed"
+                        Toast.makeText(requireContext(), "Failed to export data", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+
+                // Read exported JSON data
+                val jsonData = tempFile.readText()
+                tempFile.delete() // Clean up temp file
+
+                // Generate QR code label with exported data
+                val zplContent = ZplContentGenerator.generateQRCodeLabel(jsonData)
                 val error = zebraPrinterManager.printDocument(macAddress, zplContent)
 
                 requireActivity().runOnUiThread {
                     binding.printZebraButton.isEnabled = true
                     if (error == null) {
-                        binding.printerStatusText.text = "Print successful!"
-                        Toast.makeText(requireContext(), "Print sent to Zebra printer", Toast.LENGTH_SHORT).show()
+                        binding.printerStatusText.text = "QR code printed successfully!"
+                        Toast.makeText(requireContext(), "QR code with inventory data sent to printer", Toast.LENGTH_SHORT).show()
                     } else {
                         binding.printerStatusText.text = "Print failed: $error"
                         Toast.makeText(requireContext(), "Print failed: $error", Toast.LENGTH_SHORT).show()

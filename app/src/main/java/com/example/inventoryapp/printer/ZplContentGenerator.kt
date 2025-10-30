@@ -127,5 +127,86 @@ class ZplContentGenerator {
                 ^XZ
             """.trimIndent()
         }
+
+        /**
+         * Generate ZPL content with QR code for data export/import
+         * Optimized for 48mm thermal paper rolls with sufficient height for QR code
+         * @param qrData Data to encode in QR code (JSON string)
+         * @param title Optional title to display above QR code
+         * @param dpi Printer DPI (default 203)
+         */
+        fun generateQRCodeLabel(
+            qrData: String,
+            title: String = "Inventory Data",
+            dpi: Int = DPI_203
+        ): String {
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+            val formattedDate = dateFormat.format(Date())
+
+            // Label dimensions for 48mm width paper
+            val labelWidth = 384  // 48mm at 203 DPI
+
+            // Calculate available width for QR code (label width - left margin - right margin)
+            val availableWidth = labelWidth - 40  // 20px left + 20px right margin = 344px available
+
+            // Calculate optimal QR magnification based on data size and available space
+            val qrMagnification = calculateOptimalQRMagnification(qrData.length, availableWidth)
+
+            // Calculate actual QR code size based on magnification
+            val qrSize = qrMagnification * 50  // Approximate size per magnification level
+
+            // Align QR code to left with small margin
+            val qrX = 20  // Left-aligned with margin
+
+            // Y positions for dynamic layout with sufficient spacing
+            val titleY = 90
+            val qrY = 120          // After title (50px) + spacing (20px)
+            val dateLabelY = 550  // After QR (270px) + spacing (80px) - increased space
+            val dateValueY = 580  // Below "Generated:" label
+
+            // Calculate total height dynamically - increased for full QR code height
+            val totalHeight = dateValueY + 200  // Date line + bottom margin (430px)
+
+            return """
+                ^XA
+                ^PW$labelWidth
+                ^LL$totalHeight
+                ^FO50,$titleY^A0N,30,30^FD$title^FS
+                ^FO$qrX,$qrY^BQN,2,$qrMagnification^FDMA,$qrData^FS
+                ^FO50,$dateLabelY^A0N,22,22^FDGenerated:^FS
+                ^FO50,$dateValueY^A0N,22,22^FD$formattedDate^FS
+                ^XZ
+            """.trimIndent()
+        }
+
+        /**
+         * Calculate optimal QR code magnification to fit within available width
+         * @param dataLength Length of data to encode
+         * @param availableWidth Available width in dots
+         * @return Optimal magnification level (1-10)
+         */
+        private fun calculateOptimalQRMagnification(dataLength: Int, availableWidth: Int): Int {
+            // Base magnification based on data size
+            // QR codes can hold roughly 100-200 chars per magnification level increase
+            val baseMagnification = when {
+                dataLength <= 100 -> 5    // Small data - larger QR for better readability
+                dataLength <= 500 -> 4    // Medium data
+                dataLength <= 1000 -> 3   // Large data
+                dataLength <= 2000 -> 2   // Very large data
+                else -> 1                 // Extremely large data
+            }
+
+            // Calculate approximate QR size (magnification * ~50 dots)
+            val estimatedQRSize = baseMagnification * 50
+
+            // If QR fits, use base magnification
+            if (estimatedQRSize <= availableWidth) {
+                return baseMagnification
+            }
+
+            // Otherwise, scale down to fit available width
+            val maxMagnification = (availableWidth / 50).coerceAtLeast(1)
+            return maxMagnification.coerceAtMost(baseMagnification)
+        }
     }
 }
