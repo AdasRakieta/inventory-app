@@ -11,7 +11,7 @@ import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.example.inventoryapp.databinding.FragmentAddTemplateBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
-import com.example.inventoryapp.data.repository.TemplateRepository
+import com.example.inventoryapp.data.repository.ProductTemplateRepository
 import com.example.inventoryapp.utils.CategoryHelper
 
 class AddTemplateFragment : Fragment() {
@@ -25,7 +25,7 @@ class AddTemplateFragment : Fragment() {
         super.onCreate(savedInstanceState)
         
         val database = AppDatabase.getDatabase(requireContext())
-        val templateRepository = TemplateRepository(database.templateDao())
+        val templateRepository = ProductTemplateRepository(database.productTemplateDao())
         val factory = TemplatesViewModelFactory(templateRepository)
         val vm: TemplatesViewModel by viewModels { factory }
         viewModel = vm
