@@ -135,9 +135,14 @@ tasks.register("deployDebug") {
     description = "Build, install and launch debug APK on connected device"
     dependsOn("installDebug")
     doLast {
+        val adbPath = getAdbPath()
         exec {
             workingDir = project.rootDir
-            commandLine("cmd", "/c", "C:\\Users\\%USERNAME%\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe", "shell", "am", "start", "-n", "com.inventory.prd/com.example.inventoryapp.ui.main.SplashActivity")
+            if (isWindows()) {
+                commandLine("cmd", "/c", adbPath, "shell", "am", "start", "-n", "com.inventory.prd/com.example.inventoryapp.ui.main.SplashActivity")
+            } else {
+                commandLine(adbPath, "shell", "am", "start", "-n", "com.inventory.prd/com.example.inventoryapp.ui.main.SplashActivity")
+            }
         }
     }
 }
@@ -152,9 +157,32 @@ tasks.register("runOnDevice") {
     group = "custom"
     description = "Launch app on connected device (assumes app is already installed)"
     doLast {
+        val adbPath = getAdbPath()
         exec {
             workingDir = project.rootDir
-            commandLine("cmd", "/c", "C:\\Users\\%USERNAME%\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe", "shell", "am", "start", "-n", "com.inventory.prd/com.example.inventoryapp.ui.main.SplashActivity")
+            if (isWindows()) {
+                commandLine("cmd", "/c", adbPath, "shell", "am", "start", "-n", "com.inventory.prd/com.example.inventoryapp.ui.main.SplashActivity")
+            } else {
+                commandLine(adbPath, "shell", "am", "start", "-n", "com.inventory.prd/com.example.inventoryapp.ui.main.SplashActivity")
+            }
         }
     }
+}
+
+// Helper functions for cross-platform compatibility
+fun isWindows(): Boolean {
+    return System.getProperty("os.name").lowercase().contains("windows")
+}
+
+fun getAdbPath(): String {
+    // Try ANDROID_HOME first (standard), then ANDROID_SDK_ROOT (legacy)
+    val androidHome = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+    
+    if (androidHome != null) {
+        val adbExecutable = if (isWindows()) "adb.exe" else "adb"
+        return "$androidHome/platform-tools/$adbExecutable"
+    }
+    
+    // Fallback: assume adb is in PATH
+    return if (isWindows()) "adb.exe" else "adb"
 }

@@ -1,5 +1,52 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ Cross-Platform Build Configuration (COMPLETED)
+Version: 1.10.6 (code 34) - No version increment (build configuration only)
+
+**Problem:**
+Build configuration was Windows-specific and prevented successful builds on Linux/Mac:
+- gradle.properties had hardcoded Windows Java home path: `org.gradle.java.home=C:\\Tools\\jdk-11.0.28+6`
+- deployDebug task used Windows-specific `cmd /c` command
+- runOnDevice task used Windows-specific `cmd /c` command
+- Both tasks had hardcoded Windows ADB path: `C:\\Users\\%USERNAME%\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe`
+
+**Changes:**
+- **gradle.properties:**
+  - Commented out Windows-specific Java home path
+  - Gradle now auto-detects JDK from JAVA_HOME or PATH
+  - Cross-platform compatible
+
+- **app/build.gradle.kts:**
+  - Added `isWindows()` helper function for OS detection
+  - Added `getAdbPath()` helper function that:
+    - Checks ANDROID_HOME environment variable (standard)
+    - Falls back to ANDROID_SDK_ROOT (legacy)
+    - Selects correct executable (adb.exe on Windows, adb on Linux/Mac)
+    - Falls back to PATH if environment variables not set
+  - Updated `deployDebug` task:
+    - Uses OS detection to choose command syntax
+    - Windows: `cmd /c` + dynamic adb path
+    - Linux/Mac: direct execution + dynamic adb path
+  - Updated `runOnDevice` task:
+    - Same cross-platform logic as deployDebug
+
+**Tested:**
+- Syntax: ✅ PASS (Kotlin syntax validated with kotlinc)
+- OS Detection: ✅ PASS (correctly detects Linux in test environment)
+- ADB Path: ✅ PASS (finds Android SDK from ANDROID_HOME)
+- gradle.properties: ✅ PASS (no hardcoded Windows paths)
+- Cross-platform logic: ✅ PASS (all helper functions work correctly)
+
+**How it works now:**
+- **Windows:** Uses `cmd /c adb.exe` with auto-detected SDK path
+- **Linux/Mac:** Uses direct `adb` execution with auto-detected SDK path
+- **All platforms:** Respects ANDROID_HOME/ANDROID_SDK_ROOT environment variables
+- **Fallback:** Uses adb from PATH if environment variables not set
+
+**Next:**
+- Test actual build with network access to download dependencies
+- Test deployDebug on actual devices (Windows and Linux)
+
 ## ✅ Category Source Unification (COMPLETED)
 Version: 1.10.6 (code 34)
 
