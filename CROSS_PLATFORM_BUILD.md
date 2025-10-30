@@ -25,7 +25,7 @@ Added two helper functions for cross-platform compatibility:
 
 ```kotlin
 fun isWindows(): Boolean {
-    return System.getProperty("os.name").lowercase().contains("windows")
+    return System.getProperty("os.name").toLowerCase().contains("windows")
 }
 
 fun getAdbPath(): String {
@@ -212,7 +212,7 @@ If you have an existing checkout with the old Windows-specific configuration:
 ## Technical Details
 
 ### OS Detection
-Uses `System.getProperty("os.name").lowercase().contains("windows")` to detect Windows. All other platforms (Linux, macOS, etc.) use Unix-style commands.
+Uses `System.getProperty("os.name").toLowerCase().contains("windows")` to detect Windows. All other platforms (Linux, macOS, etc.) use Unix-style commands.
 
 ### ADB Path Resolution Priority
 1. `ANDROID_HOME` environment variable (standard) - validated to exist

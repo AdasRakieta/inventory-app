@@ -173,7 +173,7 @@ tasks.register("runOnDevice") {
 
 // Helper functions for cross-platform compatibility
 fun isWindows(): Boolean {
-    return System.getProperty("os.name").lowercase().contains("windows")
+    return System.getProperty("os.name").toLowerCase().contains("windows")
 }
 
 fun getAdbPath(): String {
