@@ -152,8 +152,8 @@ class ZplContentGenerator {
             // We'll use module size and magnification to achieve this
             // ZPL ^BQ command: ^BQo,m,e where m = magnification (1-10)
             // For 4cm QR at 203 DPI, we need magnification = 8
-            val qrMagnification = 2  // Fixed magnification for 4cm QR code
-            val qrActualSize = 420   // 4cm at 203 DPI = 320 dots
+            val qrMagnification = 3  // Fixed magnification for 4cm QR code
+            val qrActualSize = 320   // 4cm at 203 DPI = 320 dots
 
             // Left-align the QR code with margin
             val qrX = 30  // Left margin
@@ -165,7 +165,7 @@ class ZplContentGenerator {
             val dateValueY = dateLabelY + 50
 
             // Calculate total height dynamically
-            val totalHeight = dateValueY + 500  // Date line + bottom margin
+            val totalHeight = dateValueY + 400  // Date line + bottom margin
 
             return """
                 ^XA

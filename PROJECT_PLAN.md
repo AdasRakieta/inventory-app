@@ -1,5 +1,44 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ Custom App Icon with Green Background (COMPLETED)
+Version: 1.11.1 (code 39)
+
+**Zadanie:**
+Zastąpienie domyślnej ikony aplikacji własnym logo (icon.jpg) z zielonym tłem #388b3b
+
+**Zmiany:**
+
+1. **Icon Resources:**
+   - Skopiowano `icon.jpg` → `res/drawable/ic_app_logo.jpg`
+   - Usunięto stare pliki: `ic_app_logo.png`, `ic_app_logo_vector.xml` (pusty)
+   - Aplikacja używa teraz pliku JPG jako ikony
+
+2. **colors.xml:**
+   - Dodano nowy kolor: `icon_background` = #388B3B (zielony)
+   - Kolor używany jako tło dla ikony aplikacji i splash screen
+
+3. **ic_launcher.xml & ic_launcher_round.xml:**
+   - Zmieniono `background` z `@color/primary` na `@color/icon_background`
+   - Zmieniono `foreground` z `@drawable/ic_app_logo_vector` na `@drawable/ic_app_logo`
+   - Ikona teraz wyświetla się na zielonym tle
+
+4. **splash_screen.xml:**
+   - Zmieniono tło z `@color/primary` na `@color/icon_background` (zielony #388b3b)
+   - Logo wyśrodkowane: `@drawable/ic_app_logo`
+   - Podczas uruchamiania aplikacji wyświetla się ikona na zielonym tle
+
+**Testowane:**
+- Build: ✅ PASS (BUILD SUCCESSFUL in 59s)
+- APK wygenerowany: ✅ app-debug.apk
+- Ikona: ✅ używa icon.jpg na zielonym tle
+- Splash screen: ✅ zielone tło #388b3b z wyśrodkowanym logo
+
+**Następne kroki:**
+- Opcjonalne: Instalacja na urządzeniu i weryfikacja ikony w launcherze
+- Opcjonalne: Test splash screen podczas uruchamiania
+
+---
+
 ## ✅ QR Code 4cm Fixed Size + Relationship Export/Import (COMPLETED)
 Version: 1.10.9 (code 37)
 

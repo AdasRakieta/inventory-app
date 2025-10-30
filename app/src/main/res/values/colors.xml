@@ -50,4 +50,7 @@
     
     <!-- Selection highlight -->
     <color name="selection_highlight">#1F3A5F</color>
+    
+    <!-- App icon background -->
+    <color name="icon_background">#388B3B</color>
 </resources>
