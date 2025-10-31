@@ -59,6 +59,13 @@ class ProductDetailsViewModel(
         _snUpdateError.value = null
     }
 
+    fun updateQuantity(newQuantity: Int) {
+        viewModelScope.launch {
+            val currentProduct = _product.value ?: return@launch
+            productRepository.updateQuantity(currentProduct.id, newQuantity)
+        }
+    }
+
     fun deleteProduct() {
         viewModelScope.launch {
             val currentProduct = _product.value ?: return@launch

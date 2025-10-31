@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.inventoryapp.R
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.databinding.ItemProductSelectableBinding
+import com.example.inventoryapp.utils.CategoryHelper
 
 /**
  * RecyclerView adapter for selectable products with checkboxes
@@ -44,7 +45,12 @@ class SelectableProductsAdapter(
 
         fun bind(product: ProductEntity) {
             binding.productName.text = product.name
-            binding.productSerialNumber.text = "SN: ${product.serialNumber}"
+            binding.productSerialNumber.text = "SN: ${product.serialNumber ?: "N/A"}"
+
+            // Display category
+            val category = CategoryHelper.getCategoryById(product.categoryId)
+            binding.categoryIconText.text = category?.icon ?: "📦"
+            binding.categoryNameText.text = "Category: ${category?.name ?: "Unknown"}"
 
             val isSelected = currentSelectedIds.contains(product.id)
             binding.productCheckbox.isChecked = isSelected

@@ -1,5 +1,6 @@
 package com.example.inventoryapp.ui.boxes
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -14,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.inventoryapp.InventoryApplication
 import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentAddBoxBinding
+import com.example.inventoryapp.utils.CategoryHelper
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
@@ -64,6 +66,11 @@ class AddBoxFragment : Fragment() {
         binding.warehouseLocationInput.doAfterTextChanged { text ->
             viewModel.setWarehouseLocation(text?.toString() ?: "")
         }
+
+        // Search input listener
+        binding.searchInput.doAfterTextChanged { text ->
+            viewModel.setSearchQuery(text?.toString() ?: "")
+        }
     }
 
     private fun setupRecyclerView() {
@@ -86,13 +93,18 @@ class AddBoxFragment : Fragment() {
             viewModel.createBox()
         }
 
+        // Filter button - show category filter dialog
+        binding.filterButton.setOnClickListener {
+            showCategoryFilterDialog()
+        }
+
         // Select All Products button
         binding.selectAllProductsButton.setOnClickListener {
             viewLifecycleOwner.lifecycleScope.launch {
                 val selectedCount = viewModel.selectedProductIds.value.size
-                val totalCount = viewModel.allProducts.value.size
+                val filteredCount = viewModel.filteredProducts.value.size
                 
-                if (selectedCount == totalCount) {
+                if (selectedCount >= filteredCount && filteredCount > 0) {
                     viewModel.deselectAll()
                 } else {
                     viewModel.selectAll()
@@ -101,9 +113,33 @@ class AddBoxFragment : Fragment() {
         }
     }
 
+    private fun showCategoryFilterDialog() {
+        val categories = CategoryHelper.getAllCategories()
+        val categoryNames = mutableListOf("All Categories")
+        categoryNames.addAll(categories.map { it.name })
+
+        val currentCategoryId = viewModel.selectedCategoryId.value
+        val selectedIndex = if (currentCategoryId == null) {
+            0
+        } else {
+            categories.indexOfFirst { it.id == currentCategoryId } + 1
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Filter by Category")
+            .setSingleChoiceItems(categoryNames.toTypedArray(), selectedIndex) { dialog, which ->
+                val categoryId = if (which == 0) null else categories[which - 1].id
+                viewModel.setCategoryFilter(categoryId)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun observeViewModel() {
+        // Observe filtered products instead of allProducts
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.allProducts.collect { products ->
+            viewModel.filteredProducts.collect { products ->
                 adapter.submitList(products)
                 updateEmptyState(products.isEmpty())
             }
@@ -113,7 +149,7 @@ class AddBoxFragment : Fragment() {
             viewModel.selectedProductIds.collect { selectedIds ->
                 adapter.updateSelectedIds(selectedIds)
                 updateSelectedCountText(selectedIds.size)
-                updateSelectAllButtonText(selectedIds.size, adapter.itemCount)
+                updateSelectAllButtonText(selectedIds.size, viewModel.filteredProducts.value.size)
             }
         }
 

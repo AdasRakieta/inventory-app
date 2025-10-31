@@ -164,13 +164,18 @@ class ProductsViewModel(
 
     suspend fun getCategoryStatistics(): List<CategoryStatistic> {
         val counts = productRepository.getCategoryStatistics()
-        return counts.map { categoryCount ->
-            val category = CategoryHelper.getCategoryById(categoryCount.categoryId)
+        val allCategories = CategoryHelper.getAllCategories()
+        
+        // Create map of categoryId -> totalQuantity
+        val countMap = counts.associateBy({ it.categoryId }, { it.totalQuantity })
+        
+        // Return all categories with their counts (0 if not in map)
+        return allCategories.map { category ->
             CategoryStatistic(
-                categoryId = categoryCount.categoryId,
-                categoryName = category?.name ?: "Unknown",
-                categoryIcon = category?.icon ?: "❓",
-                count = categoryCount.totalQuantity
+                categoryId = category.id,
+                categoryName = category.name,
+                categoryIcon = category.icon,
+                count = countMap[category.id] ?: 0
             )
         }
     }

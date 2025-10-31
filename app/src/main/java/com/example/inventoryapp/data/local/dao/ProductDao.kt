@@ -49,13 +49,12 @@ interface ProductDao {
     @Query("""
         SELECT categoryId, SUM(quantity) as totalQuantity
         FROM products
-        WHERE categoryId IS NOT NULL
         GROUP BY categoryId
     """)
     suspend fun getCategoryStatistics(): List<CategoryCount>
 }
 
 data class CategoryCount(
-    val categoryId: Long,
+    val categoryId: Long?,
     val totalQuantity: Int
 )

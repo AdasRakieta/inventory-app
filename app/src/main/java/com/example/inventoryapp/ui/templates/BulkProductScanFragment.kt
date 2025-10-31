@@ -135,6 +135,25 @@ class BulkProductScanFragment : Fragment() {
         binding.cancelButton.setOnClickListener {
             cancelAllProducts()
         }
+        
+        // Quantity controls for "Other" category
+        binding.increaseQuantityButton.setOnClickListener {
+            if (!requiresSerialNumber) {
+                // Add one more item to pending list
+                pendingProducts.add(PendingProduct(serialNumber = null))
+                updateUI()
+                Toast.makeText(requireContext(), "Quantity +1", Toast.LENGTH_SHORT).show()
+            }
+        }
+        
+        binding.decreaseQuantityButton.setOnClickListener {
+            if (!requiresSerialNumber && pendingProducts.isNotEmpty()) {
+                // Remove last item from pending list
+                pendingProducts.removeAt(pendingProducts.size - 1)
+                updateUI()
+                Toast.makeText(requireContext(), "Quantity -1", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
     
     private fun addProductInputField() {
@@ -459,10 +478,18 @@ class BulkProductScanFragment : Fragment() {
             val count = pendingProducts.size
             binding.scanCountText.text = "Products in list: $count"
             
-            // Update input field hint for "Other" category
-            if (!requiresSerialNumber && currentInputField != null) {
-                val inputLayout = currentInputField?.parent?.parent as? TextInputLayout
-                inputLayout?.hint = "Scan/Enter product name (quantity: $count)"
+            // Show/hide quantity controls based on category
+            if (!requiresSerialNumber) {
+                binding.quantityControlsLayout.visibility = View.VISIBLE
+                binding.currentQuantityText.text = count.toString()
+                
+                // Update input field hint for "Other" category
+                if (currentInputField != null) {
+                    val inputLayout = currentInputField?.parent?.parent as? TextInputLayout
+                    inputLayout?.hint = "Scan/Enter product name (quantity: $count)"
+                }
+            } else {
+                binding.quantityControlsLayout.visibility = View.GONE
             }
             
             if (count == 0) {

@@ -110,6 +110,7 @@
     <string name="deselect_all">Deselect All</string>
     <string name="location">Location</string>
     <string name="search">Search</string>
+    <string name="search_by_sn">Search by serial number...</string>
     <string name="description">Description</string>
     
     <!-- Category Statistics -->

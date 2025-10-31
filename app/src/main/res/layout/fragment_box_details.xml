@@ -34,9 +34,9 @@
                         android:id="@+id/boxName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textAppearance="?attr/textAppearanceHeadline5"
+                        android:textSize="24sp"
                         android:textStyle="bold"
-                        android:textColor="?attr/colorOnSurface"
+                        android:textColor="@color/text_primary"
                         tools:text="Box A-123" />
 
                     <TextView
@@ -44,8 +44,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:textAppearance="?attr/textAppearanceBody1"
-                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="16sp"
+                        android:textColor="@color/text_secondary"
                         tools:text="Description of the box" />
 
                     <!-- Location Row -->
@@ -61,15 +61,15 @@
                             android:layout_height="20dp"
                             android:src="@android:drawable/ic_dialog_map"
                             android:contentDescription="@string/location"
-                            app:tint="?attr/colorPrimary" />
+                            app:tint="@color/primary" />
 
                         <TextView
                             android:id="@+id/boxLocation"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
-                            android:textAppearance="?attr/textAppearanceBody1"
-                            android:textColor="?attr/colorPrimary"
+                            android:textSize="16sp"
+                            android:textColor="@color/primary"
                             tools:text="Warehouse A, Shelf 12" />
                     </LinearLayout>
 
@@ -79,7 +79,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:textAppearance="?attr/textAppearanceCaption"
+                        android:textSize="12sp"
                         android:textColor="@color/text_tertiary"
                         tools:text="Created: 2024-01-15 14:30" />
 
@@ -104,7 +104,7 @@
                         android:id="@+id/productsHeader"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textAppearance="?attr/textAppearanceHeadline6"
+                        android:textSize="20sp"
                         android:textStyle="bold"
                         android:layout_marginBottom="12dp"
                         tools:text="Products (5)" />
@@ -122,8 +122,8 @@
                         android:layout_height="100dp"
                         android:gravity="center"
                         android:text="@string/no_products_in_box"
-                        android:textAppearance="?attr/textAppearanceBody1"
-                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="16sp"
+                        android:textColor="@color/text_secondary"
                         android:visibility="gone" />
 
                 </LinearLayout>

@@ -34,7 +34,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/box_information"
-                        android:textAppearance="?attr/textAppearanceHeadline6"
+                        android:textSize="20sp"
                         android:textStyle="bold"
                         android:layout_marginBottom="16dp" />
 
@@ -117,7 +117,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="@string/select_products"
-                            android:textAppearance="?attr/textAppearanceHeadline6"
+                            android:textSize="20sp"
                             android:textStyle="bold" />
 
                         <com.google.android.material.button.MaterialButton
@@ -128,14 +128,47 @@
                             style="@style/Widget.MaterialComponents.Button.TextButton" />
                     </LinearLayout>
 
+                    <!-- Search and Filter Row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="12dp">
+
+                        <!-- Search Input -->
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="8dp"
+                            android:hint="@string/search_by_sn"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/searchInput"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="text"
+                                android:maxLines="1" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- Filter Button -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/filterButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Filter"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                    </LinearLayout>
+
                     <!-- Selected Count -->
                     <TextView
                         android:id="@+id/selectedCountText"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="12dp"
-                        android:textAppearance="?attr/textAppearanceBody2"
-                        android:textColor="?attr/colorPrimary"
+                        android:textSize="14sp"
+                        android:textColor="@color/primary"
                         tools:text="3 products selected" />
 
                     <!-- Products RecyclerView with checkboxes -->
@@ -152,8 +185,8 @@
                         android:layout_height="100dp"
                         android:gravity="center"
                         android:text="@string/no_products_available"
-                        android:textAppearance="?attr/textAppearanceBody1"
-                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="16sp"
+                        android:textColor="@color/text_secondary"
                         android:visibility="gone" />
 
                 </LinearLayout>

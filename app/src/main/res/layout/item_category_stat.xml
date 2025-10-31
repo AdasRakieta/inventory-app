@@ -7,7 +7,7 @@
     app:cardCornerRadius="8dp"
     app:cardElevation="0dp"
     app:strokeWidth="1dp"
-    app:strokeColor="?attr/colorOutline">
+    app:strokeColor="@color/text_tertiary">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -25,7 +25,7 @@
             android:textSize="24sp"
             android:gravity="center"
             android:background="@drawable/circle_background"
-            android:backgroundTint="?attr/colorSurfaceVariant"
+            android:backgroundTint="@color/background_secondary"
             android:layout_marginEnd="16dp"/>
 
         <!-- Category Name -->
@@ -36,7 +36,7 @@
             android:layout_weight="1"
             android:text="Scanner"
             android:textSize="16sp"
-            android:textColor="?attr/colorOnSurface"
+            android:textColor="@color/text_primary"
             android:textStyle="normal"/>
 
         <!-- Count Badge -->
@@ -47,13 +47,13 @@
             android:text="15"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:textColor="?attr/colorPrimary"
+            android:textColor="@color/primary"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
             android:paddingTop="4dp"
             android:paddingBottom="4dp"
             android:background="@drawable/rounded_background"
-            android:backgroundTint="?attr/colorPrimaryContainer"/>
+            android:backgroundTint="@color/primary_light"/>
 
     </LinearLayout>
 

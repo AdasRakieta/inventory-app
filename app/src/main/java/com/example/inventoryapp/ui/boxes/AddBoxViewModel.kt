@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -24,6 +27,37 @@ class AddBoxViewModel(
     // All available products
     private val _allProducts = MutableStateFlow<List<ProductEntity>>(emptyList())
     val allProducts: StateFlow<List<ProductEntity>> = _allProducts.asStateFlow()
+
+    // Search query
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    // Selected category filter (null means all categories)
+    private val _selectedCategoryId = MutableStateFlow<Long?>(null)
+    val selectedCategoryId: StateFlow<Long?> = _selectedCategoryId.asStateFlow()
+
+    // Filtered products based on search and category
+    val filteredProducts: StateFlow<List<ProductEntity>> = combine(
+        _allProducts,
+        _searchQuery,
+        _selectedCategoryId
+    ) { products, query, categoryId ->
+        products.filter { product ->
+            // Filter by search query
+            val matchesSearch = query.isBlank() || 
+                product.serialNumber?.contains(query, ignoreCase = true) == true ||
+                product.name.contains(query, ignoreCase = true)
+            
+            // Filter by category
+            val matchesCategory = categoryId == null || product.categoryId == categoryId
+            
+            matchesSearch && matchesCategory
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     // Selected product IDs
     private val _selectedProductIds = MutableStateFlow<Set<Long>>(emptySet())
@@ -99,6 +133,20 @@ class AddBoxViewModel(
     }
 
     /**
+     * Update search query
+     */
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    /**
+     * Set category filter (null for all categories)
+     */
+    fun setCategoryFilter(categoryId: Long?) {
+        _selectedCategoryId.value = categoryId
+    }
+
+    /**
      * Create box with selected products
      */
     fun createBox() {
@@ -144,17 +192,21 @@ class AddBoxViewModel(
     }
 
     /**
-     * Select all products
+     * Select all products (from filtered list)
      */
     fun selectAll() {
-        _selectedProductIds.value = _allProducts.value.map { it.id }.toSet()
+        val currentIds = _selectedProductIds.value.toMutableSet()
+        currentIds.addAll(filteredProducts.value.map { it.id })
+        _selectedProductIds.value = currentIds
     }
 
     /**
-     * Deselect all products
+     * Deselect all products (from filtered list)
      */
     fun deselectAll() {
-        _selectedProductIds.value = emptySet()
+        val currentIds = _selectedProductIds.value.toMutableSet()
+        currentIds.removeAll(filteredProducts.value.map { it.id }.toSet())
+        _selectedProductIds.value = currentIds
     }
 }
 

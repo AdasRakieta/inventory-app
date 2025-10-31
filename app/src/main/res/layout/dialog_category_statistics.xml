@@ -20,7 +20,7 @@
             android:text="@string/category_statistics"
             android:textSize="24sp"
             android:textStyle="bold"
-            android:textColor="?attr/colorOnSurface"
+            android:textColor="@color/text_primary"
             android:layout_marginBottom="8dp"/>
 
         <TextView
@@ -28,7 +28,7 @@
             android:layout_height="wrap_content"
             android:text="@string/category_statistics_subtitle"
             android:textSize="14sp"
-            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textColor="@color/text_secondary"
             android:layout_marginBottom="24dp"/>
 
         <!-- Statistics RecyclerView -->
@@ -43,7 +43,7 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="?attr/colorOutline"
+            android:background="@color/text_tertiary"
             android:alpha="0.12"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="16dp"/>
@@ -62,7 +62,7 @@
                 android:text="@string/total_products"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="?attr/colorOnSurface"/>
+                android:textColor="@color/text_primary"/>
 
             <TextView
                 android:id="@+id/totalCountText"
@@ -71,16 +71,16 @@
                 android:text="0"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="?attr/colorPrimary"/>
+                android:textColor="@color/primary"/>
         </LinearLayout>
 
         <!-- Close Button -->
-        <com.google.android.material.button.MaterialButton
+        <Button
             android:id="@+id/closeButton"
+            style="@style/Widget.MaterialComponents.Button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/close"
-            app:cornerRadius="8dp"/>
+            android:text="@string/close"/>
 
     </LinearLayout>
 

@@ -280,7 +280,7 @@ class ProductsListFragment : Fragment() {
                 
                 val recyclerView = dialogView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.categoryStatsRecyclerView)
                 val totalCountText = dialogView.findViewById<android.widget.TextView>(R.id.totalCountText)
-                val closeButton = dialogView.findViewById<com.google.android.material.button.MaterialButton>(R.id.closeButton)
+                val closeButton = dialogView.findViewById<android.widget.Button>(R.id.closeButton)
                 
                 val statsAdapter = CategoryStatisticsAdapter()
                 recyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(requireContext())

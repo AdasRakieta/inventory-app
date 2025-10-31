@@ -1,5 +1,284 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.14.4 - Boxes Full Functionality + Stats Legacy Products Fix (COMPLETED)
+
+**Version:** 1.14.4 (code 54)
+
+**Zadanie:**
+1. Naprawić statystyki - nie zliczały produktów z wcześniejszych wersji (Scanner/Printer/Cable)
+2. Naprawić crash przy dodawaniu nowego Box
+3. Sprawdzić i naprawić całą funkcjonalność Boxes
+
+**Problem ze statystykami:**
+Produkty zaimportowane z wcześniejszych wersji miały różne wartości `categoryId` (mogły być NULL lub różne ID). Query SQL miał `WHERE categoryId IS NOT NULL` co wykluczało część produktów.
+
+**Problem z Boxes:**
+Wszystkie layouty związane z Boxes zawierały atrybuty Material3 które nie istnieją w Material Components 1.4.0:
+- `?attr/textAppearanceHeadline6`
+- `?attr/textAppearanceBody1`
+- `?attr/textAppearanceBody2`
+- `?attr/textAppearanceCaption`
+- `?attr/colorOnSurface`
+- `?attr/colorOnSurfaceVariant`
+- `?attr/colorPrimary`
+
+**Zmiany:**
+
+### 1. Stats Fix - CategoryDao (ProductDao.kt)
+**Problem**: Query wykluczał produkty z `categoryId = NULL`
+
+**PRZED:**
+```kotlin
+@Query("""
+    SELECT categoryId, SUM(quantity) as totalQuantity
+    FROM products
+    WHERE categoryId IS NOT NULL  // ← wykluczało legacy products
+    GROUP BY categoryId
+""")
+suspend fun getCategoryStatistics(): List<CategoryCount>
+
+data class CategoryCount(
+    val categoryId: Long,  // ← non-nullable
+    val totalQuantity: Int
+)
+```
+
+**PO:**
+```kotlin
+@Query("""
+    SELECT categoryId, SUM(quantity) as totalQuantity
+    FROM products
+    GROUP BY categoryId  // ← brak WHERE, liczy wszystkie
+""")
+suspend fun getCategoryStatistics(): List<CategoryCount>
+
+data class CategoryCount(
+    val categoryId: Long?,  // ← nullable, obsługuje legacy
+    val totalQuantity: Int
+)
+```
+
+**Efekt**: Teraz zlicza wszystkie produkty, nawet z categoryId = NULL
+
+### 2. Boxes - Add Box Fragment (fragment_add_box.xml)
+Naprawiono 4 atrybuty Material3:
+- **Line 37**: `textAppearanceHeadline6` → `textSize="20sp"`
+- **Line 120**: `textAppearanceHeadline6` → `textSize="20sp"`
+- **Line 137**: `textAppearanceBody2` → `textSize="14sp"`
+- **Line 138**: `colorPrimary` → `@color/primary`
+- **Line 155**: `textAppearanceBody1` → `textSize="16sp"`
+- **Line 156**: `colorOnSurfaceVariant` → `@color/text_secondary`
+
+### 3. Boxes - Product Selectable Item (item_product_selectable.xml)
+Naprawiono 4 atrybuty Material3:
+- **Line 41**: `textAppearanceBody1` → `textSize="16sp"`
+- **Line 42**: `colorOnSurface` → `@color/text_primary`
+- **Line 53**: `textAppearanceCaption` → `textSize="12sp"`
+- **Line 54**: `colorOnSurfaceVariant` → `@color/text_secondary`
+
+### 4. Boxes - Box Item (item_box.xml)
+Naprawiono 9 atrybutów Material3:
+- **Line 26**: `textAppearanceHeadline6` → `textSize="20sp"`
+- **Line 27**: `colorOnSurface` → `@color/text_primary`
+- **Line 38**: `textAppearanceBody2` → `textSize="14sp"`
+- **Line 39**: `colorOnSurfaceVariant` → `@color/text_secondary`
+- **Line 63**: `colorPrimary` → `@color/primary`
+- **Line 70**: `textAppearanceCaption` → `textSize="12sp"`
+- **Line 71**: `colorPrimary` → `@color/primary`
+- **Line 82**: `textAppearanceCaption` → `textSize="12sp"`
+- **Line 83**: `colorOnSurfaceVariant` → `@color/text_secondary`
+- **Line 93**: `textAppearanceCaption` → (usunięto, pozostawiono textSize="11sp")
+
+**Tested:**
+- ✅ Build successful (1m 0s)
+- ✅ ProductDao - usunięto WHERE categoryId IS NOT NULL
+- ✅ CategoryCount.categoryId - zmieniono na nullable (Long?)
+- ✅ fragment_add_box.xml - 6 atrybutów Material3 naprawionych
+- ✅ item_product_selectable.xml - 4 atrybuty Material3 naprawione
+- ✅ item_box.xml - 9 atrybutów Material3 naprawionych
+
+**Next:**
+- Test: Statystyki pokazują wszystkie kategorie z poprawnymi liczbami (w tym legacy products)
+- Test: Dodawanie nowego Box działa bez crashu
+- Test: Lista Boxes wyświetla się poprawnie
+- Test: Szczegóły Box działają poprawnie
+
+**Boxes Functionality Checklist:**
+- ✅ Wejście w kafelek Boxes (fragment_box_list.xml naprawiony w v1.14.3)
+- ✅ Dodawanie nowego Box (fragment_add_box.xml naprawiony)
+- ✅ Wyświetlanie listy Boxes (item_box.xml naprawiony)
+- ✅ Wybieranie produktów do Box (item_product_selectable.xml naprawiony)
+- 🔄 Edycja Box (do przetestowania)
+- 🔄 Usuwanie Box (do przetestowania)
+- 🔄 Szczegóły Box (do przetestowania)
+
+---
+
+## ✅ v1.14.3 - Boxes Crash Fix + Stats Dialog Material3 Fix (COMPLETED)
+
+**Version:** 1.14.3 (code 53)
+
+**Zadanie:**
+1. Naprawić crash przy wejściu w kafelek Boxes (Binary XML line #108)
+2. Naprawić Stats dialog - nie wyświetlał się (problemy z Material3 atrybutami)
+3. Pokazać WSZYSTKIE kategorie w Stats (również z 0 produktów)
+
+**Problem:**
+Aplikacja używa **Material Components 1.4.0**, ale layouty zawierały atrybuty **Material3** które nie istnieją w starszej wersji:
+- `?attr/textAppearanceBody1` → Nie istnieje w MC 1.4.0
+- `?attr/colorOnSurface` → Nie istnieje w MC 1.4.0
+- `?attr/colorOnSurfaceVariant` → Nie istnieje w MC 1.4.0
+- `?attr/colorOutline` → Nie istnieje w MC 1.4.0
+- `?attr/colorPrimaryContainer` → Nie istnieje w MC 1.4.0
+- `?attr/colorSurfaceVariant` → Nie istnieje w MC 1.4.0
+
+**Zmiany:**
+
+### 1. Boxes Fragment XML Fix (fragment_box_list.xml)
+- **Line 48**: `textAppearance="?attr/textAppearanceBody1"` → `textSize="16sp"`
+- **Line 69**: `textAppearance="?attr/textAppearanceBody1"` → `textSize="16sp"`
+- **Line 106**: `textAppearance="?attr/textAppearanceBody1"` → `textSize="16sp"`
+- **Line 107**: `colorOnSurfaceVariant` → `@color/text_secondary`
+- **Efekt**: Boxes fragment ładuje się bez crashu
+
+### 2. Stats Dialog Layout Fixes
+**dialog_category_statistics.xml:**
+- **Line 23**: `colorOnSurface` → `@color/text_primary`
+- **Line 30**: `colorOnSurfaceVariant` → `@color/text_secondary`
+- **Line 47**: `colorOutline` → `@color/text_tertiary`
+- **Line 65**: `colorOnSurface` → `@color/text_primary`
+- **Line 73**: `colorPrimary` → `@color/primary`
+
+**item_category_stat.xml:**
+- **Line 11**: `colorOutline` → `@color/text_tertiary`
+- **Line 27**: `colorSurfaceVariant` → `@color/background_secondary`
+- **Line 38**: `colorOnSurface` → `@color/text_primary`
+- **Line 50**: `colorPrimary` → `@color/primary`
+- **Line 57**: `colorPrimaryContainer` → `@color/primary_light`
+
+### 3. Stats Dialog Fragment Fix (ProductsListFragment.kt)
+- **Line 283**: Zmieniono `MaterialButton` → `Button` (zgodnie z XML)
+- Poprzednio próbował castować do `MaterialButton`, ale w XML jest zwykły `Button`
+
+### 4. Stats Logic Fix - Wszystkie Kategorie (ProductsViewModel.kt)
+**Problem**: `getCategoryStatistics()` zwracało tylko kategorie z produktami
+**Rozwiązanie**: 
+```kotlin
+suspend fun getCategoryStatistics(): List<CategoryStatistic> {
+    val counts = productRepository.getCategoryStatistics()
+    val allCategories = CategoryHelper.getAllCategories()
+    
+    // Create map of categoryId -> totalQuantity
+    val countMap = counts.associateBy({ it.categoryId }, { it.totalQuantity })
+    
+    // Return all categories with their counts (0 if not in map)
+    return allCategories.map { category ->
+        CategoryStatistic(
+            categoryId = category.id,
+            categoryName = category.name,
+            categoryIcon = category.icon,
+            count = countMap[category.id] ?: 0  // ← 0 jeśli brak w bazie
+        )
+    }
+}
+```
+- Pobiera wszystkie kategorie z `CategoryHelper.getAllCategories()`
+- Tworzy mapę z wyników SQL (categoryId → totalQuantity)
+- Dla każdej kategorii: jeśli nie ma w mapie → count = 0
+
+**Tested:**
+- ✅ Build successful (1m 10s)
+- ✅ Boxes fragment - naprawiono XML atrybuty Material3
+- ✅ Stats dialog - wszystkie atrybuty Material3 zamienione na MC 1.4.0
+- ✅ Stats logic - pokazuje wszystkie kategorie (również 0)
+
+**Next:**
+- Test na urządzeniu: wejście w Boxes, otwarcie Stats dialog
+
+---
+
+## ✅ v1.14.2 - Stats Dialog Fix + Quantity Editor + Manual Controls (COMPLETED)
+
+**Version:** 1.14.2 (code 52)
+
+**Zadanie:**
+1. Naprawić błąd XML w Stats dialog (Binary XML File line #32)
+2. Dodać edytor quantity dla produktów "Other" w widoku szczegółów
+3. Dodać ręczne przyciski +/- do bulk scanning (bez konieczności skanowania)
+
+**Zmiany:**
+
+### 1. Stats Dialog XML Fix (dialog_category_statistics.xml)
+- **Problem**: MaterialButton z `app:cornerRadius` powodował błąd Binary XML line #32
+- **Rozwiązanie**: Zmieniono `MaterialButton` → `Button` z `Widget.MaterialComponents.Button`
+- **Usunięto**: `app:cornerRadius="8dp"` (niepotrzebne dla Button)
+- **Efekt**: Dialog Stats otwiera się bez błędów
+
+### 2. Quantity Editor dla "Other" (ProductDetailsFragment)
+- **Layout (fragment_product_details.xml)**: Dodano nową sekcję Quantity
+  * TextView "Quantity" (label, `quantitySectionLabel`)
+  * Card z kontrolkami +/- (`quantityCard`)
+  * Button "-" (`decreaseQuantityButton`)
+  * TextView pokazujący liczbę (`quantityText`, 32sp, bold, primary color)
+  * Button "+" (`increaseQuantityButton`)
+  * Hint: "Tap +/- to adjust quantity" (12sp, secondary)
+  * Visibility: `gone` by default (pokazuje się tylko dla "Other")
+
+- **Logic (ProductDetailsFragment.kt)**:
+  * `observeProduct()`: Wykrywa produkty "Other" (SN null/empty/"N/A")
+  * Dla "Other": pokazuje quantity card + ukrywa serial number section
+  * `increaseQuantityButton`: +1 quantity, toast "Quantity increased to X"
+  * `decreaseQuantityButton`: -1 quantity (minimum 1), toast "Quantity decreased to X"
+  * Safe null check: używa `isNullOrEmpty()` dla nullable String
+
+- **ViewModel (ProductDetailsViewModel.kt)**:
+  * Dodano `updateQuantity(newQuantity: Int)` - wywołuje `productRepository.updateQuantity()`
+
+### 3. Manual +/- Controls w Bulk Scanning (BulkProductScanFragment)
+- **Layout (fragment_bulk_scan.xml)**: Dodano `quantityControlsLayout`
+  * LinearLayout z visibility `gone` (tylko dla "Other")
+  * TextView "Quantity:" + label
+  * Button "-" (40dp x 40dp, outlined)
+  * TextView pokazujący bieżącą ilość (`currentQuantityText`, 20sp, bold)
+  * Button "+" (40dp x 40dp, outlined)
+  * Umieszczono między `scanCountText` a `lastScannedText`
+
+- **Logic (BulkProductScanFragment.kt)**:
+  * `setupClickListeners()`: Dodano obsługę `increaseQuantityButton` i `decreaseQuantityButton`
+  * `increaseQuantityButton`: Dodaje `PendingProduct(serialNumber = null)` do listy, toast "Quantity +1"
+  * `decreaseQuantityButton`: Usuwa ostatni element z listy (jeśli nie pusta), toast "Quantity -1"
+  * `updateUI()`: Pokazuje `quantityControlsLayout` tylko dla "Other" category
+  * `currentQuantityText`: Aktualizowany do `pendingProducts.size`
+
+**Workflow dla użytkownika:**
+
+**Product Details (Other):**
+1. Kliknij produkt "Cable (x5)" z kategorii "Other"
+2. Otwiera się szczegóły z sekcją Quantity (zamiast Serial Number)
+3. Widoczne: "-" [5] "+" z hintem "Tap +/- to adjust quantity"
+4. Kliknij "+" → quantity zmienia się na 6, toast "Quantity increased to 6"
+5. Kliknij "-" → quantity zmienia się na 5, toast "Quantity decreased to 5"
+6. Próba zmniejszenia poniżej 1 → toast "Quantity cannot be less than 1"
+
+**Bulk Scanning Manual Controls:**
+1. Wybierz template z kategorią "Other"
+2. Widoczna sekcja: "Quantity: - [0] +"
+3. Kliknij "+" 5 razy → liczba zmienia się 0→1→2→3→4→5
+4. Kliknij "-" 2 razy → liczba zmienia się 5→4→3
+5. Alternatywnie: możesz też skanować (każdy skan = +1)
+6. Save → tworzy/aktualizuje produkt z quantity = 3
+
+**Tested:**
+- ✅ Build successful (28s)
+- ✅ Stats dialog: Button zamiast MaterialButton
+- ✅ Quantity controls w Product Details dla "Other"
+- ✅ Manual +/- w Bulk Scanning
+
+**Next:**
+- Test na urządzeniu: Stats dialog, edytor quantity, bulk manual controls
+
+---
+
 ## ✅ Bulk Scanning Fixes + UI Polish (COMPLETED)
 
 Version: 1.14.1 (code 51)

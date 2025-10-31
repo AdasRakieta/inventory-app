@@ -70,8 +70,23 @@ class ProductDetailsFragment : Fragment() {
                     // Update serial number section (always present now)
                     binding.serialNumberAssignedLayout.visibility = View.VISIBLE
                     binding.serialNumberNotAssignedLayout.visibility = View.GONE
-                    binding.serialNumberText.text = it.serialNumber
+                    binding.serialNumberText.text = it.serialNumber ?: "N/A"
                     binding.editSerialButton.text = "Edit"
+                    
+                    // Show quantity section only for "Other" category (SN is empty or default)
+                    val isOtherCategory = it.serialNumber.isNullOrEmpty() || it.serialNumber == "N/A"
+                    if (isOtherCategory) {
+                        binding.quantitySectionLabel.visibility = View.VISIBLE
+                        binding.quantityCard.visibility = View.VISIBLE
+                        binding.quantityText.text = it.quantity.toString()
+                        
+                        // Hide serial number section for Other
+                        binding.serialNumberAssignedLayout.visibility = View.GONE
+                        binding.serialNumberNotAssignedLayout.visibility = View.GONE
+                    } else {
+                        binding.quantitySectionLabel.visibility = View.GONE
+                        binding.quantityCard.visibility = View.GONE
+                    }
                     
                     // Update timestamps
                     val dateFormat = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault())
@@ -111,6 +126,25 @@ class ProductDetailsFragment : Fragment() {
         
         binding.deleteProductButton.setOnClickListener {
             showDeleteConfirmationDialog()
+        }
+        
+        // Quantity controls
+        binding.increaseQuantityButton.setOnClickListener {
+            val currentProduct = viewModel.product.value ?: return@setOnClickListener
+            val newQuantity = currentProduct.quantity + 1
+            viewModel.updateQuantity(newQuantity)
+            Toast.makeText(requireContext(), "Quantity increased to $newQuantity", Toast.LENGTH_SHORT).show()
+        }
+        
+        binding.decreaseQuantityButton.setOnClickListener {
+            val currentProduct = viewModel.product.value ?: return@setOnClickListener
+            if (currentProduct.quantity > 1) {
+                val newQuantity = currentProduct.quantity - 1
+                viewModel.updateQuantity(newQuantity)
+                Toast.makeText(requireContext(), "Quantity decreased to $newQuantity", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "Quantity cannot be less than 1", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
