@@ -803,7 +803,7 @@ class ExportImportFragment : Fragment() {
                 
                 AppLogger.d("QRPrint", "Data size: ${jsonContent.length} chars")
                 
-                // Try to generate single QR code first
+                // Try to generate single QR code (QRCodeGenerator handles compression internally)
                 val qrBitmap = QRCodeGenerator.generateQRCode(jsonContent, 384, 384)
                 
                 if (qrBitmap != null) {

@@ -76,7 +76,9 @@ class BoxDetailsFragment : Fragment() {
     }
 
     private fun setupClickListeners() {
+        android.util.Log.d("BoxDetails", "Setting up click listeners")
         binding.printLabelFab.setOnClickListener {
+            android.util.Log.d("BoxDetails", "Print button clicked")
             printBoxLabel()
         }
         
@@ -139,8 +141,10 @@ class BoxDetailsFragment : Fragment() {
     }
 
     private fun printBoxLabel() {
+        android.util.Log.d("BoxDetails", "printBoxLabel() called")
         // Show printer selection dialog
         PrinterSelectionHelper.getDefaultOrSelectPrinter(this) { selectedPrinter ->
+            android.util.Log.d("BoxDetails", "Printer selected: ${selectedPrinter.name}")
             printBoxLabelWithPrinter(selectedPrinter)
         }
     }
