@@ -29,6 +29,9 @@
         <action
             android:id="@+id/action_home_to_boxes"
             app:destination="@id/boxListFragment" />
+        <action
+            android:id="@+id/action_home_to_printer_settings"
+            app:destination="@id/printerSettingsFragment" />
     </fragment>
 
     <fragment
@@ -195,6 +198,23 @@
         <argument
             android:name="boxId"
             app:argType="long" />
+        <action
+            android:id="@+id/action_boxDetails_to_editBox"
+            app:destination="@id/editBoxFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/editBoxFragment"
+        android:name="com.example.inventoryapp.ui.boxes.EditBoxFragment"
+        android:label="Edit Box">
+        <argument
+            android:name="boxId"
+            app:argType="long" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/printerSettingsFragment"
+        android:name="com.example.inventoryapp.ui.settings.PrinterSettingsFragment"
+        android:label="Printer Settings" />
 
 </navigation>

@@ -69,6 +69,11 @@ class HomeFragment : Fragment() {
             findNavController().navigate(R.id.action_home_to_export_import)
         }
 
+        // Printer Settings card - navigate to printer configuration
+        binding.printerSettingsCard.setOnClickListener {
+            findNavController().navigate(R.id.action_home_to_printer_settings)
+        }
+
         // Contractors card - navigate to contractors list
         binding.contractorsCard.setOnClickListener {
             findNavController().navigate(R.id.action_home_to_contractors)

@@ -1,5 +1,7 @@
 package com.example.inventoryapp.ui.boxes
 
+import android.content.Context
+import android.graphics.Bitmap
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -8,13 +10,18 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.inventoryapp.InventoryApplication
 import com.example.inventoryapp.R
+import com.example.inventoryapp.data.local.entities.PrinterEntity
 import com.example.inventoryapp.databinding.FragmentBoxDetailsBinding
 import com.example.inventoryapp.ui.products.ProductsAdapter
-import com.example.inventoryapp.utils.ZPLPrinterHelper
+import com.example.inventoryapp.utils.BluetoothPrinterHelper
+import com.example.inventoryapp.utils.PrinterSelectionHelper
+import com.example.inventoryapp.utils.QRCodeGenerator
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -72,6 +79,10 @@ class BoxDetailsFragment : Fragment() {
         binding.printLabelFab.setOnClickListener {
             printBoxLabel()
         }
+        
+        binding.editBoxButton.setOnClickListener {
+            editBox()
+        }
     }
 
     private fun observeViewModel() {
@@ -128,6 +139,13 @@ class BoxDetailsFragment : Fragment() {
     }
 
     private fun printBoxLabel() {
+        // Show printer selection dialog
+        PrinterSelectionHelper.getDefaultOrSelectPrinter(this) { selectedPrinter ->
+            printBoxLabelWithPrinter(selectedPrinter)
+        }
+    }
+
+    private fun printBoxLabelWithPrinter(printer: PrinterEntity) {
         viewLifecycleOwner.lifecycleScope.launch {
             val box = viewModel.box.value
             val products = viewModel.productsInBox.value
@@ -138,80 +156,73 @@ class BoxDetailsFragment : Fragment() {
             }
 
             try {
-                // Generate ZPL for ZD421 (104mm x 156mm)
-                val zplContent = generateZD421Label(box, products)
+                // Generate QR code bitmap for the box
+                val qrContent = "BOX_${box.id}"
+                val qrBitmap = QRCodeGenerator.generateQRCode(qrContent, 200, 200)
+                
+                if (qrBitmap == null) {
+                    Toast.makeText(requireContext(), "Failed to generate QR code", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
 
-                // TODO: Implement actual printer integration when printer is available
-                // For now, show the ZPL content in a Toast (or log it)
-                Toast.makeText(
-                    requireContext(),
-                    "Label ready to print (${zplContent.length} chars). Connect printer to print.",
-                    Toast.LENGTH_LONG
-                ).show()
+                // Prepare header and footer with product serial numbers
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                
+                val header = buildString {
+                    append("Box: ${box.name}\n")
+                    if (!box.description.isNullOrBlank()) {
+                        append("Description: ${box.description}\n")
+                    }
+                    append("Created: ${dateFormat.format(box.createdAt)}\n")
+                    append("Label: ${printer.labelWidthMm}×${printer.labelHeightMm}mm")
+                }
+                
+                val footer = buildString {
+                    append("Products:\n")
+                    if (products.isEmpty()) {
+                        append("(empty)")
+                    } else {
+                        // Group serial numbers in pairs per line
+                        products.chunked(2).forEach { pair ->
+                            append(pair.joinToString(", ") { it.serialNumber ?: "N/A" })
+                            append("\n")
+                        }
+                    }
+                }
 
-                // Future implementation with ZebraPrinterHelper:
-                // val printerHelper = ZebraPrinterHelper()
-                // printerHelper.printDocument(macAddress, zplContent) { error ->
-                //     if (error == null) {
-                //         Toast.makeText(requireContext(), "Label sent to printer", Toast.LENGTH_SHORT).show()
-                //     } else {
-                //         Toast.makeText(requireContext(), "Print error: $error", Toast.LENGTH_SHORT).show()
-                //     }
-                // }
+                // Connect and print
+                val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), printer.macAddress)
+                if (socket != null) {
+                    val success = BluetoothPrinterHelper.printQRCode(socket, qrBitmap, header, footer)
+                    socket.close()
+                    
+                    if (success) {
+                        Toast.makeText(
+                            requireContext(), 
+                            "✅ Label printed on ${printer.name}", 
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        Toast.makeText(requireContext(), "❌ Failed to print label", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(
+                        requireContext(),
+                        "❌ Failed to connect to ${printer.name}\nMAC: ${printer.macAddress}\n\nCheck:\n1. Printer is ON\n2. Bluetooth enabled\n3. In range",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             } catch (e: Exception) {
                 Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun generateZD421Label(
-        box: com.example.inventoryapp.data.local.entities.BoxEntity,
-        products: List<com.example.inventoryapp.data.local.entities.ProductEntity>
-    ): String {
-        // ZD421 label: 104mm x 156mm (4.09" x 6.14") at 203 DPI
-        // = 832 dots x 1248 dots
-        val labelWidth = 832
-        val labelHeight = 1248
-
-        val zpl = StringBuilder()
-        zpl.append("^XA") // Start of label
-        zpl.append("^CI28") // UTF-8 encoding
-        zpl.append("^PW$labelWidth") // Print width
-
-        // Box Name (large, bold)
-        zpl.append("^FO50,50^A0N,60,60^FD${box.name}^FS")
-
-        // Location
-        box.warehouseLocation?.let { location ->
-            zpl.append("^FO50,130^A0N,40,40^FDLocation: $location^FS")
-        }
-
-        // Product count
-        zpl.append("^FO50,190^A0N,35,35^FDProducts: ${products.size}^FS")
-
-        // QR Code with box ID
-        zpl.append("^FO600,50^BQN,2,8^FDQA,BOX_${box.id}^FS")
-
-        // List of product serial numbers (max 20 for space)
-        var yPosition = 250
-        val maxProducts = 20
-        products.take(maxProducts).forEach { product ->
-            zpl.append("^FO50,$yPosition^A0N,28,28^FD${product.serialNumber}^FS")
-            yPosition += 35
-        }
-
-        if (products.size > maxProducts) {
-            zpl.append("^FO50,$yPosition^A0N,28,28^FD... and ${products.size - maxProducts} more^FS")
-        }
-
-        // Footer with creation date
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-        val createdDate = dateFormat.format(box.createdAt)
-        zpl.append("^FO50,${labelHeight - 80}^A0N,25,25^FDCreated: $createdDate^FS")
-
-        zpl.append("^XZ") // End of label
-
-        return zpl.toString()
+    private fun editBox() {
+        val box = viewModel.box.value ?: return
+        
+        val action = BoxDetailsFragmentDirections.actionBoxDetailsToEditBox(box.id)
+        findNavController().navigate(action)
     }
 
     override fun onDestroyView() {

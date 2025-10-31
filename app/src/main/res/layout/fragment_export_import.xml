@@ -136,11 +136,64 @@
                     tools:visibility="visible"
                     tools:src="@android:drawable/ic_menu_gallery" />
 
+                <!-- Multi-QR Navigation Controls -->
+                <LinearLayout
+                    android:id="@+id/multiQrNavigationLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:visibility="gone">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/previousQrButton"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:text="◀ Previous"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/qrCounterText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="8dp"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:text="1/3"
+                        tools:text="1/3" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/nextQrButton"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:text="Next ▶"
+                        android:textSize="14sp" />
+
+                </LinearLayout>
+
+                <!-- Print All Multi-QR Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/printAllQrButton"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Print All QR Codes"
+                    android:visibility="gone"
+                    app:icon="@android:drawable/ic_menu_send" />
+
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Bluetooth Printer Section -->
+        <!-- Printer Section -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -157,137 +210,26 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Zebra Printer Connection"
+                    android:text="Print QR Code"
                     android:textStyle="bold"
                     android:textSize="16sp"
                     android:layout_marginBottom="12dp" />
 
-                <RadioGroup
-                    android:id="@+id/connectionTypeRadioGroup"
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="12dp">
-
-                    <RadioButton
-                        android:id="@+id/bluetoothRadioButton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Bluetooth"
-                        android:checked="true" />
-
-                    <RadioButton
-                        android:id="@+id/wifiRadioButton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="WiFi" />
-
-                </RadioGroup>
-
-                <!-- Bluetooth Section -->
-                <LinearLayout
-                    android:id="@+id/bluetoothSection"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Printer MAC Address (AA:BB:CC:DD:EE:FF)"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/printerMacEditText"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="text"
-                            android:maxLines="1"
-                            android:text="" />
-
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                </LinearLayout>
-
-                <!-- WiFi Section -->
-                <LinearLayout
-                    android:id="@+id/wifiSection"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Printer IP Address (192.168.1.100)"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/printerIpEditText"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="text"
-                            android:maxLines="1"
-                            android:text="" />
-
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:hint="Port (default: 9100)"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/printerPortEditText"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="number"
-                            android:maxLines="1"
-                            android:text="9100" />
-
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                </LinearLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/scanPrintersButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="Scan for Devices"
-                    app:icon="@android:drawable/ic_menu_search" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/selectDeviceButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Select Device"
-                    app:icon="@android:drawable/ic_menu_manage" />
+                    android:text="Select a printer to print the export QR code"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginBottom="16dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/printQrCodeButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    style="@style/Widget.MaterialComponents.Button"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
                     android:text="Print QR Code"
-                    app:icon="@android:drawable/ic_menu_send" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/printZebraButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Print on Zebra Printer"
+                    android:textSize="16sp"
                     app:icon="@android:drawable/ic_menu_send" />
 
                 <TextView
@@ -297,7 +239,7 @@
                     android:layout_marginTop="8dp"
                     android:textSize="12sp"
                     android:textColor="@color/text_secondary"
-                    android:text="No printer connected"
+                    android:text=""
                     android:gravity="center" />
 
             </LinearLayout>

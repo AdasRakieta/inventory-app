@@ -30,8 +30,10 @@ import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductTemplateRepository
 import com.example.inventoryapp.data.local.entity.ImportPreview
 import com.example.inventoryapp.data.local.entity.ImportPreviewFilter
+import com.example.inventoryapp.data.local.entities.PrinterEntity
 import com.example.inventoryapp.utils.QRCodeGenerator
 import com.example.inventoryapp.utils.BluetoothPrinterHelper
+import com.example.inventoryapp.utils.PrinterSelectionHelper
 import com.example.inventoryapp.utils.AppLogger
 import com.example.inventoryapp.utils.FileHelper
 import com.example.inventoryapp.printer.ZebraPrinterManager
@@ -61,6 +63,10 @@ class ExportImportFragment : Fragment() {
     private lateinit var productRepository: ProductRepository
     private lateinit var packageRepository: PackageRepository
     private lateinit var templateRepository: ProductTemplateRepository
+    
+    // Multi-QR state
+    private var currentMultiQrBitmaps: List<Bitmap> = emptyList()
+    private var currentMultiQrIndex: Int = 0
     
     companion object {
         private const val PREFS_NAME = "printer_preferences"
@@ -116,7 +122,8 @@ class ExportImportFragment : Fragment() {
 
         if (allGranted) {
             android.util.Log.d("ExportImport", "Bluetooth permissions granted, proceeding with print")
-            proceedWithZebraPrinting()
+            // OLD: proceedWithZebraPrinting()
+            Toast.makeText(requireContext(), "Old printer method removed - use printer selection", Toast.LENGTH_SHORT).show()
         } else {
             val deniedPermissions = permissions.filter { !it.value }.keys
             Toast.makeText(
@@ -164,20 +171,6 @@ class ExportImportFragment : Fragment() {
     }
 
     private fun setupButtons() {
-        // Setup connection type radio group
-        binding.connectionTypeRadioGroup.setOnCheckedChangeListener { _, checkedId ->
-            when (checkedId) {
-                R.id.bluetoothRadioButton -> {
-                    binding.bluetoothSection.visibility = View.VISIBLE
-                    binding.wifiSection.visibility = View.GONE
-                }
-                R.id.wifiRadioButton -> {
-                    binding.bluetoothSection.visibility = View.GONE
-                    binding.wifiSection.visibility = View.VISIBLE
-                }
-            }
-        }
-
         binding.exportButton.setOnClickListener {
             showExportOptions()
         }
@@ -199,19 +192,19 @@ class ExportImportFragment : Fragment() {
         }
 
         binding.printQrCodeButton.setOnClickListener {
-            printQRCodeToEnteredMac()
+            printQRCodeWithPrinterSelection()
         }
-
-        binding.scanPrintersButton.setOnClickListener {
-            startDeviceDiscovery()
+        
+        binding.previousQrButton.setOnClickListener {
+            navigateMultiQr(-1)
         }
-
-        binding.printZebraButton.setOnClickListener {
-            printOnZebraPrinter()
+        
+        binding.nextQrButton.setOnClickListener {
+            navigateMultiQr(1)
         }
-
-        binding.selectDeviceButton.setOnClickListener {
-            startDeviceDiscovery()
+        
+        binding.printAllQrButton.setOnClickListener {
+            showPrintAllMultiQrDialog()
         }
     }
 
@@ -363,6 +356,10 @@ class ExportImportFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 AppLogger.logAction("QR Code Share Initiated")
+                
+                // Clear previous multi-QR state
+                clearMultiQrState()
+                
                 val file = File(requireContext().cacheDir, getExportFileName("json"))
                 val success = viewModel.exportToJson(file)
                 
@@ -421,20 +418,23 @@ class ExportImportFragment : Fragment() {
                 if (qrBitmaps.isNotEmpty()) {
                     AppLogger.logAction("Generated ${qrBitmaps.size} multi-part QR codes")
                     
+                    // Store multi-QR state
+                    currentMultiQrBitmaps = qrBitmaps
+                    currentMultiQrIndex = 0
+                    
                     // Show first QR
-                    binding.qrCodeImage.setImageBitmap(qrBitmaps[0])
-                    binding.qrCodeImage.visibility = View.VISIBLE
+                    displayMultiQr(0)
+                    
+                    // Show navigation controls
+                    binding.multiQrNavigationLayout.visibility = View.VISIBLE
+                    binding.printAllQrButton.visibility = View.VISIBLE
+                    updateMultiQrNavigation()
                     
                     Toast.makeText(
                         requireContext(), 
-                        "Generated ${qrBitmaps.size} QR codes. Showing part 1/${qrBitmaps.size}\n\nPrint all codes for complete import.",
+                        "Generated ${qrBitmaps.size} QR codes. Use arrows to navigate.",
                         Toast.LENGTH_LONG
                     ).show()
-                    
-                    // Option to print all parts
-                    if (qrBitmaps.size > 1) {
-                        showPrintAllPartsOption(qrBitmaps)
-                    }
                 } else {
                     Toast.makeText(requireContext(), "Failed to generate QR codes. Use file export.", Toast.LENGTH_LONG).show()
                 }
@@ -445,47 +445,91 @@ class ExportImportFragment : Fragment() {
         }
     }
     
-    private fun showPrintAllPartsOption(qrBitmaps: List<Bitmap>) {
+    private fun displayMultiQr(index: Int) {
+        if (index in currentMultiQrBitmaps.indices) {
+            binding.qrCodeImage.setImageBitmap(currentMultiQrBitmaps[index])
+            binding.qrCodeImage.visibility = View.VISIBLE
+            currentMultiQrIndex = index
+            updateMultiQrNavigation()
+        }
+    }
+    
+    private fun navigateMultiQr(direction: Int) {
+        val newIndex = currentMultiQrIndex + direction
+        if (newIndex in currentMultiQrBitmaps.indices) {
+            displayMultiQr(newIndex)
+        }
+    }
+    
+    private fun updateMultiQrNavigation() {
+        if (currentMultiQrBitmaps.isEmpty()) return
+        
+        binding.qrCounterText.text = "${currentMultiQrIndex + 1}/${currentMultiQrBitmaps.size}"
+        binding.previousQrButton.isEnabled = currentMultiQrIndex > 0
+        binding.nextQrButton.isEnabled = currentMultiQrIndex < currentMultiQrBitmaps.size - 1
+    }
+    
+    private fun showPrintAllMultiQrDialog() {
+        if (currentMultiQrBitmaps.isEmpty()) return
+        
         AlertDialog.Builder(requireContext())
-            .setTitle("Print All Parts?")
-            .setMessage("Print all ${qrBitmaps.size} QR code parts to Zebra printer?")
+            .setTitle("Print All QR Codes?")
+            .setMessage("This will print all ${currentMultiQrBitmaps.size} QR code parts.\n\n" +
+                    "Make sure printer is ready and has enough labels.\n\n" +
+                    "Continue?")
             .setPositiveButton("Print All") { _, _ ->
-                printMultiPartQRCodes(qrBitmaps)
+                printMultiPartQRCodesWithPrinterSelection(currentMultiQrBitmaps)
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
     
-    private fun printMultiPartQRCodes(qrBitmaps: List<Bitmap>) {
+    private fun showPrintAllPartsOption(@Suppress("UNUSED_PARAMETER") qrBitmaps: List<Bitmap>) {
+        // REMOVED - now using showPrintAllMultiQrDialog
+    }
+    
+    private fun printMultiPartQRCodesWithPrinterSelection(qrBitmaps: List<Bitmap>) {
+        PrinterSelectionHelper.getDefaultOrSelectPrinter(this) { selectedPrinter ->
+            printMultiPartQRCodes(qrBitmaps, selectedPrinter)
+        }
+    }
+    
+    private fun printMultiPartQRCodes(qrBitmaps: List<Bitmap>, printer: PrinterEntity) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val savedMac = getSavedPrinterMacAddress()
-                if (savedMac == null) {
-                    Toast.makeText(requireContext(), "No printer configured. Please configure printer first.", Toast.LENGTH_LONG).show()
-                    return@launch
-                }
+                binding.printerStatusText.text = "Connecting to ${printer.name}..."
                 
-                val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), savedMac)
+                val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), printer.macAddress)
                 if (socket != null) {
                     var successCount = 0
                     qrBitmaps.forEachIndexed { index, bitmap ->
+                        binding.printerStatusText.text = "Printing ${index + 1}/${qrBitmaps.size}..."
+                        
                         val header = "Database Export - Part ${index + 1}/${qrBitmaps.size}"
                         val footer = "Scan all parts in order"
                         val success = BluetoothPrinterHelper.printQRCode(socket, bitmap, header, footer)
                         if (success) successCount++
+                        
+                        // Small delay between prints
+                        if (index < qrBitmaps.size - 1) {
+                            kotlinx.coroutines.delay(500)
+                        }
                     }
                     socket.close()
                     
+                    binding.printerStatusText.text = "✅ Printed $successCount/${qrBitmaps.size} QR codes"
                     Toast.makeText(
                         requireContext(), 
-                        "✅ Printed $successCount/${qrBitmaps.size} QR codes",
+                        "✅ Successfully printed $successCount/${qrBitmaps.size} QR codes to ${printer.name}",
                         Toast.LENGTH_LONG
                     ).show()
                 } else {
+                    binding.printerStatusText.text = "❌ Failed to connect to ${printer.name}"
                     Toast.makeText(requireContext(), "❌ Failed to connect to printer", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
                 AppLogger.logError("Multi-Part Print", e)
+                binding.printerStatusText.text = "❌ Print error"
                 Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
@@ -503,42 +547,6 @@ class ExportImportFragment : Fragment() {
             .apply()
     }
     
-    private fun getSavedPrinterMacAddress(): String? {
-        return requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY_PRINTER_MAC, null)
-    }
-    
-    private fun printDirectlyToSavedPrinter(qrBitmap: Bitmap, header: String?, footer: String?) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val savedMac = getSavedPrinterMacAddress()
-                if (savedMac == null) {
-                    Toast.makeText(requireContext(), "No printer configured. Please scan printer QR first.", Toast.LENGTH_LONG).show()
-                    return@launch
-                }
-                
-                android.util.Log.d("ExportImport", "Printing to saved MAC: $savedMac")
-                
-                // Connect directly to saved MAC address
-                val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), savedMac)
-                if (socket != null) {
-                    val success = BluetoothPrinterHelper.printQRCode(socket, qrBitmap, header, footer)
-                    if (success) {
-                        Toast.makeText(requireContext(), "✅ Print sent to $savedMac", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(requireContext(), "❌ Print failed - check printer", Toast.LENGTH_SHORT).show()
-                    }
-                    socket.close()
-                } else {
-                    Toast.makeText(requireContext(), "❌ Failed to connect to printer\nMAC: $savedMac\n\nCheck:\n1. Printer is ON\n2. Bluetooth enabled\n3. In range", Toast.LENGTH_LONG).show()
-                }
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_LONG).show()
-                android.util.Log.e("ExportImport", "Print error", e)
-            }
-        }
-    }
-
     
     private fun requestBluetoothPermissionsAndPrint() {
         android.util.Log.d("ExportImport", "Device SDK: ${Build.VERSION.SDK_INT}, Android 12+ check: ${Build.VERSION.SDK_INT >= 31}")
@@ -586,7 +594,8 @@ class ExportImportFragment : Fragment() {
             android.util.Log.d("ExportImport", "Bluetooth permissions auto-granted for Android < 12")
         }
 
-        proceedWithZebraPrinting()
+        // OLD: proceedWithZebraPrinting()
+        Toast.makeText(requireContext(), "Old printer method removed - use printer selection", Toast.LENGTH_SHORT).show()
     }
     
     private fun showPermissionSettingsDialog() {
@@ -607,6 +616,7 @@ class ExportImportFragment : Fragment() {
             .show()
     }
     
+    /* OLD PRINTER CODE - COMMENTED OUT
     private fun proceedWithZebraPrinting() {
         val macAddress = binding.printerMacEditText.text.toString().trim()
 
@@ -668,8 +678,9 @@ class ExportImportFragment : Fragment() {
             }
         }
     }
+    END OLD PRINTER CODE */
 
-    
+    /* OLD PRINTER CODE - COMMENTED OUT  
     private fun proceedWithPrinting() {
         val macAddress = binding.printerMacEditText.text.toString().trim()
         
@@ -763,7 +774,129 @@ class ExportImportFragment : Fragment() {
             }
         }
     }
+    END OLD PRINTER CODE */
     
+    private fun printQRCodeWithPrinterSelection() {
+        PrinterSelectionHelper.getDefaultOrSelectPrinter(this) { selectedPrinter ->
+            printQRCodeWithPrinter(selectedPrinter)
+        }
+    }
+    
+    private fun printQRCodeWithPrinter(printer: PrinterEntity) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                binding.printerStatusText.text = "Generating QR code..."
+                
+                // Generate QR with full database export
+                val products = productRepository.getAllProducts().first()
+                val packages = packageRepository.getAllPackages().first()
+                val templates = templateRepository.getAllTemplates().first()
+                
+                val exportData = ExportData(
+                    products = products,
+                    packages = packages,
+                    templates = templates
+                )
+                
+                val gson = GsonBuilder().create()
+                val jsonContent = gson.toJson(exportData)
+                
+                AppLogger.d("QRPrint", "Data size: ${jsonContent.length} chars")
+                
+                // Try to generate single QR code first
+                val qrBitmap = QRCodeGenerator.generateQRCode(jsonContent, 384, 384)
+                
+                if (qrBitmap != null) {
+                    // Single QR succeeded - print it
+                    binding.printerStatusText.text = "Connecting to ${printer.name}..."
+                    
+                    val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), printer.macAddress)
+                    if (socket != null) {
+                        binding.printerStatusText.text = "Printing..."
+                        
+                        val header = "INVENTORY DATABASE"
+                        val footer = "${products.size}P ${packages.size}Pk ${templates.size}T"
+                        val success = BluetoothPrinterHelper.printQRCode(socket, qrBitmap, header, footer)
+                        
+                        socket.close()
+                        
+                        if (success) {
+                            binding.printerStatusText.text = "✅ Printed successfully"
+                            Toast.makeText(requireContext(), "✅ Print sent to ${printer.name}", Toast.LENGTH_SHORT).show()
+                        } else {
+                            binding.printerStatusText.text = "❌ Print failed"
+                            Toast.makeText(requireContext(), "❌ Print failed - check printer", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        binding.printerStatusText.text = "❌ Connection failed"
+                        Toast.makeText(requireContext(), "❌ Failed to connect to ${printer.name}", Toast.LENGTH_LONG).show()
+                    }
+                    qrBitmap.recycle()
+                } else {
+                    // Single QR failed - offer multi-part
+                    binding.printerStatusText.text = "Database too large for single QR"
+                    showMultiPartPrintDialog(jsonContent, printer)
+                }
+            } catch (e: Exception) {
+                binding.printerStatusText.text = "❌ Error: ${e.message}"
+                Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
+                AppLogger.e("QRPrint", "Print error", e)
+            }
+        }
+    }
+    
+    private fun showMultiPartPrintDialog(jsonContent: String, printer: PrinterEntity) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Large Database Detected")
+            .setMessage("Database is too large for a single QR code.\n\n" +
+                    "Would you like to print multiple QR codes?\n\n" +
+                    "This will generate and print all parts automatically.")
+            .setPositiveButton("Print Multi-Part") { _, _ ->
+                printMultiPartDatabase(jsonContent, printer)
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                binding.printerStatusText.text = ""
+            }
+            .show()
+    }
+    
+    private fun printMultiPartDatabase(jsonContent: String, printer: PrinterEntity) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                binding.printerStatusText.text = "Generating multi-part QR codes..."
+                
+                val qrBitmaps = QRCodeGenerator.generateMultiPartQRCodes(jsonContent, 384, 384)
+                
+                if (qrBitmaps.isNotEmpty()) {
+                    AppLogger.d("QRPrint", "Generated ${qrBitmaps.size} QR codes")
+                    
+                    // Confirm before printing all
+                    requireActivity().runOnUiThread {
+                        AlertDialog.Builder(requireContext())
+                            .setTitle("Ready to Print")
+                            .setMessage("Generated ${qrBitmaps.size} QR codes.\n\n" +
+                                    "Print all codes to ${printer.name}?")
+                            .setPositiveButton("Print All") { _, _ ->
+                                printMultiPartQRCodes(qrBitmaps, printer)
+                            }
+                            .setNegativeButton("Cancel") { _, _ ->
+                                binding.printerStatusText.text = ""
+                            }
+                            .show()
+                    }
+                } else {
+                    binding.printerStatusText.text = "❌ Failed to generate QR codes"
+                    Toast.makeText(requireContext(), "Failed to generate QR codes", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                binding.printerStatusText.text = "❌ Error: ${e.message}"
+                Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                AppLogger.e("QRPrint", "Multi-part generation error", e)
+            }
+        }
+    }
+    
+    /* OLD PRINTER CODE - COMMENTED OUT
     private fun printQRCodeToEnteredMac() {
         // Check and request Bluetooth permissions (Android 12+ only)
         requestBluetoothPermissionsAndPrint()
@@ -910,6 +1043,7 @@ class ExportImportFragment : Fragment() {
             Toast.makeText(requireContext(), "WiFi printing not supported in this version", Toast.LENGTH_SHORT).show()
         }
     }
+    END OLD PRINTER CODE */
 
 
 
@@ -1068,9 +1202,21 @@ class ExportImportFragment : Fragment() {
             }
         }
     }
+    
+    private fun clearMultiQrState() {
+        // Recycle old bitmaps to free memory
+        currentMultiQrBitmaps.forEach { it.recycle() }
+        currentMultiQrBitmaps = emptyList()
+        currentMultiQrIndex = 0
+        
+        // Hide navigation controls
+        binding.multiQrNavigationLayout.visibility = View.GONE
+        binding.printAllQrButton.visibility = View.GONE
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        clearMultiQrState()
         connectedPrinter?.let { BluetoothPrinterHelper.disconnect(it) }
         _binding = null
     }
