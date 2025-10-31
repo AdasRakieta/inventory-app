@@ -28,6 +28,8 @@ import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.ProductRepository
 import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductTemplateRepository
+import com.example.inventoryapp.data.local.entity.ImportPreview
+import com.example.inventoryapp.data.local.entity.ImportPreviewFilter
 import com.example.inventoryapp.utils.QRCodeGenerator
 import com.example.inventoryapp.utils.BluetoothPrinterHelper
 import com.example.inventoryapp.utils.AppLogger
@@ -98,8 +100,8 @@ class ExportImportFragment : Fragment() {
                             input.copyTo(output)
                         }
                     }
-                    viewModel.importFromJson(file)
-                    file.delete()
+                    // Show preview dialog before importing
+                    showImportPreviewDialog(file)
                 }
             }
         }
@@ -148,6 +150,7 @@ class ExportImportFragment : Fragment() {
         productRepository = ProductRepository(database.productDao())
         packageRepository = PackageRepository(database.packageDao(), database.productDao())
         templateRepository = ProductTemplateRepository(database.productTemplateDao())
+        val backupRepository = com.example.inventoryapp.data.repository.ImportBackupRepository(database.importBackupDao())
         
         // Initialize Zebra printer manager
         zebraPrinterManager = ZebraPrinterManager(requireContext())
@@ -155,7 +158,8 @@ class ExportImportFragment : Fragment() {
         viewModel = ExportImportViewModel(
             productRepository,
             packageRepository,
-            templateRepository
+            templateRepository,
+            backupRepository
         )
     }
 
@@ -180,6 +184,10 @@ class ExportImportFragment : Fragment() {
 
         binding.importButton.setOnClickListener {
             importData()
+        }
+
+        binding.undoImportButton.setOnClickListener {
+            showUndoConfirmationDialog()
         }
 
         binding.shareQrButton.setOnClickListener {
@@ -211,6 +219,14 @@ class ExportImportFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.status.collect { status ->
                 binding.statusText.text = status
+            }
+        }
+        
+        // Observe backup availability to enable/disable Undo button
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.hasRecentBackup.collect { hasBackup ->
+                binding.undoImportButton.isEnabled = hasBackup
+                binding.undoImportButton.alpha = if (hasBackup) 1.0f else 0.5f
             }
         }
     }
@@ -290,6 +306,57 @@ class ExportImportFragment : Fragment() {
             type = "application/json"
         }
         openFileLauncher.launch(intent)
+    }
+
+    private fun showUndoConfirmationDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.undo_last_import)
+            .setMessage(R.string.confirm_undo_import)
+            .setIcon(android.R.drawable.ic_dialog_alert)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                performUndoImport()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun performUndoImport() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                AppLogger.logAction("Undo Import", "Started")
+                
+                Toast.makeText(
+                    requireContext(),
+                    "Restoring from backup...",
+                    Toast.LENGTH_SHORT
+                ).show()
+                
+                val success = viewModel.undoLastImport()
+                
+                if (success) {
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.undo_import_success,
+                        Toast.LENGTH_LONG
+                    ).show()
+                    AppLogger.logAction("Undo Import", "Success")
+                } else {
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.undo_import_failed,
+                        Toast.LENGTH_LONG
+                    ).show()
+                    AppLogger.logAction("Undo Import", "Failed")
+                }
+            } catch (e: Exception) {
+                Toast.makeText(
+                    requireContext(),
+                    "${getString(R.string.undo_import_failed)}: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+                AppLogger.logError("Undo Import", e)
+            }
+        }
     }
 
     private fun shareViaQR() {
@@ -854,6 +921,152 @@ class ExportImportFragment : Fragment() {
     private fun getExportFileName(extension: String): String {
         val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
         return "inventory_export_${dateFormat.format(Date())}.$extension"
+    }
+
+    /**
+     * Show import preview dialog with filtering
+     */
+    private fun showImportPreviewDialog(importFile: File) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val preview = viewModel.generateImportPreview(importFile)
+            
+            if (preview == null) {
+                Toast.makeText(requireContext(), "Failed to generate preview", Toast.LENGTH_SHORT).show()
+                importFile.delete()
+                return@launch
+            }
+            
+            if (preview.isEmpty()) {
+                Toast.makeText(requireContext(), "No new data to import", Toast.LENGTH_SHORT).show()
+                importFile.delete()
+                return@launch
+            }
+            
+            // Create dialog
+            val dialogView = layoutInflater.inflate(R.layout.dialog_import_preview, null)
+            val dialog = AlertDialog.Builder(requireContext())
+                .setView(dialogView)
+                .setCancelable(false)
+                .create()
+            
+            // Setup dialog components
+            setupPreviewDialog(dialogView, preview, importFile, dialog)
+            
+            dialog.show()
+        }
+    }
+    
+    /**
+     * Setup preview dialog with filtering and adapter
+     */
+    private fun setupPreviewDialog(
+        dialogView: View,
+        preview: ImportPreview,
+        importFile: File,
+        dialog: AlertDialog
+    ) {
+        val subtitle: android.widget.TextView = dialogView.findViewById(R.id.dialogSubtitle)
+        val recyclerView: androidx.recyclerview.widget.RecyclerView = dialogView.findViewById(R.id.previewRecyclerView)
+        val emptyState: android.widget.TextView = dialogView.findViewById(R.id.emptyStateText)
+        val btnCancel: com.google.android.material.button.MaterialButton = dialogView.findViewById(R.id.btnCancel)
+        val btnConfirm: com.google.android.material.button.MaterialButton = dialogView.findViewById(R.id.btnConfirmImport)
+        
+        // Chips for filtering
+        val chipAll: com.google.android.material.chip.Chip = dialogView.findViewById(R.id.chipAll)
+        val chipNewProducts: com.google.android.material.chip.Chip = dialogView.findViewById(R.id.chipNewProducts)
+        val chipUpdateProducts: com.google.android.material.chip.Chip = dialogView.findViewById(R.id.chipUpdateProducts)
+        val chipNewPackages: com.google.android.material.chip.Chip = dialogView.findViewById(R.id.chipNewPackages)
+        val chipUpdatePackages: com.google.android.material.chip.Chip = dialogView.findViewById(R.id.chipUpdatePackages)
+        val chipNewTemplates: com.google.android.material.chip.Chip = dialogView.findViewById(R.id.chipNewTemplates)
+        
+        // Set subtitle
+        subtitle.text = getString(
+            R.string.import_preview_subtitle,
+            preview.totalNewItems,
+            preview.totalUpdateItems
+        )
+        
+        // Update chip labels with counts
+        chipAll.text = getString(R.string.filter_all, preview.totalItems)
+        chipNewProducts.text = getString(R.string.filter_new_products, preview.newProducts.size)
+        chipUpdateProducts.text = getString(R.string.filter_update_products, preview.updateProducts.size)
+        chipNewPackages.text = getString(R.string.filter_new_packages, preview.newPackages.size)
+        chipUpdatePackages.text = getString(R.string.filter_update_packages, preview.updatePackages.size)
+        chipNewTemplates.text = getString(R.string.filter_new_templates, preview.newTemplates.size)
+        
+        // Hide chips with 0 count
+        chipNewProducts.visibility = if (preview.newProducts.isEmpty()) View.GONE else View.VISIBLE
+        chipUpdateProducts.visibility = if (preview.updateProducts.isEmpty()) View.GONE else View.VISIBLE
+        chipNewPackages.visibility = if (preview.newPackages.isEmpty()) View.GONE else View.VISIBLE
+        chipUpdatePackages.visibility = if (preview.updatePackages.isEmpty()) View.GONE else View.VISIBLE
+        chipNewTemplates.visibility = if (preview.newTemplates.isEmpty()) View.GONE else View.VISIBLE
+        
+        // Setup adapter
+        val adapter = ImportPreviewAdapter()
+        recyclerView.adapter = adapter
+        
+        // Function to update displayed items based on filter
+        fun updateDisplayedItems(filter: ImportPreviewFilter) {
+            val items = when (filter) {
+                is ImportPreviewFilter.All -> {
+                    preview.newProducts.map { ImportPreviewItem.ProductItem(it, true) } +
+                    preview.updateProducts.map { ImportPreviewItem.ProductItem(it, false) } +
+                    preview.newPackages.map { ImportPreviewItem.PackageItem(it, true) } +
+                    preview.updatePackages.map { ImportPreviewItem.PackageItem(it, false) } +
+                    preview.newTemplates.map { ImportPreviewItem.TemplateItem(it, true) }
+                }
+                is ImportPreviewFilter.NewProducts -> {
+                    preview.newProducts.map { ImportPreviewItem.ProductItem(it, true) }
+                }
+                is ImportPreviewFilter.UpdateProducts -> {
+                    preview.updateProducts.map { ImportPreviewItem.ProductItem(it, false) }
+                }
+                is ImportPreviewFilter.NewPackages -> {
+                    preview.newPackages.map { ImportPreviewItem.PackageItem(it, true) }
+                }
+                is ImportPreviewFilter.UpdatePackages -> {
+                    preview.updatePackages.map { ImportPreviewItem.PackageItem(it, false) }
+                }
+                is ImportPreviewFilter.NewTemplates -> {
+                    preview.newTemplates.map { ImportPreviewItem.TemplateItem(it, true) }
+                }
+            }
+            
+            adapter.submitList(items)
+            recyclerView.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
+            emptyState.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+        }
+        
+        // Initial display - show all
+        updateDisplayedItems(ImportPreviewFilter.All)
+        
+        // Setup chip listeners
+        chipAll.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.All) }
+        chipNewProducts.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.NewProducts) }
+        chipUpdateProducts.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.UpdateProducts) }
+        chipNewPackages.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.NewPackages) }
+        chipUpdatePackages.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.UpdatePackages) }
+        chipNewTemplates.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.NewTemplates) }
+        
+        // Cancel button
+        btnCancel.setOnClickListener {
+            importFile.delete()
+            dialog.dismiss()
+        }
+        
+        // Confirm import button
+        btnConfirm.setOnClickListener {
+            dialog.dismiss()
+            viewLifecycleOwner.lifecycleScope.launch {
+                val success = viewModel.importFromJson(importFile)
+                importFile.delete()
+                if (success) {
+                    Toast.makeText(requireContext(), "Import successful", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(requireContext(), "Import failed", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     override fun onDestroyView() {

@@ -51,6 +51,16 @@ class ProductsAdapter(
 
     fun getSelectedCount(): Int = selectedProducts.size
 
+    fun selectAll(products: List<ProductWithPackage>) {
+        products.forEach { selectedProducts.add(it.productEntity.id) }
+        notifyDataSetChanged()
+    }
+
+    fun deselectAll() {
+        selectedProducts.clear()
+        notifyDataSetChanged()
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductViewHolder {
         val binding = ItemProductBinding.inflate(
             LayoutInflater.from(parent.context),
@@ -81,7 +91,13 @@ class ProductsAdapter(
             val product = productWithPackage.productEntity
             val pkg = productWithPackage.packageEntity
             
-            binding.productName.text = product.name
+            // Display product name with quantity if > 1
+            binding.productName.text = if (product.quantity > 1) {
+                "${product.name} (x${product.quantity})"
+            } else {
+                product.name
+            }
+            
             binding.productCategory.text = CategoryHelper.getCategoryName(product.categoryId)
             binding.categoryIcon.text = CategoryHelper.getCategoryIcon(product.categoryId)
             
@@ -102,6 +118,11 @@ class ProductsAdapter(
                 binding.serialNumberContainer.visibility = View.GONE
                 binding.noSerialNumber.visibility = View.VISIBLE
             }
+
+            // Display created date
+            val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+            val createdDate = dateFormat.format(java.util.Date(product.createdAt))
+            binding.productCreatedDate.text = "Created: $createdDate"
 
             // Selection mode styling
             if (isInSelectionMode()) {

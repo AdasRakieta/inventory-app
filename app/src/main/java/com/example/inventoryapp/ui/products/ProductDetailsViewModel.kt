@@ -19,6 +19,9 @@ class ProductDetailsViewModel(
     private val _product = MutableStateFlow<ProductEntity?>(null)
     val product: StateFlow<ProductEntity?> = _product.asStateFlow()
 
+    private val _snUpdateError = MutableStateFlow<String?>(null)
+    val snUpdateError: StateFlow<String?> = _snUpdateError.asStateFlow()
+
     init {
         loadProduct()
     }
@@ -34,12 +37,26 @@ class ProductDetailsViewModel(
     fun updateSerialNumber(serialNumber: String) {
         viewModelScope.launch {
             val currentProduct = _product.value ?: return@launch
+            
+            // Check if SN already exists (and it's not our own product)
+            val existingProduct = productRepository.getProductBySerialNumber(serialNumber)
+            if (existingProduct != null && existingProduct.id != currentProduct.id) {
+                _snUpdateError.value = "This Serial Number is already in use"
+                return@launch
+            }
+            
+            // Clear error and update
+            _snUpdateError.value = null
             val updatedProduct = currentProduct.copy(
                 serialNumber = serialNumber,
                 updatedAt = System.currentTimeMillis()
             )
             productRepository.updateProduct(updatedProduct)
         }
+    }
+
+    fun clearSnError() {
+        _snUpdateError.value = null
     }
 
     fun deleteProduct() {

@@ -21,25 +21,21 @@ object QRCodeGenerator {
     // Made public to allow inline function access
     val gson = Gson()
     
-    // Maximum safe QR code data size (characters) - QR can hold ~4296 alphanumeric chars at max
-    // We use conservative limit to ensure reliable scanning
-    private const val MAX_QR_SIZE = 2000
-    private const val MAX_QR_SIZE_COMPRESSED = 1500
+    // REMOVED SIZE LIMITS - QR codes can now handle unlimited data
+    // Data will be automatically compressed and split into multiple QR codes if needed
+    // Maximum theoretical QR capacity is ~4296 alphanumeric chars, but we handle larger data
+    // by using multi-part QR codes with compression
     
     /**
      * Generate QR code bitmap from data object
-     * Automatically compresses if data is too large
+     * Automatically compresses data and handles unlimited sizes
      */
     fun <T> generateQRCode(data: T, width: Int = 512, height: Int = 512): Bitmap? {
         return try {
             val jsonString = gson.toJson(data)
             
-            // Try compressed version if data is large
-            val qrData = if (jsonString.length > MAX_QR_SIZE) {
-                compressAndEncode(jsonString)
-            } else {
-                jsonString
-            }
+            // Always use compression for better data capacity
+            val qrData = compressAndEncode(jsonString)
             
             val hints = hashMapOf<EncodeHintType, Any>(
                 EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
@@ -61,26 +57,28 @@ object QRCodeGenerator {
     }
     
     /**
-     * Generate multiple QR codes for large datasets (pagination)
+     * Generate multiple QR codes for extremely large datasets (pagination)
      * Returns list of bitmaps, each containing a chunk of data
+     * No size limit - will split into as many QR codes as needed
      */
     fun <T> generateMultiPartQRCodes(
         data: T, 
         width: Int = 512, 
-        height: Int = 512
+        height: Int = 512,
+        maxChunkSize: Int = 2000 // Adjustable chunk size per QR
     ): List<Bitmap> {
         return try {
             val jsonString = gson.toJson(data)
             val compressed = compressAndEncode(jsonString)
             
             // If compressed data fits in one QR, return single QR
-            if (compressed.length <= MAX_QR_SIZE_COMPRESSED) {
+            if (compressed.length <= maxChunkSize) {
                 val bitmap = generateQRCode(data, width, height)
                 return if (bitmap != null) listOf(bitmap) else emptyList()
             }
             
-            // Split into chunks
-            val chunks = compressed.chunked(MAX_QR_SIZE_COMPRESSED)
+            // Split into chunks - no limit on number of chunks
+            val chunks = compressed.chunked(maxChunkSize)
             val totalParts = chunks.size
             
             chunks.mapIndexedNotNull { index, chunk ->

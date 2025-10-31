@@ -18,9 +18,12 @@ import com.example.inventoryapp.data.local.entities.*
         ScanHistoryEntity::class,
         ProductTemplateEntity::class,
         ScannerSettingsEntity::class,
-        ContractorEntity::class
+        ContractorEntity::class,
+        BoxEntity::class,
+        BoxProductCrossRef::class,
+        ImportBackupEntity::class
     ],
-    version = 5,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -31,6 +34,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun productTemplateDao(): ProductTemplateDao
     abstract fun scannerSettingsDao(): ScannerSettingsDao
     abstract fun contractorDao(): ContractorDao
+    abstract fun boxDao(): BoxDao
+    abstract fun importBackupDao(): ImportBackupDao
 
     companion object {
         @Volatile
@@ -120,6 +125,84 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Migration 5 -> 6: Add description column to products table
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Add description column to products table
+                database.execSQL("ALTER TABLE products ADD COLUMN description TEXT")
+            }
+        }
+
+        // Migration 6 -> 7: Add boxes table and box_product_cross_ref table
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create boxes table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `boxes` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `description` TEXT,
+                        `warehouseLocation` TEXT,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+
+                // Create box_product_cross_ref table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `box_product_cross_ref` (
+                        `boxId` INTEGER NOT NULL,
+                        `productId` INTEGER NOT NULL,
+                        `addedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`boxId`, `productId`),
+                        FOREIGN KEY(`boxId`) REFERENCES `boxes`(`id`) ON DELETE CASCADE,
+                        FOREIGN KEY(`productId`) REFERENCES `products`(`id`) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+
+                // Create indices
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_box_product_cross_ref_boxId` ON `box_product_cross_ref` (`boxId`)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_box_product_cross_ref_productId` ON `box_product_cross_ref` (`productId`)")
+            }
+        }
+
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create import_backups table for undo functionality
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `import_backups` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `backupTimestamp` INTEGER NOT NULL,
+                        `backupJson` TEXT NOT NULL,
+                        `importDescription` TEXT NOT NULL,
+                        `productsCount` INTEGER NOT NULL,
+                        `packagesCount` INTEGER NOT NULL,
+                        `templatesCount` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Add requiresSerialNumber column to categories table
+                database.execSQL("ALTER TABLE `categories` ADD COLUMN `requiresSerialNumber` INTEGER NOT NULL DEFAULT 1")
+                
+                // Create "Other" category that doesn't require serial numbers
+                database.execSQL("""
+                    INSERT INTO `categories` (`name`, `iconResId`, `requiresSerialNumber`, `createdAt`)
+                    VALUES ('Other', 0, 0, ${System.currentTimeMillis()})
+                """.trimIndent())
+            }
+        }
+
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Add quantity column to products table for aggregated products (especially "Other" category)
+                database.execSQL("ALTER TABLE `products` ADD COLUMN `quantity` INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -127,7 +210,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "inventory_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

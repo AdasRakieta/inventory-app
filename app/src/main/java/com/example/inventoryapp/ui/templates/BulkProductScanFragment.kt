@@ -29,6 +29,7 @@ import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.repository.ProductRepository
 import com.example.inventoryapp.data.repository.ProductTemplateRepository
 import com.example.inventoryapp.ui.scanner.BarcodeAnalyzer
+import com.example.inventoryapp.utils.CategoryHelper
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.flow.collect
@@ -47,28 +48,25 @@ class BulkProductScanFragment : Fragment() {
     private lateinit var cameraExecutor: ExecutorService
 
     private var templateName: String = ""
+    private var templateDescription: String? = null
     private var categoryId: Long? = null
+    private var requiresSerialNumber: Boolean = true // Track if category requires SN
     private var scannedCount: Int = 0
     private val scannedSerials = mutableSetOf<String>()
+    private val pendingProducts = mutableListOf<PendingProduct>() // Products waiting to be saved
     
-    private var isCameraMode = false
-    private var cameraProvider: ProcessCameraProvider? = null
     private var currentInputField: TextInputEditText? = null
+
+    // Data class to hold pending product info
+    data class PendingProduct(
+        val serialNumber: String?, // Nullable for "Other" category
+        val createdAt: Long = System.currentTimeMillis()
+    )
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (isGranted) {
-            startCamera()
-        } else {
-            Toast.makeText(
-                requireContext(),
-                getString(R.string.scanner_permission_required),
-                Toast.LENGTH_LONG
-            ).show()
-            // Switch back to manual mode
-            switchToManualMode()
-        }
+        // Camera permission not used anymore - removed camera mode
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,8 +94,7 @@ class BulkProductScanFragment : Fragment() {
         setupClickListeners()
         updateUI()
         
-        // Start in manual entry mode
-        switchToManualMode()
+        // Start with one empty input field
         addProductInputField()
     }
 
@@ -106,75 +103,51 @@ class BulkProductScanFragment : Fragment() {
             templateRepository.getTemplateById(args.templateId).collect { template ->
                 template?.let {
                     templateName = it.name
+                    templateDescription = it.description
                     categoryId = it.categoryId
+                    
+                    // Check if category requires serial number
+                    requiresSerialNumber = CategoryHelper.requiresSerialNumber(it.categoryId)
+                    
+                    // Update hint text based on category requirement
+                    updateInputFieldHint()
                 }
+            }
+        }
+    }
+    
+    private fun updateInputFieldHint() {
+        currentInputField?.let { field ->
+            val layout = field.parent.parent as? TextInputLayout
+            layout?.hint = if (requiresSerialNumber) {
+                "Serial Number *"
+            } else {
+                "Item identifier (optional)"
             }
         }
     }
 
     private fun setupClickListeners() {
-        binding.toggleScanModeButton.setOnClickListener {
-            if (isCameraMode) {
-                switchToManualMode()
-            } else {
-                switchToCameraMode()
-            }
-        }
-        
-        binding.finishButton.setOnClickListener {
-            finishScanning()
+        binding.saveButton.setOnClickListener {
+            saveAllProducts()
         }
 
         binding.cancelButton.setOnClickListener {
-            findNavController().navigateUp()
+            cancelAllProducts()
         }
-    }
-    
-    private fun switchToCameraMode() {
-        isCameraMode = true
-        
-        // Show camera views
-        binding.previewView.visibility = View.VISIBLE
-        binding.scanOverlay.visibility = View.VISIBLE
-        binding.statusText.visibility = View.VISIBLE
-        
-        // Hide manual entry
-        binding.manualEntryContainer.visibility = View.GONE
-        
-        // Update button
-        binding.toggleScanModeButton.text = "Manual Entry"
-        binding.toggleScanModeButton.setIconResource(android.R.drawable.ic_menu_edit)
-        
-        // Start camera
-        if (allPermissionsGranted()) {
-            startCamera()
-        } else {
-            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
-    
-    private fun switchToManualMode() {
-        isCameraMode = false
-        
-        // Hide camera views
-        binding.previewView.visibility = View.GONE
-        binding.scanOverlay.visibility = View.GONE
-        binding.statusText.visibility = View.GONE
-        
-        // Show manual entry
-        binding.manualEntryContainer.visibility = View.VISIBLE
-        
-        // Update button
-        binding.toggleScanModeButton.text = "Scan with Camera"
-        binding.toggleScanModeButton.setIconResource(android.R.drawable.ic_menu_camera)
-        
-        // Stop camera
-        stopCamera()
     }
     
     private fun addProductInputField() {
+        // For "Other" category, only create one reusable input field
+        if (!requiresSerialNumber && binding.productsInputContainer.childCount > 0) {
+            // Field already exists, just clear and focus it
+            currentInputField?.setText("")
+            currentInputField?.requestFocus()
+            return
+        }
+        
         val context = requireContext()
-        val productNumber = scannedCount + 1
+        val productNumber = pendingProducts.size + 1
 
         // Create horizontal container for input field and delete button
         val horizontalContainer = LinearLayout(context).apply {
@@ -195,7 +168,12 @@ class BulkProductScanFragment : Fragment() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 1f // weight = 1 to take remaining space
             )
-            hint = "$productNumber. Product"
+            // Dynamic hint based on category requirement
+            hint = if (requiresSerialNumber) {
+                "$productNumber. Serial Number *"
+            } else {
+                "Scan/Enter product name (quantity: ${pendingProducts.size})"
+            }
             setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_OUTLINE)
         }
 
@@ -213,9 +191,7 @@ class BulkProductScanFragment : Fragment() {
                 if (actionId == EditorInfo.IME_ACTION_DONE ||
                     (event?.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_ENTER)) {
                     val serialNumber = text.toString().trim()
-                    if (serialNumber.isNotEmpty()) {
-                        processManualEntry(serialNumber)
-                    }
+                    processManualEntry(serialNumber)
                     true
                 } else {
                     false
@@ -242,27 +218,29 @@ class BulkProductScanFragment : Fragment() {
             })
         }
 
-        // Create delete button (X)
-        val deleteButton = androidx.appcompat.widget.AppCompatImageButton(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                resources.getDimensionPixelSize(com.google.android.material.R.dimen.design_fab_size_mini),
-                resources.getDimensionPixelSize(com.google.android.material.R.dimen.design_fab_size_mini)
-            ).apply {
-                marginStart = 8
+        // Create delete button (X) - only for categories requiring SN
+        if (requiresSerialNumber) {
+            val deleteButton = androidx.appcompat.widget.AppCompatImageButton(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    resources.getDimensionPixelSize(com.google.android.material.R.dimen.design_fab_size_mini),
+                    resources.getDimensionPixelSize(com.google.android.material.R.dimen.design_fab_size_mini)
+                ).apply {
+                    marginStart = 8
+                }
+                setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+                contentDescription = "Delete this entry"
+                background = null
+                setColorFilter(ContextCompat.getColor(context, android.R.color.holo_red_dark))
+                setOnClickListener {
+                    removeProductInputField(horizontalContainer, editText)
+                }
             }
-            setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-            contentDescription = "Delete this entry"
-            background = null
-            setColorFilter(ContextCompat.getColor(context, android.R.color.holo_red_dark))
-            setOnClickListener {
-                removeProductInputField(horizontalContainer, editText)
-            }
+            horizontalContainer.addView(deleteButton)
         }
 
         // Assemble the layout
         inputLayout.addView(editText)
         horizontalContainer.addView(inputLayout)
-        horizontalContainer.addView(deleteButton)
 
         binding.productsInputContainer.addView(horizontalContainer)
 
@@ -277,21 +255,11 @@ class BulkProductScanFragment : Fragment() {
         // Get the serial number from the field
         val serialNumber = editText.text.toString().trim()
 
-        // If this field was already processed (has serial number), remove from scanned list
-        if (serialNumber.isNotEmpty() && scannedSerials.contains(serialNumber)) {
+        // Remove from pending list
+        if (serialNumber.isNotEmpty()) {
+            pendingProducts.removeAll { it.serialNumber == serialNumber }
             scannedSerials.remove(serialNumber)
-            scannedCount--
-
-            // Remove the product from database if it was added
-            viewLifecycleOwner.lifecycleScope.launch {
-                try {
-                    productRepository.deleteProductBySerialNumber(serialNumber)
-                    showStatus("🗑️ Removed: $serialNumber")
-                    updateUI()
-                } catch (e: Exception) {
-                    showStatus("❌ Error removing: ${e.message}")
-                }
-            }
+            showStatus("🗑️ Removed: $serialNumber")
         }
 
         // Remove the container from the layout
@@ -302,6 +270,9 @@ class BulkProductScanFragment : Fragment() {
             currentInputField = null
         }
 
+        // Update UI
+        updateUI()
+
         // If no more input fields, add a new empty one
         if (binding.productsInputContainer.childCount == 0) {
             addProductInputField()
@@ -309,44 +280,62 @@ class BulkProductScanFragment : Fragment() {
     }
     
     private fun processManualEntry(serialNumber: String) {
+        // For "Other" category, allow multiple scans of same name (for counting quantity)
+        if (!requiresSerialNumber) {
+            // Each scan adds +1 to quantity count
+            val itemNumber = pendingProducts.size + 1
+            val pendingProduct = PendingProduct(
+                serialNumber = null, // No SN for "Other" category
+                createdAt = System.currentTimeMillis()
+            )
+            pendingProducts.add(pendingProduct)
+            
+            updateUI()
+            
+            if (serialNumber.isEmpty()) {
+                showStatus("✅ Added item #$itemNumber (no SN required)")
+            } else {
+                // User scanned/entered product name for counting
+                showStatus("✅ Added item #$itemNumber: $serialNumber")
+            }
+            
+            // Clear field and keep focus for next scan
+            currentInputField?.setText("")
+            currentInputField?.requestFocus()
+            return
+        }
+        
+        // For categories requiring SN, validate as before
         if (serialNumber.isEmpty()) return
 
-        // Check if already scanned
+        // Check if already in pending list
         if (scannedSerials.contains(serialNumber)) {
-            showStatus("⚠️ Already scanned: $serialNumber")
+            showStatus("⚠️ Already in list: $serialNumber")
             currentInputField?.setText("")
             return
         }
 
-        // Add product with this serial number
+        // Check if serial number exists in database
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                // Check if serial number exists in database
                 val exists = productRepository.isSerialNumberExists(serialNumber)
                 if (exists) {
-                    showStatus("❌ Duplicate SN: $serialNumber")
+                    showStatus("❌ Duplicate SN in database: $serialNumber")
                     currentInputField?.setText("")
                     return@launch
                 }
 
-                // Create new product
-                val product = ProductEntity(
-                    name = templateName,
-                    categoryId = categoryId,
-                    serialNumber = serialNumber
-                )
-
-                productRepository.insertProduct(product)
-                
-                // Add to scanned list
+                // Add to pending list (not saved yet)
+                val pendingProduct = PendingProduct(serialNumber)
+                pendingProducts.add(pendingProduct)
                 scannedSerials.add(serialNumber)
-                scannedCount++
 
-                // Update UI
+                // Update UI with date created info
                 updateUI()
-                showStatus("✅ Added: $serialNumber")
+                val dateStr = formatDateTime(pendingProduct.createdAt)
+                showStatus("✅ Added to list: $serialNumber (${dateStr})")
                 
-                // Clear current field and add new one
+                // Mark current field as processed and add new one
                 currentInputField?.isEnabled = false
                 addProductInputField()
 
@@ -356,133 +345,146 @@ class BulkProductScanFragment : Fragment() {
             }
         }
     }
-
-    private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
-
-        cameraProviderFuture.addListener({
-            cameraProvider = cameraProviderFuture.get()
-
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(binding.previewView.surfaceProvider)
-                }
-
-            val imageAnalyzer = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build()
-                .also {
-                    it.setAnalyzer(cameraExecutor, BarcodeAnalyzer(
-                        onBarcodeDetected = { value, format ->
-                            processBarcode(value)
-                        },
-                        onError = { exception ->
-                            showStatus("❌ Scan error: ${exception.message}")
-                        }
-                    ))
-                }
-
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-            try {
-                cameraProvider?.unbindAll()
-                cameraProvider?.bindToLifecycle(
-                    viewLifecycleOwner,
-                    cameraSelector,
-                    preview,
-                    imageAnalyzer
-                )
-                binding.statusText.text = "Scanning for: $templateName"
-            } catch (e: Exception) {
-                Toast.makeText(
-                    requireContext(),
-                    "Failed to start camera: ${e.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-
-        }, ContextCompat.getMainExecutor(requireContext()))
+    
+    private fun formatDateTime(timestamp: Long): String {
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+        return sdf.format(java.util.Date(timestamp))
     }
     
-    private fun stopCamera() {
-        cameraProvider?.unbindAll()
-        cameraProvider = null
-    }
-
-    private fun processBarcode(serialNumber: String) {
-        if (serialNumber.isEmpty()) return
-
-        // Check if already scanned
-        if (scannedSerials.contains(serialNumber)) {
-            showStatus("⚠️ Already scanned: $serialNumber")
+    private fun saveAllProducts() {
+        if (pendingProducts.isEmpty()) {
+            Toast.makeText(requireContext(), "No products to save", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Add product with this serial number
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                // Check if serial number exists in database
-                val exists = productRepository.isSerialNumberExists(serialNumber)
-                if (exists) {
-                    showStatus("❌ Duplicate SN: $serialNumber")
+                var successCount = 0
+                
+                // For "Other" category without SN: aggregate all items to one product with quantity
+                if (!requiresSerialNumber && pendingProducts.all { it.serialNumber == null }) {
+                    // Try to find existing product with same name and category
+                    val existingProduct = productRepository.findProductByNameAndCategory(templateName, categoryId)
+                    
+                    if (existingProduct != null) {
+                        // Update existing product quantity
+                        val newQuantity = existingProduct.quantity + pendingProducts.size
+                        productRepository.updateQuantity(existingProduct.id, newQuantity)
+                        
+                        Toast.makeText(
+                            requireContext(),
+                            "✅ Updated ${existingProduct.name}: +${pendingProducts.size} (Total: $newQuantity)",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        // Create new product with quantity
+                        val product = ProductEntity(
+                            name = templateName,
+                            categoryId = categoryId,
+                            serialNumber = null,
+                            description = templateDescription,
+                            quantity = pendingProducts.size,
+                            createdAt = System.currentTimeMillis(),
+                            updatedAt = System.currentTimeMillis()
+                        )
+                        productRepository.insertProduct(product)
+                        
+                        Toast.makeText(
+                            requireContext(),
+                            "✅ Created new product: ${templateName} (Qty: ${pendingProducts.size})",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    
+                    findNavController().navigateUp()
                     return@launch
                 }
-
-                // Create new product
-                val product = ProductEntity(
-                    name = templateName,
-                    categoryId = categoryId,
-                    serialNumber = serialNumber
-                )
-
-                productRepository.insertProduct(product)
                 
-                // Add to scanned list
-                scannedSerials.add(serialNumber)
-                scannedCount++
-
-                // Update UI
-                updateUI()
-                showStatus("✅ Added: $serialNumber")
-
+                // For categories requiring SN: save each product separately
+                for (pending in pendingProducts) {
+                    val product = ProductEntity(
+                        name = templateName,
+                        categoryId = categoryId,
+                        serialNumber = pending.serialNumber,
+                        description = templateDescription,
+                        quantity = 1,
+                        createdAt = pending.createdAt,
+                        updatedAt = pending.createdAt
+                    )
+                    productRepository.insertProduct(product)
+                    successCount++
+                }
+                
+                Toast.makeText(
+                    requireContext(),
+                    "✅ Saved $successCount products successfully!",
+                    Toast.LENGTH_LONG
+                ).show()
+                
+                findNavController().navigateUp()
+                
             } catch (e: Exception) {
-                showStatus("❌ Error: ${e.message}")
+                Toast.makeText(
+                    requireContext(),
+                    "❌ Error saving: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
+    
+    private fun cancelAllProducts() {
+        // Clear all pending products
+        pendingProducts.clear()
+        scannedSerials.clear()
+        
+        Toast.makeText(
+            requireContext(),
+            "Cancelled - no products saved",
+            Toast.LENGTH_SHORT
+        ).show()
+        
+        findNavController().navigateUp()
+    }
+
 
     private fun showStatus(message: String) {
         activity?.runOnUiThread {
             binding.lastScannedText.text = message
-            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun updateUI() {
         activity?.runOnUiThread {
-            binding.scanCountText.text = "Scanned: $scannedCount products"
-            if (scannedCount == 0) {
+            val count = pendingProducts.size
+            binding.scanCountText.text = "Products in list: $count"
+            
+            // Update input field hint for "Other" category
+            if (!requiresSerialNumber && currentInputField != null) {
+                val inputLayout = currentInputField?.parent?.parent as? TextInputLayout
+                inputLayout?.hint = "Scan/Enter product name (quantity: $count)"
+            }
+            
+            if (count == 0) {
                 binding.lastScannedText.text = "Ready to add products..."
+            } else {
+                // For "Other" category, show simple count
+                if (!requiresSerialNumber) {
+                    binding.lastScannedText.text = "✅ $count items added - Ready for more scans"
+                } else {
+                    // Show list with dates for categories with SN
+                    val preview = pendingProducts.takeLast(3).joinToString("\n") { 
+                        "• ${it.serialNumber} - ${formatDateTime(it.createdAt)}"
+                    }
+                    binding.lastScannedText.text = if (count > 3) {
+                        "Last 3 of $count:\n$preview"
+                    } else {
+                        preview
+                    }
+                }
             }
         }
     }
-
-    private fun finishScanning() {
-        if (scannedCount > 0) {
-            Toast.makeText(
-                requireContext(),
-                "Added $scannedCount products successfully!",
-                Toast.LENGTH_LONG
-            ).show()
-        }
-        findNavController().navigateUp()
-    }
-
-    private fun allPermissionsGranted() = ContextCompat.checkSelfPermission(
-        requireContext(),
-        Manifest.permission.CAMERA
-    ) == PackageManager.PERMISSION_GRANTED
 
     override fun onDestroy() {
         super.onDestroy()
@@ -491,7 +493,6 @@ class BulkProductScanFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        stopCamera()
         _binding = null
     }
 }

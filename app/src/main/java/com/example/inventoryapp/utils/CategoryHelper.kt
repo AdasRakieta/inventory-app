@@ -8,14 +8,16 @@ object CategoryHelper {
     data class Category(
         val id: Long,
         val name: String,
-        val icon: String
+        val icon: String,
+        val requiresSerialNumber: Boolean = true
     )
     
     private val categories = listOf(
-        Category(1L, "Scanner", "🔍"),
-        Category(2L, "Printer", "🖨️"),
-        Category(3L, "Scanner Docking Station", "🔌"),
-        Category(4L, "Printer Docking Station", "🔌")
+        Category(1L, "Scanner", "🔍", requiresSerialNumber = true),
+        Category(2L, "Printer", "🖨️", requiresSerialNumber = true),
+        Category(3L, "Scanner Docking Station", "🔌", requiresSerialNumber = true),
+        Category(4L, "Printer Docking Station", "🔌", requiresSerialNumber = true),
+        Category(5L, "Other", "📦", requiresSerialNumber = false)
     )
     
     fun getAllCategories(): List<Category> = categories
@@ -38,5 +40,24 @@ object CategoryHelper {
     
     fun getCategoryNames(): List<String> {
         return categories.map { it.name }
+    }
+    
+    /**
+     * Check if category requires serial number
+     * @param categoryId Category ID to check
+     * @return true if serial number is required, false otherwise
+     */
+    fun requiresSerialNumber(categoryId: Long?): Boolean {
+        return getCategoryById(categoryId)?.requiresSerialNumber ?: true // Default to required
+    }
+    
+    /**
+     * Check if category requires serial number by name
+     * @param categoryName Category name to check
+     * @return true if serial number is required, false otherwise
+     */
+    fun requiresSerialNumber(categoryName: String): Boolean {
+        val categoryId = getCategoryIdByName(categoryName)
+        return requiresSerialNumber(categoryId)
     }
 }

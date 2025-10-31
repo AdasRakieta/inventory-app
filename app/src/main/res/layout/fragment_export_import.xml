@@ -58,6 +58,17 @@
                     android:text="@string/action_import"
                     app:icon="@android:drawable/ic_menu_upload" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/undoImportButton"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/undo_last_import"
+                    android:textColor="?attr/colorError"
+                    app:icon="@android:drawable/ic_menu_revert"
+                    app:iconTint="?attr/colorError" />
+
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>

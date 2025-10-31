@@ -3,10 +3,12 @@ package com.example.inventoryapp.ui.products
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.inventoryapp.data.local.dao.CategoryCount
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.repository.ProductRepository
 import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.utils.AppLogger
+import com.example.inventoryapp.utils.CategoryHelper
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -116,17 +118,33 @@ class ProductsViewModel(
     fun addProduct(
         name: String,
         categoryId: Long? = null,
-        serialNumber: String,
+        serialNumber: String?, // Nullable for "Other" category
         description: String? = null
     ) {
         viewModelScope.launch {
+            // Check if this is "Other" category and we should aggregate by name
+            if (categoryId != null && !CategoryHelper.requiresSerialNumber(categoryId) && serialNumber == null) {
+                // Try to find existing product with same name and category
+                val existingProduct = productRepository.findProductByNameAndCategory(name, categoryId)
+                if (existingProduct != null) {
+                    // Increment quantity of existing product
+                    val newQuantity = existingProduct.quantity + 1
+                    productRepository.updateQuantity(existingProduct.id, newQuantity)
+                    AppLogger.logAction("Product Quantity Updated", "Name: $name, New Quantity: $newQuantity")
+                    return@launch
+                }
+            }
+            
+            // Create new product
             val product = ProductEntity(
                 name = name,
                 categoryId = categoryId,
-                serialNumber = serialNumber
+                serialNumber = serialNumber,
+                description = description,
+                quantity = 1
             )
             productRepository.insertProduct(product)
-            AppLogger.logAction("Product Added", "Name: $name, SN: $serialNumber")
+            AppLogger.logAction("Product Added", "Name: $name, SN: ${serialNumber ?: "N/A"}")
         }
     }
 
@@ -141,6 +159,19 @@ class ProductsViewModel(
         viewModelScope.launch {
             productRepository.deleteProductById(productId)
             AppLogger.logAction("Product Deleted", "ID: $productId")
+        }
+    }
+
+    suspend fun getCategoryStatistics(): List<CategoryStatistic> {
+        val counts = productRepository.getCategoryStatistics()
+        return counts.map { categoryCount ->
+            val category = CategoryHelper.getCategoryById(categoryCount.categoryId)
+            CategoryStatistic(
+                categoryId = categoryCount.categoryId,
+                categoryName = category?.name ?: "Unknown",
+                categoryIcon = category?.icon ?: "❓",
+                count = categoryCount.totalQuantity
+            )
         }
     }
 }

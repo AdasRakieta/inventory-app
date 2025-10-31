@@ -54,6 +54,7 @@ class ProductDetailsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         observeProduct()
+        observeSnUpdateError()
         setupClickListeners()
     }
 
@@ -81,6 +82,17 @@ class ProductDetailsFragment : Fragment() {
         }
     }
 
+    private fun observeSnUpdateError() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.snUpdateError.collect { error ->
+                error?.let {
+                    Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
+                    viewModel.clearSnError()
+                }
+            }
+        }
+    }
+
     private fun setupClickListeners() {
         binding.scanSerialButton.setOnClickListener {
             // TODO: Navigate to scanner with product ID
@@ -92,8 +104,9 @@ class ProductDetailsFragment : Fragment() {
         }
         
         binding.editProductButton.setOnClickListener {
-            // TODO: Navigate to edit product screen
-            Toast.makeText(requireContext(), "Edit product coming soon", Toast.LENGTH_SHORT).show()
+            val currentProduct = viewModel.product.value ?: return@setOnClickListener
+            val action = ProductDetailsFragmentDirections.actionProductDetailsToEditProduct(currentProduct.id)
+            findNavController().navigate(action)
         }
         
         binding.deleteProductButton.setOnClickListener {
@@ -118,7 +131,6 @@ class ProductDetailsFragment : Fragment() {
                 val newSerialNumber = editText.text.toString().trim()
                 if (newSerialNumber.isNotEmpty()) {
                     viewModel.updateSerialNumber(newSerialNumber)
-                    Toast.makeText(requireContext(), "Serial number updated", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(requireContext(), "Serial number cannot be empty", Toast.LENGTH_SHORT).show()
                 }

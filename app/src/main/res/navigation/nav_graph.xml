@@ -26,6 +26,9 @@
         <action
             android:id="@+id/action_home_to_contractors"
             app:destination="@id/contractorsFragment" />
+        <action
+            android:id="@+id/action_home_to_boxes"
+            app:destination="@id/boxListFragment" />
     </fragment>
 
     <fragment
@@ -59,6 +62,18 @@
         android:id="@+id/productDetailsFragment"
         android:name="com.example.inventoryapp.ui.products.ProductDetailsFragment"
         android:label="@string/product_details">
+        <argument
+            android:name="productId"
+            app:argType="long" />
+        <action
+            android:id="@+id/action_product_details_to_edit_product"
+            app:destination="@id/editProductFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/editProductFragment"
+        android:name="com.example.inventoryapp.ui.products.EditProductFragment"
+        android:label="Edit Product">
         <argument
             android:name="productId"
             app:argType="long" />
@@ -154,5 +169,32 @@
         android:id="@+id/addContractorFragment"
         android:name="com.example.inventoryapp.ui.contractors.AddContractorFragment"
         android:label="Add Contractor" />
+
+    <!-- Box / Carton Management -->
+    <fragment
+        android:id="@+id/boxListFragment"
+        android:name="com.example.inventoryapp.ui.boxes.BoxListFragment"
+        android:label="Boxes">
+        <action
+            android:id="@+id/action_boxList_to_addBox"
+            app:destination="@id/addBoxFragment" />
+        <action
+            android:id="@+id/action_boxList_to_boxDetails"
+            app:destination="@id/boxDetailsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/addBoxFragment"
+        android:name="com.example.inventoryapp.ui.boxes.AddBoxFragment"
+        android:label="Add Box" />
+
+    <fragment
+        android:id="@+id/boxDetailsFragment"
+        android:name="com.example.inventoryapp.ui.boxes.BoxDetailsFragment"
+        android:label="Box Details">
+        <argument
+            android:name="boxId"
+            app:argType="long" />
+    </fragment>
 
 </navigation>

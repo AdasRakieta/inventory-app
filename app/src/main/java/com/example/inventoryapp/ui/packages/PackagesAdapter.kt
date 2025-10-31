@@ -53,6 +53,16 @@ class PackagesAdapter(
 
     fun getSelectedCount(): Int = selectedPackages.size
 
+    fun selectAll(packages: List<PackageWithCount>) {
+        packages.forEach { selectedPackages.add(it.packageEntity.id) }
+        notifyDataSetChanged()
+    }
+
+    fun deselectAll() {
+        selectedPackages.clear()
+        notifyDataSetChanged()
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PackageViewHolder {
         val binding = ItemPackageBinding.inflate(
             LayoutInflater.from(parent.context),

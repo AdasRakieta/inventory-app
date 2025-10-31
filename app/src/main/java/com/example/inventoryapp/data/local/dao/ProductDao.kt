@@ -39,4 +39,23 @@ interface ProductDao {
 
     @Query("SELECT COUNT(*) FROM products WHERE serialNumber = :serialNumber")
     suspend fun isSerialNumberExists(serialNumber: String): Int
+
+    @Query("SELECT * FROM products WHERE name = :name AND categoryId = :categoryId AND serialNumber IS NULL LIMIT 1")
+    suspend fun findProductByNameAndCategory(name: String, categoryId: Long?): ProductEntity?
+
+    @Query("UPDATE products SET quantity = :quantity, updatedAt = :updatedAt WHERE id = :productId")
+    suspend fun updateQuantity(productId: Long, quantity: Int, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("""
+        SELECT categoryId, SUM(quantity) as totalQuantity
+        FROM products
+        WHERE categoryId IS NOT NULL
+        GROUP BY categoryId
+    """)
+    suspend fun getCategoryStatistics(): List<CategoryCount>
 }
+
+data class CategoryCount(
+    val categoryId: Long,
+    val totalQuantity: Int
+)

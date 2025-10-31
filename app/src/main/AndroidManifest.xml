@@ -30,6 +30,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.InventoryApp">
         
+        <!-- Application metadata - Author information -->
+        <meta-data
+            android:name="app.vendor"
+            android:value="Szymon Przybysz" />
+        <meta-data
+            android:name="app.author"
+            android:value="Szymon Przybysz" />
+        <meta-data
+            android:name="app.developer"
+            android:value="Szymon Przybysz" />
+        
         <activity
             android:name=".ui.main.SplashActivity"
             android:exported="true"

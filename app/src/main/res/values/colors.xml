@@ -28,6 +28,10 @@
     <color name="success">#3FB950</color>
     <color name="warning">#D29922</color>
     <color name="error">#F85149</color>
+    
+    <!-- Import Preview Status Colors -->
+    <color name="status_new">#3FB950</color> <!-- Green for new items -->
+    <color name="status_update">#D29922</color> <!-- Orange for updates -->
     <color name="danger">#DA3633</color>
     
     <!-- Status colors -->

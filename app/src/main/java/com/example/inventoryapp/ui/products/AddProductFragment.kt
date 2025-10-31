@@ -88,8 +88,8 @@ class AddProductFragment : Fragment() {
                 binding.productNameLayout.error = "Product name is required"
                 return
             }
-            serialNumber.isEmpty() -> {
-                binding.serialNumberLayout.error = "Serial number is required"
+            categoryName.isNotEmpty() && CategoryHelper.requiresSerialNumber(categoryName) && serialNumber.isEmpty() -> {
+                binding.serialNumberLayout.error = "Serial number is required for this category"
                 return
             }
             else -> {
@@ -103,11 +103,14 @@ class AddProductFragment : Fragment() {
                     null
                 }
 
+                // Use null for serial number if category doesn't require it
+                val finalSerialNumber = if (serialNumber.isEmpty()) null else serialNumber
+
                 viewModel.addProduct(
                     name = name,
                     categoryId = categoryId,
-                    serialNumber = serialNumber,
-                    description = null // TODO: Add description field to ProductEntity
+                    serialNumber = finalSerialNumber,
+                    description = description
                 )
 
                 Toast.makeText(

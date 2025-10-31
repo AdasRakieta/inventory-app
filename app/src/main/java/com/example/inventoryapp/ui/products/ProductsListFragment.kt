@@ -93,30 +93,56 @@ class ProductsListFragment : Fragment() {
         binding.emptyAddButton.setOnClickListener {
             findNavController().navigate(R.id.action_products_to_add_product)
         }
+
+        binding.statsButton.setOnClickListener {
+            showCategoryStatisticsDialog()
+        }
+
+        binding.selectAllButton.setOnClickListener {
+            val totalCount = adapter.itemCount
+            val selectedCount = adapter.getSelectedCount()
+            
+            if (selectedCount == totalCount) {
+                adapter.deselectAll()
+            } else {
+                adapter.selectAll(adapter.currentList)
+            }
+            updateSelectionUI()
+        }
+
+        binding.deleteSelectedButton.setOnClickListener {
+            if (adapter.getSelectedCount() > 0) {
+                showDeleteConfirmationDialog()
+            }
+        }
     }
 
     private fun updateSelectionUI() {
         if (adapter.selectionMode) {
             val count = adapter.getSelectedCount()
-            binding.addProductFab.setImageResource(android.R.drawable.ic_menu_delete)
-            binding.addProductFab.setOnClickListener {
-                if (count > 0) {
-                    showDeleteConfirmationDialog()
-                } else {
-                    exitSelectionMode()
-                }
-            }
-            // You can add a selection counter TextView here if needed
+            val totalCount = adapter.itemCount
+            
+            // Show selection panel
+            binding.selectionPanel.visibility = View.VISIBLE
+            binding.selectionCountText.text = "$count selected"
+            
+            // Update Select All button text
+            binding.selectAllButton.text = if (count == totalCount) "Deselect All" else "Select All"
+            
+            // Change FAB to cancel icon
+            binding.addProductFab.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
         } else {
+            // Hide selection panel
+            binding.selectionPanel.visibility = View.GONE
+            
+            // Restore FAB to add icon
             binding.addProductFab.setImageResource(android.R.drawable.ic_input_add)
-            binding.addProductFab.setOnClickListener {
-                findNavController().navigate(R.id.action_products_to_add_product)
-            }
         }
     }
 
     private fun showDeleteConfirmationDialog() {
         val count = adapter.getSelectedCount()
+        
         AlertDialog.Builder(requireContext())
             .setTitle("Delete Products")
             .setMessage("Are you sure you want to delete $count selected product(s)?")
@@ -238,6 +264,39 @@ class ProductsListFragment : Fragment() {
                     binding.productsRecyclerView.visibility = View.VISIBLE
                     adapter.submitList(products)
                 }
+            }
+        }
+    }
+
+    private fun showCategoryStatisticsDialog() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val statistics = viewModel.getCategoryStatistics()
+                
+                val dialogView = layoutInflater.inflate(R.layout.dialog_category_statistics, null)
+                val dialog = AlertDialog.Builder(requireContext())
+                    .setView(dialogView)
+                    .create()
+                
+                val recyclerView = dialogView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.categoryStatsRecyclerView)
+                val totalCountText = dialogView.findViewById<android.widget.TextView>(R.id.totalCountText)
+                val closeButton = dialogView.findViewById<com.google.android.material.button.MaterialButton>(R.id.closeButton)
+                
+                val statsAdapter = CategoryStatisticsAdapter()
+                recyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(requireContext())
+                recyclerView.adapter = statsAdapter
+                statsAdapter.submitList(statistics)
+                
+                val totalCount = statistics.sumOf { it.count }
+                totalCountText.text = totalCount.toString()
+                
+                closeButton.setOnClickListener {
+                    dialog.dismiss()
+                }
+                
+                dialog.show()
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Error loading statistics: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }

@@ -112,6 +112,17 @@
 
         </LinearLayout>
 
+        <!-- Created Date -->
+        <TextView
+            android:id="@+id/productCreatedDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Created: 2025-10-31 14:30"
+            android:textSize="11sp"
+            android:textColor="@color/text_tertiary"
+            android:layout_marginTop="4dp"
+            android:visibility="visible" />
+
         <!-- No Serial Number State -->
         <TextView
             android:id="@+id/noSerialNumber"

@@ -73,6 +73,11 @@ class HomeFragment : Fragment() {
         binding.contractorsCard.setOnClickListener {
             findNavController().navigate(R.id.action_home_to_contractors)
         }
+
+        // Boxes card - navigate to boxes list
+        binding.boxesCard.setOnClickListener {
+            findNavController().navigate(R.id.action_home_to_boxes)
+        }
     }
 
     private fun loadStatistics() {

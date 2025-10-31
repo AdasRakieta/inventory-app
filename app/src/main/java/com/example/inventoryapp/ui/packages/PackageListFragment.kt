@@ -91,24 +91,46 @@ class PackageListFragment : Fragment() {
         binding.emptyAddButton.setOnClickListener {
             showCreatePackageDialog()
         }
+
+        binding.selectAllButton.setOnClickListener {
+            val totalCount = adapter.itemCount
+            val selectedCount = adapter.getSelectedCount()
+            
+            if (selectedCount == totalCount) {
+                adapter.deselectAll()
+            } else {
+                adapter.selectAll(adapter.currentList)
+            }
+            updateSelectionUI()
+        }
+
+        binding.deleteSelectedButton.setOnClickListener {
+            if (adapter.getSelectedCount() > 0) {
+                showDeleteConfirmationDialog()
+            }
+        }
     }
 
     private fun updateSelectionUI() {
         if (adapter.selectionMode) {
             val count = adapter.getSelectedCount()
-            binding.addPackageFab.setImageResource(android.R.drawable.ic_menu_delete)
-            binding.addPackageFab.setOnClickListener {
-                if (count > 0) {
-                    showDeleteConfirmationDialog()
-                } else {
-                    exitSelectionMode()
-                }
-            }
+            val totalCount = adapter.itemCount
+            
+            // Show selection panel
+            binding.selectionPanel.visibility = View.VISIBLE
+            binding.selectionCountText.text = "$count selected"
+            
+            // Update Select All button text
+            binding.selectAllButton.text = if (count == totalCount) "Deselect All" else "Select All"
+            
+            // Change FAB to cancel icon
+            binding.addPackageFab.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
         } else {
+            // Hide selection panel
+            binding.selectionPanel.visibility = View.GONE
+            
+            // Restore FAB to add icon
             binding.addPackageFab.setImageResource(android.R.drawable.ic_input_add)
-            binding.addPackageFab.setOnClickListener {
-                showCreatePackageDialog()
-            }
         }
     }
 

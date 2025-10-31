@@ -9,5 +9,6 @@ data class CategoryEntity(
     val id: Long = 0,
     val name: String,
     val iconResId: Int = 0,
+    val requiresSerialNumber: Boolean = true, // false for "Other" category
     val createdAt: Long = System.currentTimeMillis()
 )

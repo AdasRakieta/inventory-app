@@ -1,6 +1,7 @@
 package com.example.inventoryapp.data.repository
 
 import com.example.inventoryapp.data.local.dao.ProductDao
+import com.example.inventoryapp.data.local.dao.CategoryCount
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -36,4 +37,13 @@ class ProductRepository(private val productDao: ProductDao) {
     
     suspend fun isSerialNumberExists(serialNumber: String): Boolean =
         productDao.isSerialNumberExists(serialNumber) > 0
+
+    suspend fun findProductByNameAndCategory(name: String, categoryId: Long?): ProductEntity? =
+        productDao.findProductByNameAndCategory(name, categoryId)
+
+    suspend fun updateQuantity(productId: Long, quantity: Int) =
+        productDao.updateQuantity(productId, quantity, System.currentTimeMillis())
+
+    suspend fun getCategoryStatistics(): List<CategoryCount> =
+        productDao.getCategoryStatistics()
 }
