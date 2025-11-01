@@ -72,6 +72,24 @@ class BoxDetailsFragment : Fragment() {
     }
 
     private fun setupClickListeners() {
+        binding.modifyProductsButton.setOnClickListener {
+            // Navigate to modify products (mass delete)
+            val action = BoxDetailsFragmentDirections.actionBoxDetailsToModifyBoxProducts(args.boxId)
+            findNavController().navigate(action)
+        }
+        
+        binding.addProductsButton.setOnClickListener {
+            // Navigate to product selection for boxes
+            val action = BoxDetailsFragmentDirections.actionBoxDetailsToBoxProductSelection(args.boxId)
+            findNavController().navigate(action)
+        }
+        
+        binding.addBulkButton.setOnClickListener {
+            // Navigate to bulk scan for boxes
+            val action = BoxDetailsFragmentDirections.actionBoxDetailsToBulkBoxScan(args.boxId)
+            findNavController().navigate(action)
+        }
+        
         binding.printLabelButton.setOnClickListener {
             printBoxLabel()
         }
@@ -256,6 +274,14 @@ class BoxDetailsFragment : Fragment() {
         val box = viewModel.box.value ?: return
         
         val action = BoxDetailsFragmentDirections.actionBoxDetailsToEditBox(box.id)
+        findNavController().navigate(action)
+    }
+    
+    private fun showAddNewProductDialog() {
+        // Navigate to AddProductFragment with boxId to automatically assign product to this box
+        val action = BoxDetailsFragmentDirections.actionBoxDetailsFragmentToAddProductFragment(
+            boxId = args.boxId
+        )
         findNavController().navigate(action)
     }
 

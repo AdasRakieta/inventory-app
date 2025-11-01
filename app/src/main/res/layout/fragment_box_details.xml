@@ -132,32 +132,73 @@
                     android:orientation="horizontal"
                     android:layout_marginTop="8dp">
 
-                    <!-- Edit Box Button -->
+                    <!-- Modify Products Button -->
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/editBoxButton"
+                        android:id="@+id/modifyProductsButton"
                         style="@style/Widget.App.Button.Outlined"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Edit Box"
+                        android:text="Modify"
                         android:textAllCaps="false"
-                        android:layout_marginEnd="8dp" />
+                        android:layout_marginEnd="4dp" />
 
-                    <!-- Print Label Button -->
+                    <!-- Add Products Button -->
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/printLabelButton"
+                        android:id="@+id/addProductsButton"
                         style="@style/Widget.App.Button"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Print Label"
-                        android:textAllCaps="false" />
+                        android:text="Add"
+                        android:textAllCaps="false"
+                        android:layout_marginStart="4dp" />
 
                 </LinearLayout>
+
+                <!-- Bulk Add Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/addBulkButton"
+                    style="@style/Widget.App.Button.Outlined"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Add Products in Bulk"
+                    android:textAllCaps="false"
+                    android:layout_marginTop="8dp" />
 
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
+
+        <!-- Edit Box and Print Label Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <!-- Edit Box Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/editBoxButton"
+                style="@style/Widget.App.Button.Outlined"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Edit Box"
+                android:textAllCaps="false"
+                android:layout_marginEnd="8dp" />
+
+            <!-- Print Label Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/printLabelButton"
+                style="@style/Widget.App.Button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Print Label"
+                android:textAllCaps="false" />
+
+        </LinearLayout>
 
         <!-- Box Information -->
         <TextView
@@ -245,5 +286,5 @@
         </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
+ </ScrollView>
 
-</ScrollView>

@@ -18,64 +18,49 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Title Row with Add New Button -->
-        <LinearLayout
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="4dp">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Select Products"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/addNewButton"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Add New"
-                android:textAllCaps="false"
-                android:minWidth="0dp"
-                android:paddingHorizontal="12dp" />
-
-        </LinearLayout>
+            android:text="Modify Products in Package"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:layout_marginBottom="4dp" />
 
         <TextView
             android:id="@+id/selectedCountText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="0 products selected"
+            android:text="0 products selected for removal"
             android:textSize="14sp"
             android:textColor="@color/text_secondary"
-            android:layout_marginBottom="12dp" />
-
-        <!-- Search Bar -->
-        <androidx.appcompat.widget.SearchView
-            android:id="@+id/searchView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@android:color/white"
-            android:queryHint="Search by name or SN..."
-            android:iconifiedByDefault="false"
             android:layout_marginBottom="8dp" />
 
-        <!-- Category Filter -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/filterButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        <!-- Select All / Deselect All buttons -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Filter by Category: All"
-            android:textAllCaps="false"
-            app:icon="@android:drawable/ic_menu_sort_by_size"
-            app:iconGravity="textStart" />
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/selectAllButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:text="Select All"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/deselectAllButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="Deselect All"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
@@ -95,14 +80,14 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="📦"
+            android:text="📋"
             android:textSize="64sp"
             android:layout_marginBottom="16dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="No products available"
+            android:text="No products in package"
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary"
@@ -111,7 +96,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Add products first before assigning to package"
+            android:text="Add products to package first"
             android:textSize="14sp"
             android:textColor="@color/text_secondary" />
 
@@ -143,21 +128,21 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/cancelButton"
-            style="@style/Widget.App.Button.Outlined"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginEnd="8dp"
             android:text="Cancel"
-            android:textAllCaps="false"
-            android:layout_marginEnd="8dp" />
+            android:textAllCaps="false" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/addButton"
-            style="@style/Widget.App.Button"
+            android:id="@+id/removeButton"
+            style="@style/Widget.MaterialComponents.Button"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Add Selected"
+            android:text="Remove Selected"
             android:textAllCaps="false" />
 
     </LinearLayout>

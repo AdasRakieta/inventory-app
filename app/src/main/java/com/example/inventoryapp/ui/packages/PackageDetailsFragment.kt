@@ -82,14 +82,24 @@ class PackageDetailsFragment : Fragment() {
     }
 
     private fun setupClickListeners() {
+        binding.modifyProductsButton.setOnClickListener {
+            // Navigate to modify products (mass delete)
+            val action = PackageDetailsFragmentDirections
+                .actionPackageDetailsToModifyPackageProducts(args.packageId)
+            findNavController().navigate(action)
+        }
+        
         binding.addProductsButton.setOnClickListener {
+            // Navigate to product selection
             val action = PackageDetailsFragmentDirections
                 .actionPackageDetailsToProductSelection(args.packageId)
             findNavController().navigate(action)
         }
         
-        binding.addNewProductButton.setOnClickListener {
-            showAddNewProductDialog()
+        binding.addBulkButton.setOnClickListener {
+            // Navigate to bulk scan for packages
+            val action = PackageDetailsFragmentDirections.actionPackageDetailsToBulkPackageScan(args.packageId)
+            findNavController().navigate(action)
         }
         
         binding.editPackageButton.setOnClickListener {

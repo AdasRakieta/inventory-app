@@ -1,4 +1,4 @@
-package com.example.inventoryapp.ui.packages
+package com.example.inventoryapp.ui.boxes
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -11,34 +11,35 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.inventoryapp.databinding.FragmentProductSelectionBinding
+import com.example.inventoryapp.databinding.FragmentModifyBoxProductsBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
-import com.example.inventoryapp.data.repository.PackageRepository
+import com.example.inventoryapp.data.repository.BoxRepository
 import com.example.inventoryapp.data.repository.ProductRepository
+import com.example.inventoryapp.ui.packages.SelectableProductsAdapter
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
-class ProductSelectionFragment : Fragment() {
+class ModifyBoxProductsFragment : Fragment() {
 
-    private var _binding: FragmentProductSelectionBinding? = null
+    private var _binding: FragmentModifyBoxProductsBinding? = null
     private val binding get() = _binding!!
     
-    private lateinit var viewModel: ProductSelectionViewModel
+    private lateinit var viewModel: ModifyBoxProductsViewModel
     private lateinit var adapter: SelectableProductsAdapter
-    private val args: ProductSelectionFragmentArgs by navArgs()
+    private val args: ModifyBoxProductsFragmentArgs by navArgs()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         val database = AppDatabase.getDatabase(requireContext())
         val productRepository = ProductRepository(database.productDao())
-        val packageRepository = PackageRepository(database.packageDao(), database.productDao())
-        val factory = ProductSelectionViewModelFactory(
+        val boxRepository = BoxRepository(database.boxDao(), database.productDao())
+        val factory = ModifyBoxProductsViewModelFactory(
             productRepository,
-            packageRepository,
-            args.packageId
+            boxRepository,
+            args.boxId
         )
-        val vm: ProductSelectionViewModel by viewModels { factory }
+        val vm: ModifyBoxProductsViewModel by viewModels { factory }
         viewModel = vm
     }
 
@@ -47,7 +48,7 @@ class ProductSelectionFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentProductSelectionBinding.inflate(inflater, container, false)
+        _binding = FragmentModifyBoxProductsBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -56,49 +57,7 @@ class ProductSelectionFragment : Fragment() {
 
         setupRecyclerView()
         setupClickListeners()
-        setupSearch()
-        observeAvailableProducts()
-    }
-
-    private fun setupSearch() {
-        // SearchView listener
-        binding.searchView.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                viewModel.setSearchQuery(query ?: "")
-                return true
-            }
-
-            override fun onQueryTextChange(newText: String?): Boolean {
-                viewModel.setSearchQuery(newText ?: "")
-                return true
-            }
-        })
-
-        // Filter button listener
-        binding.filterButton.setOnClickListener {
-            showCategoryFilterDialog()
-        }
-    }
-
-    private fun showCategoryFilterDialog() {
-        val categories = listOf(
-            com.example.inventoryapp.utils.CategoryHelper.Category(0, "All", "🗂️", requiresSerialNumber = false)
-        ) + com.example.inventoryapp.utils.CategoryHelper.getAllCategories()
-        
-        val categoryNames = categories.map { it.name }.toTypedArray()
-
-        android.app.AlertDialog.Builder(requireContext())
-            .setTitle("Filter by Category")
-            .setItems(categoryNames) { _, which: Int ->
-                val selectedCategory = categories[which]
-                if (selectedCategory.name == "All") {
-                    viewModel.setCategoryFilter(null)
-                } else {
-                    viewModel.setCategoryFilter(selectedCategory.name)
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        observeProducts()
     }
 
     private fun setupRecyclerView() {
@@ -108,37 +67,39 @@ class ProductSelectionFragment : Fragment() {
         
         binding.productsRecyclerView.apply {
             layoutManager = LinearLayoutManager(requireContext())
-            adapter = this@ProductSelectionFragment.adapter
+            adapter = this@ModifyBoxProductsFragment.adapter
         }
     }
 
     private fun setupClickListeners() {
-        binding.addNewButton.setOnClickListener {
-            // Navigate to Add Product screen
-            val action = ProductSelectionFragmentDirections.actionProductSelectionToAddProduct(args.packageId)
-            findNavController().navigate(action)
-        }
-        
         binding.cancelButton.setOnClickListener {
             findNavController().navigateUp()
         }
+
+        binding.selectAllButton.setOnClickListener {
+            adapter.selectAll()
+        }
+
+        binding.deselectAllButton.setOnClickListener {
+            adapter.deselectAll()
+        }
         
-        binding.addButton.setOnClickListener {
+        binding.removeButton.setOnClickListener {
             val selectedIds = adapter.getSelectedProductIds()
             if (selectedIds.isEmpty()) {
                 Toast.makeText(
                     requireContext(),
-                    "Please select at least one product",
+                    "Please select at least one product to remove",
                     Toast.LENGTH_SHORT
                 ).show()
                 return@setOnClickListener
             }
             
             viewLifecycleOwner.lifecycleScope.launch {
-                viewModel.addProductsToPackage(selectedIds)
+                viewModel.removeProductsFromBox(selectedIds)
                 Toast.makeText(
                     requireContext(),
-                    "${selectedIds.size} product(s) added to package",
+                    "${selectedIds.size} product(s) removed from box",
                     Toast.LENGTH_SHORT
                 ).show()
                 findNavController().navigateUp()
@@ -146,9 +107,9 @@ class ProductSelectionFragment : Fragment() {
         }
     }
 
-    private fun observeAvailableProducts() {
+    private fun observeProducts() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.availableProducts.collect { products ->
+            viewModel.productsInBox.collect { products ->
                 if (products.isEmpty()) {
                     binding.emptyStateLayout.visibility = View.VISIBLE
                     binding.productsRecyclerView.visibility = View.GONE
@@ -163,9 +124,9 @@ class ProductSelectionFragment : Fragment() {
 
     private fun updateSelectedCount(count: Int) {
         binding.selectedCountText.text = if (count == 1) {
-            "1 product selected"
+            "1 product selected for removal"
         } else {
-            "$count products selected"
+            "$count products selected for removal"
         }
     }
 

@@ -62,6 +62,14 @@ interface BoxDao {
     
     @Query("SELECT COUNT(*) FROM boxes")
     fun getBoxCount(): Flow<Int>
+    
+    @Query("""
+        SELECT EXISTS(
+            SELECT 1 FROM box_product_cross_ref 
+            WHERE boxId = :boxId AND productId = :productId
+        )
+    """)
+    suspend fun isProductInBox(boxId: Long, productId: Long): Boolean
 }
 
 data class BoxWithCount(

@@ -135,28 +135,39 @@
                     android:orientation="horizontal"
                     android:layout_marginTop="8dp">
 
-                    <!-- Add Products Button -->
+                    <!-- Modify Products Button -->
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/addProductsButton"
+                        android:id="@+id/modifyProductsButton"
                         style="@style/Widget.App.Button.Outlined"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Add Existing"
+                        android:text="Modify"
                         android:textAllCaps="false"
-                        android:layout_marginEnd="8dp" />
+                        android:layout_marginEnd="4dp" />
 
-                    <!-- Add New Product Button -->
+                    <!-- Add Products Button -->
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/addNewProductButton"
+                        android:id="@+id/addProductsButton"
                         style="@style/Widget.App.Button"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Add New"
-                        android:textAllCaps="false" />
+                        android:text="Add"
+                        android:textAllCaps="false"
+                        android:layout_marginStart="4dp" />
 
                 </LinearLayout>
+
+                <!-- Bulk Add Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/addBulkButton"
+                    style="@style/Widget.App.Button.Outlined"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Add Products in Bulk"
+                    android:textAllCaps="false"
+                    android:layout_marginTop="8dp" />
 
             </LinearLayout>
 

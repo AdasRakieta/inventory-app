@@ -59,6 +59,10 @@
             android:name="packageId"
             android:defaultValue="-1L"
             app:argType="long" />
+        <argument
+            android:name="boxId"
+            android:defaultValue="-1L"
+            app:argType="long" />
     </fragment>
 
     <fragment
@@ -104,6 +108,30 @@
         <action
             android:id="@+id/actionPackageDetailsFragmentToAddProductFragment"
             app:destination="@id/addProductFragment" />
+        <action
+            android:id="@+id/action_packageDetails_to_bulkPackageScan"
+            app:destination="@id/bulkPackageScanFragment" />
+        <action
+            android:id="@+id/action_packageDetails_to_modifyPackageProducts"
+            app:destination="@id/modifyPackageProductsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/modifyPackageProductsFragment"
+        android:name="com.example.inventoryapp.ui.packages.ModifyPackageProductsFragment"
+        android:label="Modify Package Products">
+        <argument
+            android:name="packageId"
+            app:argType="long" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/bulkPackageScanFragment"
+        android:name="com.example.inventoryapp.ui.packages.BulkPackageScanFragment"
+        android:label="Bulk Add to Package">
+        <argument
+            android:name="packageId"
+            app:argType="long" />
     </fragment>
 
     <fragment
@@ -113,6 +141,9 @@
         <argument
             android:name="packageId"
             app:argType="long" />
+        <action
+            android:id="@+id/action_productSelection_to_addProduct"
+            app:destination="@id/addProductFragment" />
     </fragment>
 
     <fragment
@@ -210,6 +241,48 @@
         <action
             android:id="@+id/action_boxDetails_to_editBox"
             app:destination="@id/editBoxFragment" />
+        <action
+            android:id="@+id/actionBoxDetailsFragmentToAddProductFragment"
+            app:destination="@id/addProductFragment" />
+        <action
+            android:id="@+id/action_boxDetails_to_bulkBoxScan"
+            app:destination="@id/bulkBoxScanFragment" />
+        <action
+            android:id="@+id/action_boxDetails_to_boxProductSelection"
+            app:destination="@id/boxProductSelectionFragment" />
+        <action
+            android:id="@+id/action_boxDetails_to_modifyBoxProducts"
+            app:destination="@id/modifyBoxProductsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/modifyBoxProductsFragment"
+        android:name="com.example.inventoryapp.ui.boxes.ModifyBoxProductsFragment"
+        android:label="Modify Box Products">
+        <argument
+            android:name="boxId"
+            app:argType="long" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/bulkBoxScanFragment"
+        android:name="com.example.inventoryapp.ui.boxes.BulkBoxScanFragment"
+        android:label="Bulk Add to Box">
+        <argument
+            android:name="boxId"
+            app:argType="long" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/boxProductSelectionFragment"
+        android:name="com.example.inventoryapp.ui.boxes.BoxProductSelectionFragment"
+        android:label="Select Products">
+        <argument
+            android:name="boxId"
+            app:argType="long" />
+        <action
+            android:id="@+id/action_boxProductSelection_to_addProduct"
+            app:destination="@id/addProductFragment" />
     </fragment>
 
     <fragment

@@ -30,8 +30,17 @@ class BoxDetailsViewModel(
     val productsInBox: StateFlow<List<ProductEntity>> = _productsInBox.asStateFlow()
 
     // Error message
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    val errorMessage = MutableStateFlow<String?>(null)
+    /**
+     * Add a product to the box by productId
+     */
+    suspend fun addProductToBox(boxId: Long, productId: Long) {
+        try {
+            boxRepository.addProductToBox(boxId, productId)
+        } catch (e: Exception) {
+            errorMessage.value = "Nie udało się dodać produktu: ${e.message}"
+        }
+    }
 
     init {
         loadBox()
@@ -69,7 +78,7 @@ class BoxDetailsViewModel(
                 boxRepository.removeProductFromBox(boxId, productId)
                 // No need to manually reload - Flow will update
             } catch (e: Exception) {
-                _errorMessage.value = "Failed to remove product: ${e.message}"
+                errorMessage.value = "Failed to remove product: ${e.message}"
             }
         }
     }
@@ -78,7 +87,7 @@ class BoxDetailsViewModel(
      * Clear error message
      */
     fun clearError() {
-        _errorMessage.value = null
+        errorMessage.value = null
     }
 
     /**
@@ -89,7 +98,7 @@ class BoxDetailsViewModel(
             try {
                 boxRepository.deleteBox(boxId)
             } catch (e: Exception) {
-                _errorMessage.value = "Failed to delete box: ${e.message}"
+                errorMessage.value = "Failed to delete box: ${e.message}"
             }
         }
     }

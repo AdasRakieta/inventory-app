@@ -7,7 +7,7 @@ import com.example.inventoryapp.data.local.entities.BoxProductCrossRef
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import kotlinx.coroutines.flow.Flow
 
-class BoxRepository(private val boxDao: BoxDao) {
+class BoxRepository(private val boxDao: BoxDao, private val productDao: com.example.inventoryapp.data.local.dao.ProductDao) {
 
     fun getAllBoxes(): Flow<List<BoxEntity>> = boxDao.getAllBoxes()
 
@@ -47,5 +47,9 @@ class BoxRepository(private val boxDao: BoxDao) {
 
     suspend fun removeProductFromBox(boxId: Long, productId: Long) {
         boxDao.removeProductFromBoxById(boxId, productId)
+    }
+    
+    suspend fun isProductInBox(boxId: Long, productId: Long): Boolean {
+        return boxDao.isProductInBox(boxId, productId)
     }
 }

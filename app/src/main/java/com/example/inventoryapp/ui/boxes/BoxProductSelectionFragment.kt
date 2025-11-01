@@ -1,44 +1,48 @@
-package com.example.inventoryapp.ui.packages
+package com.example.inventoryapp.ui.boxes
 
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.inventoryapp.databinding.FragmentProductSelectionBinding
+import com.example.inventoryapp.databinding.FragmentBoxProductSelectionBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
-import com.example.inventoryapp.data.repository.PackageRepository
+import com.example.inventoryapp.data.repository.BoxRepository
 import com.example.inventoryapp.data.repository.ProductRepository
+import com.example.inventoryapp.ui.packages.SelectableProductsAdapter
+import com.example.inventoryapp.utils.CategoryHelper
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
-class ProductSelectionFragment : Fragment() {
+class BoxProductSelectionFragment : Fragment() {
 
-    private var _binding: FragmentProductSelectionBinding? = null
+    private var _binding: FragmentBoxProductSelectionBinding? = null
     private val binding get() = _binding!!
     
-    private lateinit var viewModel: ProductSelectionViewModel
+    private lateinit var viewModel: BoxProductSelectionViewModel
     private lateinit var adapter: SelectableProductsAdapter
-    private val args: ProductSelectionFragmentArgs by navArgs()
+    private val args: BoxProductSelectionFragmentArgs by navArgs()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         val database = AppDatabase.getDatabase(requireContext())
         val productRepository = ProductRepository(database.productDao())
-        val packageRepository = PackageRepository(database.packageDao(), database.productDao())
-        val factory = ProductSelectionViewModelFactory(
+        val boxRepository = BoxRepository(database.boxDao(), database.productDao())
+        val factory = BoxProductSelectionViewModelFactory(
             productRepository,
-            packageRepository,
-            args.packageId
+            boxRepository,
+            args.boxId
         )
-        val vm: ProductSelectionViewModel by viewModels { factory }
+        val vm: BoxProductSelectionViewModel by viewModels { factory }
         viewModel = vm
     }
 
@@ -47,7 +51,7 @@ class ProductSelectionFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentProductSelectionBinding.inflate(inflater, container, false)
+        _binding = FragmentBoxProductSelectionBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -55,16 +59,26 @@ class ProductSelectionFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         setupRecyclerView()
-        setupClickListeners()
         setupSearch()
+        setupClickListeners()
         observeAvailableProducts()
     }
 
+    private fun setupRecyclerView() {
+        adapter = SelectableProductsAdapter { selectedIds ->
+            // No need for selected count in this view
+        }
+        
+        binding.productsRecyclerView.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = this@BoxProductSelectionFragment.adapter
+        }
+    }
+
     private fun setupSearch() {
-        // SearchView listener
-        binding.searchView.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
+        binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
-                viewModel.setSearchQuery(query ?: "")
+                query?.let { viewModel.setSearchQuery(it) }
                 return true
             }
 
@@ -74,7 +88,6 @@ class ProductSelectionFragment : Fragment() {
             }
         })
 
-        // Filter button listener
         binding.filterButton.setOnClickListener {
             showCategoryFilterDialog()
         }
@@ -82,12 +95,12 @@ class ProductSelectionFragment : Fragment() {
 
     private fun showCategoryFilterDialog() {
         val categories = listOf(
-            com.example.inventoryapp.utils.CategoryHelper.Category(0, "All", "🗂️", requiresSerialNumber = false)
-        ) + com.example.inventoryapp.utils.CategoryHelper.getAllCategories()
+            CategoryHelper.Category(0, "All", "🗂️", requiresSerialNumber = false)
+        ) + CategoryHelper.getAllCategories()
         
         val categoryNames = categories.map { it.name }.toTypedArray()
 
-        android.app.AlertDialog.Builder(requireContext())
+        AlertDialog.Builder(requireContext())
             .setTitle("Filter by Category")
             .setItems(categoryNames) { _, which: Int ->
                 val selectedCategory = categories[which]
@@ -101,29 +114,18 @@ class ProductSelectionFragment : Fragment() {
             .show()
     }
 
-    private fun setupRecyclerView() {
-        adapter = SelectableProductsAdapter { selectedIds ->
-            updateSelectedCount(selectedIds.size)
-        }
-        
-        binding.productsRecyclerView.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = this@ProductSelectionFragment.adapter
-        }
-    }
-
     private fun setupClickListeners() {
-        binding.addNewButton.setOnClickListener {
-            // Navigate to Add Product screen
-            val action = ProductSelectionFragmentDirections.actionProductSelectionToAddProduct(args.packageId)
-            findNavController().navigate(action)
-        }
-        
         binding.cancelButton.setOnClickListener {
             findNavController().navigateUp()
         }
+
+        binding.addNewButton.setOnClickListener {
+            val action = BoxProductSelectionFragmentDirections
+                .actionBoxProductSelectionToAddProduct(boxId = args.boxId)
+            findNavController().navigate(action)
+        }
         
-        binding.addButton.setOnClickListener {
+        binding.addSelectedButton.setOnClickListener {
             val selectedIds = adapter.getSelectedProductIds()
             if (selectedIds.isEmpty()) {
                 Toast.makeText(
@@ -135,10 +137,10 @@ class ProductSelectionFragment : Fragment() {
             }
             
             viewLifecycleOwner.lifecycleScope.launch {
-                viewModel.addProductsToPackage(selectedIds)
+                viewModel.addProductsToBox(selectedIds)
                 Toast.makeText(
                     requireContext(),
-                    "${selectedIds.size} product(s) added to package",
+                    "${selectedIds.size} product(s) added to box",
                     Toast.LENGTH_SHORT
                 ).show()
                 findNavController().navigateUp()
@@ -150,22 +152,14 @@ class ProductSelectionFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.availableProducts.collect { products ->
                 if (products.isEmpty()) {
-                    binding.emptyStateLayout.visibility = View.VISIBLE
+                    binding.emptyStateText.visibility = View.VISIBLE
                     binding.productsRecyclerView.visibility = View.GONE
                 } else {
-                    binding.emptyStateLayout.visibility = View.GONE
+                    binding.emptyStateText.visibility = View.GONE
                     binding.productsRecyclerView.visibility = View.VISIBLE
                     adapter.submitList(products)
                 }
             }
-        }
-    }
-
-    private fun updateSelectedCount(count: Int) {
-        binding.selectedCountText.text = if (count == 1) {
-            "1 product selected"
-        } else {
-            "$count products selected"
         }
     }
 

@@ -31,6 +31,21 @@ class SelectableProductsAdapter(
 
     fun getSelectedProductIds(): Set<Long> = selectedProducts.toSet()
 
+    fun selectAll() {
+        selectedProducts.clear()
+        currentList.forEach { product ->
+            selectedProducts.add(product.id)
+        }
+        onSelectionChanged(selectedProducts)
+        notifyDataSetChanged()
+    }
+
+    fun deselectAll() {
+        selectedProducts.clear()
+        onSelectionChanged(selectedProducts)
+        notifyDataSetChanged()
+    }
+
     inner class ProductViewHolder(
         private val binding: ItemSelectableProductBinding
     ) : RecyclerView.ViewHolder(binding.root) {

@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 
 class PackageDetailsViewModel(
     private val packageRepository: PackageRepository,
-    private val productRepository: ProductRepository,
+    val productRepository: ProductRepository,
     private val contractorRepository: ContractorRepository,
     private val packageId: Long
 ) : ViewModel() {
@@ -117,6 +117,17 @@ class PackageDetailsViewModel(
         viewModelScope.launch {
             try {
                 packageRepository.removeProductFromPackage(packageId, productId)
+            } catch (e: Exception) {
+                // Error will be handled in the fragment
+                throw e
+            }
+        }
+    }
+    
+    fun addProductToPackage(productId: Long) {
+        viewModelScope.launch {
+            try {
+                packageRepository.addProductToPackage(packageId, productId)
             } catch (e: Exception) {
                 // Error will be handled in the fragment
                 throw e

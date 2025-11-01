@@ -137,4 +137,8 @@ class PackageRepository(
             )
         }
     }
+    
+    suspend fun isProductInPackage(packageId: Long, productId: Long): Boolean {
+        return packageDao.isProductInPackage(packageId, productId)
+    }
 }
