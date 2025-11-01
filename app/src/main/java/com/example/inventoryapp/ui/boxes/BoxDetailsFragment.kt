@@ -22,6 +22,7 @@ import com.example.inventoryapp.utils.BluetoothPrinterHelper
 import com.example.inventoryapp.utils.PrinterSelectionHelper
 import com.example.inventoryapp.utils.QRCodeGenerator
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.gson.Gson
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -70,8 +71,12 @@ class BoxDetailsFragment : Fragment() {
         )
 
         binding.productsRecyclerView.apply {
-            layoutManager = LinearLayoutManager(requireContext())
+            layoutManager = LinearLayoutManager(requireContext()).apply {
+                orientation = LinearLayoutManager.VERTICAL
+            }
             adapter = productsAdapter
+            setHasFixedSize(false)
+            isNestedScrollingEnabled = false
         }
     }
 
@@ -80,6 +85,11 @@ class BoxDetailsFragment : Fragment() {
         binding.printLabelFab.setOnClickListener {
             android.util.Log.d("BoxDetails", "Print button clicked")
             printBoxLabel()
+        }
+
+        binding.testPrintFab.setOnClickListener {
+            android.util.Log.d("BoxDetails", "Test print button clicked")
+            testPrinterConnection()
         }
         
         binding.editBoxButton.setOnClickListener {
@@ -103,6 +113,7 @@ class BoxDetailsFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.productsInBox.collect { products ->
+                android.util.Log.d("BoxDetails", "Loading ${products.size} products into adapter")
                 // Convert ProductEntity to ProductWithPackage for adapter
                 val productsWithPackage = products.map { product ->
                     com.example.inventoryapp.ui.products.ProductWithPackage(
@@ -113,6 +124,9 @@ class BoxDetailsFragment : Fragment() {
                 productsAdapter.submitList(productsWithPackage)
                 updateProductsHeader(products.size)
                 updateEmptyState(products.isEmpty())
+                
+                // Force refresh RecyclerView
+                binding.productsRecyclerView.adapter?.notifyDataSetChanged()
             }
         }
 
@@ -160,54 +174,87 @@ class BoxDetailsFragment : Fragment() {
             }
 
             try {
-                // Generate QR code bitmap for the box
-                val qrContent = "BOX_${box.id}"
-                val qrBitmap = QRCodeGenerator.generateQRCode(qrContent, 200, 200)
-                
-                if (qrBitmap == null) {
-                    Toast.makeText(requireContext(), "Failed to generate QR code", Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-
-                // Prepare header and footer with product serial numbers
+                // Generate formatted text content for printing
                 val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                
-                val header = buildString {
+                val textContent = buildString {
+                    // Header
                     append("Box: ${box.name}\n")
                     if (!box.description.isNullOrBlank()) {
                         append("Description: ${box.description}\n")
                     }
                     append("Created: ${dateFormat.format(box.createdAt)}\n")
-                    append("Label: ${printer.labelWidthMm}×${printer.labelHeightMm}mm")
-                }
-                
-                val footer = buildString {
+                    append("Printer: ${printer.name}\n\n")
+
+                    // Products section
                     append("Products:\n")
-                    if (products.isEmpty()) {
-                        append("(empty)")
-                    } else {
-                        // Group serial numbers in pairs per line
-                        products.chunked(2).forEach { pair ->
-                            append(pair.joinToString(", ") { it.serialNumber ?: "N/A" })
-                            append("\n")
+                    products.forEachIndexed { index, product ->
+                        val productNumber = index + 1
+                        val name = product.name
+                        val sn = product.serialNumber ?: "N/A"
+
+                        // Check if name + SN fits in one line (approximate character limit)
+                        val combinedLength = name.length + sn.length + 3 // +3 for ": " and ","
+                        if (combinedLength <= 25) { // Fits in one line
+                            append("$productNumber. $name: $sn,\n")
+                        } else { // Split into two lines
+                            append("$productNumber. $name:\n")
+                            append("$sn,\n")
                         }
                     }
                 }
+                
+                // Connect to printer and print single label with all products
+                val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), printer.macAddress)
+                if (socket == null) {
+                    Toast.makeText(
+                        requireContext(),
+                        "❌ Failed to connect to ${printer.name}\nMAC: ${printer.macAddress}\n\nCheck:\n1. Printer is ON\n2. Bluetooth enabled\n3. In range",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@launch
+                }
 
-                // Connect and print
+                // Print text label
+                val success = BluetoothPrinterHelper.printText(socket, textContent)
+                socket.close()
+                
+                if (success) {
+                    Toast.makeText(
+                        requireContext(), 
+                        "✅ Label printed on ${printer.name}", 
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    Toast.makeText(requireContext(), "❌ Failed to print label", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun testPrinterConnection() {
+        // Use the same printer selection mechanism as the main print function
+        PrinterSelectionHelper.getDefaultOrSelectPrinter(this) { selectedPrinter ->
+            android.util.Log.d("BoxDetails", "Test printer selected: ${selectedPrinter.name}")
+            testPrinterWithSelected(selectedPrinter)
+        }
+    }
+
+    private fun testPrinterWithSelected(printer: PrinterEntity) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                Toast.makeText(requireContext(), "Testing printer: ${printer.name}", Toast.LENGTH_SHORT).show()
+
                 val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), printer.macAddress)
                 if (socket != null) {
-                    val success = BluetoothPrinterHelper.printQRCode(socket, qrBitmap, header, footer)
-                    socket.close()
-                    
+                    val success = BluetoothPrinterHelper.sendTestLabel(socket)
+                    BluetoothPrinterHelper.disconnect(socket)
+
                     if (success) {
-                        Toast.makeText(
-                            requireContext(), 
-                            "✅ Label printed on ${printer.name}", 
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast.makeText(requireContext(), "✅ Test label sent! Check printer.", Toast.LENGTH_LONG).show()
                     } else {
-                        Toast.makeText(requireContext(), "❌ Failed to print label", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "❌ Test failed - check logs", Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     Toast.makeText(
@@ -217,7 +264,7 @@ class BoxDetailsFragment : Fragment() {
                     ).show()
                 }
             } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Test error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }

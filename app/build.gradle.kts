@@ -13,9 +13,8 @@ android {
         applicationId = "com.inventory.prd"
         minSdkVersion(26)
         targetSdkVersion(31)
-        versionCode = 58
-        versionName = "1.14.8"
-
+        versionCode = 64
+        versionName = "1.15.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -109,22 +108,22 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.4.0")
     androidTestImplementation("androidx.test:rules:1.4.0")
 
-    // Zależności Zebra (pozostawione bez zmian)
-    implementation(files("../ok_mobile_zebra_printer/android/libs/ZSDK_ANDROID_API.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/commons-io-2.2.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/commons-lang3-3.4.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/commons-net-3.1.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/commons-validator-1.4.0.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/core-1.53.0.0.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/httpcore-4.3.1.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/httpmime-4.3.2.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/jackson-annotations-2.2.3.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/jackson-core-2.2.3.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/jackson-databind-2.2.3.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/opencsv-2.2.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/pkix-1.53.0.0.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/prov-1.53.0.0.jar"))
-    implementation(files("../ok_mobile_zebra_printer/android/libs/snmp6_1z.jar"))
+    // Zależności Zebra (poprawione ścieżki)
+    implementation(files("ok_mobile_zebra_printer/android/libs/ZSDK_ANDROID_API.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/commons-io-2.2.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/commons-lang3-3.4.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/commons-net-3.1.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/commons-validator-1.4.0.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/core-1.53.0.0.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/httpcore-4.3.1.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/httpmime-4.3.2.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/jackson-annotations-2.2.3.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/jackson-core-2.2.3.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/jackson-databind-2.2.3.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/opencsv-2.2.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/pkix-1.53.0.0.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/prov-1.53.0.0.jar"))
+    implementation(files("ok_mobile_zebra_printer/android/libs/snmp6_1z.jar"))
 }
 
 // Niestandardowe zadania (poprawione ścieżki)

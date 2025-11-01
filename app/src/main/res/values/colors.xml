@@ -25,6 +25,7 @@
     
     <!-- Accent colors -->
     <color name="accent">#0969DA</color>
+    <color name="secondary">#7D8590</color>
     <color name="success">#3FB950</color>
     <color name="warning">#D29922</color>
     <color name="error">#F85149</color>

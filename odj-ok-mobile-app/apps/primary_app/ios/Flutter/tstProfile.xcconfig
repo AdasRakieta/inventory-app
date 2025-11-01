@@ -1,6 +1,0 @@
-#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
-#include "Generated.xcconfig"
-
-ASSET_PREFIX=tst
-BUNDLE_NAME=OK Mobile Tst
-BUNDLE_DISPLAY_NAME=OK Mobile Tst

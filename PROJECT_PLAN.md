@@ -1,5 +1,84 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.15.4 - Test Button: Bez Parowania BT (COMPLETED)
+
+Version: 1.15.4 (code 64)
+
+Zmiany:
+- Przycisk testowy: zmieniono mechanizm z `scanPrinters()` (wymaga parowania) na `PrinterSelectionHelper.getDefaultOrSelectPrinter()` (bez parowania)
+- Spójność: przycisk testowy teraz używa tego samego podejścia co główna funkcja drukowania - pobiera domyślną drukarkę z bazy danych lub pokazuje dialog wyboru
+- Brak parowania: testowanie drukarki działa teraz przez bezpośrednie połączenie z zapisanym MAC adresem, bez konieczności parowania BT
+
+Pliki:
+- `BoxDetailsFragment.kt`: zmieniono `testPrinterConnection()` żeby używał `PrinterSelectionHelper.getDefaultOrSelectPrinter()` zamiast `scanPrinters()`, dodano `testPrinterWithSelected()` dla obsługi wybranego PrinterEntity
+- `app/build.gradle.kts`: wersja podbita do 1.15.4 (code 64)
+
+Testy:
+- Build: ✅ PASS (assembleDebug)
+- Kompilacja: ✅ PASS - brak błędów
+
+Uwagi:
+- Przycisk testowy teraz działa identycznie jak główna funkcja drukowania - bez parowania BT
+- Jeśli nie ma domyślnej drukarki, pokaże dialog wyboru zapisanych drukarek
+- Wszystkie funkcje drukowania używają teraz spójnego mechanizmu bez parowania
+
+## ✅ v1.15.3 - Zebra: Diagnostyka + Funkcje Testowe (COMPLETED)
+
+Version: 1.15.3 (code 63)
+
+Zmiany:
+- Diagnostyka drukowania: dodano szczegółowe logowanie w `printQRCode()` - loguje wysyłane dane ZPL/CPCL, status połączenia, błędy
+- Funkcja testowa: dodano `sendTestLabel()` w `BluetoothPrinterHelper.kt` - wysyła prostą etykietę tekstową do testowania połączenia
+- Przycisk testowy w UI: dodano drugi FAB w `BoxDetailsFragment` dla testowania drukarki bez QR
+- Ulepszone komendy ZPL/CPCL: dłuższe opóźnienia (500ms), lepsze parametry skalowania i pozycjonowania
+- Naprawiono ścieżki JAR: poprawiono ścieżki do bibliotek Zebra w `build.gradle.kts` (usunięto błędne "../")
+- Naprawiono błędy kompilacji: dodano brakujący import `java.util.Date`, poprawiono wywołania metod
+
+Pliki:
+- `BluetoothPrinterHelper.kt`: dodano `sendTestLabel()`, ulepszone logowanie w `printQRCode()`, dłuższe delays
+- `BoxDetailsFragment.kt`: dodano przycisk testowy i funkcję `testPrinterConnection()` używającą `scanPrinters()`
+- `fragment_box_details.xml`: dodano drugi FAB (testPrintFab) poniżej głównego przycisku drukowania
+- `colors.xml`: dodano kolor "secondary" dla przycisku testowego
+- `app/build.gradle.kts`: poprawiono ścieżki JAR z "../ok_mobile_zebra_printer/android/libs/" na "ok_mobile_zebra_printer/android/libs/", wersja podbita do 1.15.3 (code 63)
+
+Testy:
+- Build: ✅ PASS (assembleDebug) - wszystkie błędy kompilacji naprawione
+- Kompilacja: ✅ PASS - brak błędów Kotlin, tylko ostrzeżenia (warnings)
+- Zależności: ✅ PASS - ścieżki JAR poprawione, biblioteki Zebra dostępne
+
+Uwagi:
+- Funkcje diagnostyczne gotowe do testowania na urządzeniu - przycisk testowy wysyła prostą etykietę tekstową
+- Szczegółowe logowanie pomoże zdiagnozować dlaczego QR nie drukuje (sprawdzenie czy dane docierają do drukarki)
+- Jeśli testowa etykieta drukuje, problem jest w generowaniu QR; jeśli nie - problem z połączeniem lub językiem drukarki
+- Następne kroki: zainstalować na TC58E-13 i przetestować przycisk testowy, sprawdzić logi ADB
+
+## ✅ v1.15.1 - Zebra: druk bez parowania + ZPL QR (COMPLETED)
+
+Version: 1.15.1 (code 61)
+
+Zmiany:
+- Połączenie BT: preferujemy połączenia NIEZABEZPIECZONE (bez parowania). Kolejność prób:
+  1) refleksja `createInsecureRfcommSocket(1)` (kanał 1),
+  2) `createInsecureRfcommSocketToServiceRecord(SPP_UUID)`,
+  3) refleksja secure kanał 1,
+  4) secure SPP (ostatnia deska ratunku – może wywołać parowanie).
+- Druk QR dla Zebra: dodany tryb ZPL (bez konwersji bitmapy). Gdy przekażemy `qrData`, helper wysyła program ZPL z `^BQN` i drukarka mobilna Zebra (np. ZQ310 Plus) powinna fizycznie drukować.
+- Boxes: przekazuję `qrContent` (np. `BOX_123`) do helpera – Boxy drukują teraz przez ZPL na Zebra.
+
+Pliki:
+- `BluetoothPrinterHelper.kt`: re-order connect (bez parowania), `printQRCode(..., qrData: String?)` + generator ZPL.
+- `BoxDetailsFragment.kt`: przekazanie `qrContent` do `printQRCode`.
+- `app/build.gradle.kts`: wersja podbita do 1.15.1 (code 61).
+
+Testy:
+- Build: ✅ PASS (assembleDebug)
+- Instalacja: ✅ PASS (installDebug na TC58E-13)
+
+Uwagi:
+- Wydruk ZPL omija problem czarnej plamy z bitmapy ESC/POS i jest natywnie wspierany przez Zebra.
+- Jeśli nadal brak ruchu rolki – sprawdzić tryb pracy drukarki (ZPL/CPCL), ewentualnie dopasować skalowanie `^BQN,2,8` oraz `^PW384` do szerokości papieru.
+
+
 ## ✅ v1.14.4 - Boxes Full Functionality + Stats Legacy Products Fix (COMPLETED)
 
 **Version:** 1.14.4 (code 54)

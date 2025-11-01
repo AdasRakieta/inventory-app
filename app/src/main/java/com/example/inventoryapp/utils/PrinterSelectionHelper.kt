@@ -96,9 +96,9 @@ object PrinterSelectionHelper {
     ) {
         val printerNames = printers.map { printer ->
             if (printer.isDefault) {
-                "${printer.name} (Default) - ${printer.labelWidthMm}×${printer.labelHeightMm}mm"
+                "${printer.name} (Default)"
             } else {
-                "${printer.name} - ${printer.labelWidthMm}×${printer.labelHeightMm}mm"
+                printer.name
             }
         }.toTypedArray()
         

@@ -24,7 +24,7 @@ import com.example.inventoryapp.data.local.entities.*
         ImportBackupEntity::class,
         PrinterEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -222,6 +222,36 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Remove label size columns from printers table - let printer use default settings
+                // SQLite doesn't support DROP COLUMN, so we need to recreate the table
+                
+                // Create new printers table without size columns
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `printers_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `macAddress` TEXT NOT NULL,
+                        `isDefault` INTEGER NOT NULL DEFAULT 0,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                
+                // Copy data from old table (without size columns)
+                database.execSQL("""
+                    INSERT INTO `printers_new` (id, name, macAddress, isDefault, createdAt)
+                    SELECT id, name, macAddress, isDefault, createdAt FROM `printers`
+                """.trimIndent())
+                
+                // Drop old table
+                database.execSQL("DROP TABLE `printers`")
+                
+                // Rename new table to printers
+                database.execSQL("ALTER TABLE `printers_new` RENAME TO `printers`")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -229,7 +259,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "inventory_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

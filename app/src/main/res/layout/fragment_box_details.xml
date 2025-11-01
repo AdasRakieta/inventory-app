@@ -161,4 +161,15 @@
         android:contentDescription="@string/print_label"
         android:src="@android:drawable/ic_menu_share" />
 
+    <!-- Test Print FAB -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/testPrintFab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="16dp"
+        android:contentDescription="Test print"
+        android:src="@android:drawable/ic_menu_info_details"
+        app:backgroundTint="@color/secondary" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

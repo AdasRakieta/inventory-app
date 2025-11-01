@@ -39,7 +39,7 @@ class PrintersAdapter(
         fun bind(printer: PrinterEntity) {
             binding.printerNameText.text = printer.name
             binding.printerMacText.text = printer.macAddress
-            binding.printerDimensionsText.text = "${printer.labelWidthMm}mm × ${printer.labelHeightMm}mm"
+            binding.printerDimensionsText.text = "Using default settings"
             
             // Show default badge
             if (printer.isDefault) {

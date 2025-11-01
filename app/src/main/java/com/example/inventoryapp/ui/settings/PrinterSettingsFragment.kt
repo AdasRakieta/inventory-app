@@ -92,8 +92,6 @@ class PrinterSettingsFragment : Fragment() {
         
         val nameInput = dialogView.findViewById<TextInputEditText>(R.id.printerNameInput)
         val macInput = dialogView.findViewById<TextInputEditText>(R.id.printerMacInput)
-        val widthInput = dialogView.findViewById<TextInputEditText>(R.id.labelWidthInput)
-        val heightInput = dialogView.findViewById<TextInputEditText>(R.id.labelHeightInput)
         
         // Auto-format MAC address
         macInput.doAfterTextChanged {
@@ -114,11 +112,9 @@ class PrinterSettingsFragment : Fragment() {
             .setPositiveButton("Add") { _, _ ->
                 val name = nameInput.text.toString().trim()
                 val mac = macInput.text.toString().trim()
-                val width = widthInput.text.toString().toIntOrNull() ?: 50
-                val height = heightInput.text.toString().toIntOrNull() ?: 30
                 
-                if (validatePrinterInput(name, mac, width, height)) {
-                    addPrinter(name, mac, width, height)
+                if (validatePrinterInput(name, mac)) {
+                    addPrinter(name, mac)
                 }
             }
             .setNegativeButton("Cancel", null)
@@ -131,14 +127,10 @@ class PrinterSettingsFragment : Fragment() {
         
         val nameInput = dialogView.findViewById<TextInputEditText>(R.id.printerNameInput)
         val macInput = dialogView.findViewById<TextInputEditText>(R.id.printerMacInput)
-        val widthInput = dialogView.findViewById<TextInputEditText>(R.id.labelWidthInput)
-        val heightInput = dialogView.findViewById<TextInputEditText>(R.id.labelHeightInput)
         
         // Pre-fill with existing values
         nameInput.setText(printer.name)
         macInput.setText(printer.macAddress)
-        widthInput.setText(printer.labelWidthMm.toString())
-        heightInput.setText(printer.labelHeightMm.toString())
         
         // Auto-format MAC address
         macInput.doAfterTextChanged {
@@ -159,15 +151,11 @@ class PrinterSettingsFragment : Fragment() {
             .setPositiveButton("Save") { _, _ ->
                 val name = nameInput.text.toString().trim()
                 val mac = macInput.text.toString().trim()
-                val width = widthInput.text.toString().toIntOrNull() ?: 50
-                val height = heightInput.text.toString().toIntOrNull() ?: 30
                 
-                if (validatePrinterInput(name, mac, width, height)) {
+                if (validatePrinterInput(name, mac)) {
                     updatePrinter(printer.copy(
                         name = name,
-                        macAddress = mac,
-                        labelWidthMm = width,
-                        labelHeightMm = height
+                        macAddress = mac
                     ))
                 }
             }
@@ -177,9 +165,7 @@ class PrinterSettingsFragment : Fragment() {
 
     private fun validatePrinterInput(
         name: String,
-        mac: String,
-        width: Int,
-        height: Int
+        mac: String
     ): Boolean {
         if (name.isEmpty()) {
             Toast.makeText(requireContext(), "Please enter printer name", Toast.LENGTH_SHORT).show()
@@ -202,28 +188,10 @@ class PrinterSettingsFragment : Fragment() {
             return false
         }
         
-        if (width < 10 || width > 200) {
-            Toast.makeText(
-                requireContext(),
-                "Label width must be between 10-200mm",
-                Toast.LENGTH_SHORT
-            ).show()
-            return false
-        }
-        
-        if (height < 10 || height > 200) {
-            Toast.makeText(
-                requireContext(),
-                "Label height must be between 10-200mm",
-                Toast.LENGTH_SHORT
-            ).show()
-            return false
-        }
-        
         return true
     }
 
-    private fun addPrinter(name: String, mac: String, width: Int, height: Int) {
+    private fun addPrinter(name: String, mac: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val isFirstPrinter = printerRepository.getPrinterCount() == 0
@@ -231,8 +199,6 @@ class PrinterSettingsFragment : Fragment() {
                 val printer = PrinterEntity(
                     name = name,
                     macAddress = mac,
-                    labelWidthMm = width,
-                    labelHeightMm = height,
                     isDefault = isFirstPrinter // First printer is default
                 )
                 
