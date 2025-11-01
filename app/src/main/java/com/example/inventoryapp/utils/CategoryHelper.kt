@@ -15,7 +15,7 @@ object CategoryHelper {
     private val categories = listOf(
         Category(1L, "Scanner", "🔍", requiresSerialNumber = true),
         Category(2L, "Printer", "🖨️", requiresSerialNumber = true),
-        Category(3L, "Scanner Docking Station", "🔌", requiresSerialNumber = true),
+            Category(3L, "Scanner Docking Station", "🪫", requiresSerialNumber = true),
         Category(4L, "Printer Docking Station", "🔌", requiresSerialNumber = true),
         Category(5L, "Other", "📦", requiresSerialNumber = false)
     )
