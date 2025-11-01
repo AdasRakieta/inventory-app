@@ -1,5 +1,74 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.16.2 - Release Build Configuration & Automatic Signing (COMPLETED)
+
+Version: 1.16.2 (code 79)
+
+**Cel**: Skonfigurować automatyczne podpisywanie wersji release w Gradle i umożliwić bezpośrednią instalację na skanerze przez kabel.
+
+### Zmiany:
+
+1. **Utworzono keystore do podpisywania**:
+   - Plik: `app/inventory-release.keystore`
+   - Alias: `inventory-key`
+   - Hasła: `inventory2024` (store i key)
+   - Ważność: 10 000 dni
+   - Właściciel: Szymon Przybysz
+   - ⚠️ Plik zabezpieczony w `.gitignore` (wpis `*.keystore` już istniał)
+
+2. **app/build.gradle.kts**:
+   - Dodano sekcję `signingConfigs` z konfiguracją release
+   - Podłączono signing config do `buildTypes.release`
+   - Dodano 2 nowe zadania Gradle:
+     - `deployRelease` - build, install, run release APK
+     - `quickDeployRelease` - szybkie wdrożenie release (bez clean)
+
+3. **Utworzono RELEASE_BUILD.md**:
+   - Kompleksowa dokumentacja procesu budowania release
+   - Instrukcje zarządzania keystore
+   - Lista poleceń Gradle i ADB
+   - Troubleshooting i best practices
+   - Historia wersji
+
+### Testy:
+
+- ✅ Build release: `assembleRelease` - SUCCESS (1m 43s)
+- ✅ APK wygenerowany: `app\build\outputs\apk\release\app-release.apk`
+- ✅ Instalacja przez ADB: SUCCESS
+- ✅ Uruchomienie na skanerze: SUCCESS
+- ✅ Weryfikacja podpisu: `signatures=PackageSignatures{2bca285 version:2, signatures:[c0e6541b]}`
+- ✅ Weryfikacja wersji: versionCode=79, versionName=1.16.2
+
+### Pliki zmienione:
+- `app/build.gradle.kts`: dodano signingConfigs, 2 nowe zadania
+- `app/inventory-release.keystore`: NOWY (już w .gitignore)
+- `RELEASE_BUILD.md`: NOWY - dokumentacja release build
+
+### Polecenia wdrożeniowe:
+
+```powershell
+# Pełne wdrożenie release
+.\gradlew.bat deployRelease
+
+# Szybkie wdrożenie (bez clean)
+.\gradlew.bat quickDeployRelease
+
+# Tylko build release
+.\gradlew.bat assembleRelease
+
+# Instalacja manualna przez ADB
+adb install -r app\build\outputs\apk\release\app-release.apk
+```
+
+### Rezultat:
+- 🎯 Aplikacja release jest teraz automatycznie podpisywana podczas buildu
+- 🔐 Keystore zabezpieczony i gotowy do długoterminowego użytku
+- 📱 Bezproblemowa instalacja na skanerze przez kabel
+- 📚 Pełna dokumentacja procesu w RELEASE_BUILD.md
+- ✅ Gotowe do wdrażania przez SOTI lub bezpośrednio przez ADB
+
+---
+
 ## ✅ v1.16.1 - Home Screen Reorganization: Removed Scanner, New Category Order (COMPLETED)
 
 Version: 1.16.1 (code 77)

@@ -165,3 +165,21 @@ tasks.register("runOnDevice") {
         }
     }
 }
+
+tasks.register("deployRelease") {
+    group = "custom"
+    description = "Build, install and launch RELEASE APK on connected device"
+    dependsOn("installRelease")
+    doLast {
+        exec {
+            workingDir = project.rootDir
+            commandLine("cmd", "/c", "C:/Users/%USERNAME%/AppData/Local/Android/Sdk/platform-tools/adb.exe", "shell", "am", "start", "-n", "com.inventory.prd/com.example.inventoryapp.ui.main.SplashActivity")
+        }
+    }
+}
+
+tasks.register("quickDeployRelease") {
+    group = "custom"
+    description = "Quick build and install RELEASE APK on connected device (no clean)"
+    dependsOn("assembleRelease", "installRelease")
+}
