@@ -24,7 +24,7 @@ import com.example.inventoryapp.data.local.entities.*
         ImportBackupEntity::class,
         PrinterEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -252,6 +252,37 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Simplify contractors table - remove contactPerson and address, rename notes to description
+                
+                // Create new contractors table with simplified schema
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `contractors_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `phone` TEXT,
+                        `email` TEXT,
+                        `description` TEXT,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                
+                // Copy data from old table (map notes to description, drop contactPerson and address)
+                database.execSQL("""
+                    INSERT INTO `contractors_new` (id, name, phone, email, description, createdAt, updatedAt)
+                    SELECT id, name, phone, email, notes, createdAt, updatedAt FROM `contractors`
+                """.trimIndent())
+                
+                // Drop old table
+                database.execSQL("DROP TABLE `contractors`")
+                
+                // Rename new table to contractors
+                database.execSQL("ALTER TABLE `contractors_new` RENAME TO `contractors`")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -259,7 +290,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "inventory_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

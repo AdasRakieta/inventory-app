@@ -44,11 +44,6 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupClickListeners() {
-        // Scanner card - navigate to scanner
-        binding.scannerCard.setOnClickListener {
-            findNavController().navigate(R.id.action_home_to_scanner)
-        }
-
         // Products card - navigate to products list
         binding.productsCard.setOnClickListener {
             findNavController().navigate(R.id.action_home_to_products)

@@ -164,8 +164,17 @@
         android:name="com.example.inventoryapp.ui.contractors.ContractorsFragment"
         android:label="Contractors">
         <action
-            android:id="@+id/action_contractors_to_add_contractor"
-            app:destination="@id/addContractorFragment" />
+            android:id="@+id/action_contractors_to_contractor_details"
+            app:destination="@id/contractorDetailsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/contractorDetailsFragment"
+        android:name="com.example.inventoryapp.ui.contractors.ContractorDetailsFragment"
+        android:label="Contractor Details">
+        <argument
+            android:name="contractorId"
+            app:argType="long" />
     </fragment>
 
     <fragment

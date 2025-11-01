@@ -1,5 +1,44 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.16.1 - Home Screen Reorganization: Removed Scanner, New Category Order (COMPLETED)
+
+Version: 1.16.1 (code 77)
+
+Zmiany:
+- **fragment_home.xml** - restrukturyzacja kategorii:
+  - Usunięto scannerCard (📷 "Scan Barcode / QR Code")
+  - Nowa kolejność kategorii:
+    1. Products (📦)
+    2. Product Templates (🧩)
+    3. Boxes (📦)
+    4. Packages (📋)
+    5. Contractors (🏢)
+    6. Printer Settings (🖨️)
+    7. Export / Import (⬇️⬆️)
+  - Usunięto duplikaty kart powstałych podczas pierwszej zamiany
+  - Layout: 7 kategorii (było 8)
+- **HomeFragment.kt** - usunięto click listener:
+  - Usunięto `binding.scannerCard.setOnClickListener`
+  - Pozostało 7 click listeners dla nowych kategorii
+
+Pliki zmienione:
+- `fragment_home.xml`: usunięto scannerCard, przestawiono kolejność na: Products, Templates, Boxes, Packages, Contractors, Printer Settings, Export/Import
+- `HomeFragment.kt`: usunięto scannerCard listener
+- `app/build.gradle.kts`: wersja podbita do 1.16.1 (code 77)
+
+Testy:
+- Build: ✅ PASS (assembleDebug w 49s)
+
+Rezultat:
+- **Home screen** teraz ma 7 kategorii (zamiast 8)
+- Scanner usunięty zgodnie z request
+- Kolejność kategorii:
+  - Workflow produktowy: Products → Templates → Boxes
+  - Wysyłka: Packages → Contractors
+  - Narzędzia: Printer Settings → Export/Import
+- UI spójny, wszystkie karty clickable
+- Ready do użytku
+
 ## ✅ v1.15.14 - Printer Item Padding Fix (COMPLETED)
 
 Version: 1.15.14 (code 74)

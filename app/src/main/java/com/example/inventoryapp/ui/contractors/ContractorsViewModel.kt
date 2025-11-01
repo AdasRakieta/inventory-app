@@ -13,20 +13,16 @@ class ContractorsViewModel(private val contractorRepository: ContractorRepositor
 
     fun addContractor(
         name: String,
-        contactPerson: String? = null,
-        email: String? = null,
         phone: String? = null,
-        address: String? = null,
-        notes: String? = null
+        email: String? = null,
+        description: String? = null
     ) {
         viewModelScope.launch {
             val contractor = ContractorEntity(
                 name = name,
-                contactPerson = contactPerson,
-                email = email,
                 phone = phone,
-                address = address,
-                notes = notes
+                email = email,
+                description = description
             )
             contractorRepository.insertContractor(contractor)
         }
