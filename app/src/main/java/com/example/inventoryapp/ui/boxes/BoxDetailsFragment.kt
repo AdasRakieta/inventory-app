@@ -1,7 +1,6 @@
 package com.example.inventoryapp.ui.boxes
 
-import android.content.Context
-import android.graphics.Bitmap
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -14,15 +13,11 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.inventoryapp.InventoryApplication
-import com.example.inventoryapp.R
 import com.example.inventoryapp.data.local.entities.PrinterEntity
+import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.databinding.FragmentBoxDetailsBinding
-import com.example.inventoryapp.ui.products.ProductsAdapter
 import com.example.inventoryapp.utils.BluetoothPrinterHelper
 import com.example.inventoryapp.utils.PrinterSelectionHelper
-import com.example.inventoryapp.utils.QRCodeGenerator
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.gson.Gson
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -30,6 +25,7 @@ import java.util.Locale
 
 /**
  * Fragment for displaying box details and printing labels.
+ * Uses the same simple list layout as PackageDetailsFragment.
  */
 class BoxDetailsFragment : Fragment() {
 
@@ -45,7 +41,7 @@ class BoxDetailsFragment : Fragment() {
         )
     }
 
-    private lateinit var productsAdapter: ProductsAdapter
+    private lateinit var productsAdapter: BoxProductsAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -65,33 +61,25 @@ class BoxDetailsFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        productsAdapter = ProductsAdapter(
-            onProductClick = { /* No action needed in box details */ },
-            onProductLongClick = { false }
-        )
+        productsAdapter = BoxProductsAdapter { product ->
+            showRemoveProductDialog(product)
+        }
 
         binding.productsRecyclerView.apply {
-            layoutManager = LinearLayoutManager(requireContext()).apply {
-                orientation = LinearLayoutManager.VERTICAL
-            }
+            layoutManager = LinearLayoutManager(requireContext())
             adapter = productsAdapter
-            setHasFixedSize(false)
-            isNestedScrollingEnabled = false
         }
     }
 
     private fun setupClickListeners() {
-        android.util.Log.d("BoxDetails", "Setting up click listeners")
-        binding.printLabelFab.setOnClickListener {
-            android.util.Log.d("BoxDetails", "Print button clicked")
+        binding.printLabelButton.setOnClickListener {
             printBoxLabel()
         }
 
-        binding.testPrintFab.setOnClickListener {
-            android.util.Log.d("BoxDetails", "Test print button clicked")
+        binding.testPrintButton.setOnClickListener {
             testPrinterConnection()
         }
-        
+
         binding.editBoxButton.setOnClickListener {
             editBox()
         }
@@ -105,28 +93,29 @@ class BoxDetailsFragment : Fragment() {
                     binding.boxDescription.text = it.description ?: "No description"
                     binding.boxLocation.text = it.warehouseLocation ?: "No location"
 
-                    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                    binding.boxCreatedDate.text = "Created: ${dateFormat.format(it.createdAt)}"
+                    val dateFormat = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault())
+                    binding.boxCreatedDate.text = dateFormat.format(it.createdAt)
                 }
             }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.productsInBox.collect { products ->
-                android.util.Log.d("BoxDetails", "Loading ${products.size} products into adapter")
-                // Convert ProductEntity to ProductWithPackage for adapter
-                val productsWithPackage = products.map { product ->
-                    com.example.inventoryapp.ui.products.ProductWithPackage(
-                        productEntity = product,
-                        packageEntity = null
-                    )
+                val count = products.size
+                binding.productsHeader.text = if (count == 1) {
+                    "1 product assigned"
+                } else {
+                    "$count products assigned"
                 }
-                productsAdapter.submitList(productsWithPackage)
-                updateProductsHeader(products.size)
-                updateEmptyState(products.isEmpty())
-                
-                // Force refresh RecyclerView
-                binding.productsRecyclerView.adapter?.notifyDataSetChanged()
+
+                if (products.isEmpty()) {
+                    binding.productsRecyclerView.visibility = View.GONE
+                    binding.noProductsText.visibility = View.VISIBLE
+                } else {
+                    binding.productsRecyclerView.visibility = View.VISIBLE
+                    binding.noProductsText.visibility = View.GONE
+                    productsAdapter.submitList(products)
+                }
             }
         }
 
@@ -140,25 +129,21 @@ class BoxDetailsFragment : Fragment() {
         }
     }
 
-    private fun updateProductsHeader(count: Int) {
-        binding.productsHeader.text = "Products ($count)"
-    }
-
-    private fun updateEmptyState(isEmpty: Boolean) {
-        if (isEmpty) {
-            binding.productsRecyclerView.visibility = View.GONE
-            binding.noProductsText.visibility = View.VISIBLE
-        } else {
-            binding.productsRecyclerView.visibility = View.VISIBLE
-            binding.noProductsText.visibility = View.GONE
-        }
+    private fun showRemoveProductDialog(product: ProductEntity) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Remove Product")
+            .setMessage("Remove ${product.name} from this box?")
+            .setPositiveButton("Remove") { _, _ ->
+                viewModel.removeProductFromBox(product.id)
+                Toast.makeText(requireContext(), "Product removed from box", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun printBoxLabel() {
-        android.util.Log.d("BoxDetails", "printBoxLabel() called")
         // Show printer selection dialog
         PrinterSelectionHelper.getDefaultOrSelectPrinter(this) { selectedPrinter ->
-            android.util.Log.d("BoxDetails", "Printer selected: ${selectedPrinter.name}")
             printBoxLabelWithPrinter(selectedPrinter)
         }
     }
@@ -234,9 +219,7 @@ class BoxDetailsFragment : Fragment() {
     }
 
     private fun testPrinterConnection() {
-        // Use the same printer selection mechanism as the main print function
         PrinterSelectionHelper.getDefaultOrSelectPrinter(this) { selectedPrinter ->
-            android.util.Log.d("BoxDetails", "Test printer selected: ${selectedPrinter.name}")
             testPrinterWithSelected(selectedPrinter)
         }
     }
@@ -259,7 +242,7 @@ class BoxDetailsFragment : Fragment() {
                 } else {
                     Toast.makeText(
                         requireContext(),
-                        "❌ Failed to connect to ${printer.name}\nMAC: ${printer.macAddress}\n\nCheck:\n1. Printer is ON\n2. Bluetooth enabled\n3. In range",
+                        "❌ Failed to connect to ${printer.name}\nMAC: ${printer.macAddress}",
                         Toast.LENGTH_LONG
                     ).show()
                 }

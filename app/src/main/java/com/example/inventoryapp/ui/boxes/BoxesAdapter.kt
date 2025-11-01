@@ -81,26 +81,35 @@ class BoxesAdapter(
             val productCount = boxWithCount.productCount
 
             binding.boxName.text = box.name
-            binding.boxDescription.text = box.description ?: "No description"
+            
+            // Show description as badge only if exists and not empty
+            if (!box.description.isNullOrBlank()) {
+                binding.boxDescription.visibility = android.view.View.VISIBLE
+                binding.boxDescription.text = box.description
+            } else {
+                binding.boxDescription.visibility = android.view.View.GONE
+            }
+            
             binding.boxLocation.text = box.warehouseLocation ?: "No location"
             binding.boxProductCount.text = "$productCount products"
 
-            // Format creation date
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-            binding.boxCreatedDate.text = "Created: ${dateFormat.format(box.createdAt)}"
+            // Format creation date - "Created on MMM d, yyyy" style
+            val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+            binding.boxCreatedDate.text = "Created on ${dateFormat.format(box.createdAt)}"
 
             // Selection mode visual feedback
             if (selectionMode) {
                 binding.root.isChecked = selectedBoxes.contains(box.id)
-                binding.root.strokeWidth = if (selectedBoxes.contains(box.id)) 4 else 0
+                binding.root.strokeWidth = if (selectedBoxes.contains(box.id)) 4 else 2
                 binding.root.strokeColor = if (selectedBoxes.contains(box.id)) {
                     ContextCompat.getColor(binding.root.context, R.color.primary)
                 } else {
-                    ContextCompat.getColor(binding.root.context, android.R.color.transparent)
+                    ContextCompat.getColor(binding.root.context, R.color.border)
                 }
             } else {
                 binding.root.isChecked = false
-                binding.root.strokeWidth = 0
+                binding.root.strokeWidth = 2
+                binding.root.strokeColor = ContextCompat.getColor(binding.root.context, R.color.border)
             }
 
             // Click listeners

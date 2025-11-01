@@ -50,12 +50,6 @@ class ContractorsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Setup ActionBar with back button
-        (requireActivity() as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(true)
-            title = "Contractors"
-        }
-
         setupRecyclerView()
         setupClickListeners()
         observeContractors()
@@ -77,14 +71,29 @@ class ContractorsFragment : Fragment() {
         binding.addContractorButton.setOnClickListener {
             showAddContractorDialog()
         }
+        
+        // Setup empty state button
+        binding.emptyAddButton.setOnClickListener {
+            showAddContractorDialog()
+        }
     }
 
     private fun observeContractors() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.allContractors.collect { contractors ->
                 adapter.submitList(contractors)
-                binding.emptyStateTextView.visibility = if (contractors.isEmpty()) View.VISIBLE else View.GONE
+                updateEmptyState(contractors.isEmpty())
             }
+        }
+    }
+    
+    private fun updateEmptyState(isEmpty: Boolean) {
+        if (isEmpty) {
+            binding.emptyStateLayout.visibility = View.VISIBLE
+            binding.contractorsRecyclerView.visibility = View.GONE
+        } else {
+            binding.emptyStateLayout.visibility = View.GONE
+            binding.contractorsRecyclerView.visibility = View.VISIBLE
         }
     }
 

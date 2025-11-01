@@ -39,28 +39,13 @@ class PrintersAdapter(
         fun bind(printer: PrinterEntity) {
             binding.printerNameText.text = printer.name
             binding.printerMacText.text = printer.macAddress
-            binding.printerDimensionsText.text = "Using default settings"
             
-            // Show default badge
-            if (printer.isDefault) {
-                binding.defaultBadge.visibility = View.VISIBLE
-                binding.setDefaultButton.visibility = View.GONE
-            } else {
-                binding.defaultBadge.visibility = View.GONE
-                binding.setDefaultButton.visibility = View.VISIBLE
-            }
+            // Show default badge if this is the default printer
+            binding.defaultBadge.visibility = if (printer.isDefault) View.VISIBLE else View.GONE
             
-            // Click handlers
+            // Click on item opens options (handled by onPrinterClick)
             binding.root.setOnClickListener {
                 onPrinterClick(printer)
-            }
-            
-            binding.setDefaultButton.setOnClickListener {
-                onSetDefaultClick(printer)
-            }
-            
-            binding.deleteButton.setOnClickListener {
-                onDeleteClick(printer)
             }
         }
     }

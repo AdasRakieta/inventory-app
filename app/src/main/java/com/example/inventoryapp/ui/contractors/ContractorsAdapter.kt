@@ -9,15 +9,14 @@ import com.example.inventoryapp.data.local.entities.ContractorEntity
 import com.example.inventoryapp.databinding.ItemContractorBinding
 
 class ContractorsAdapter(
-    private val onEditClick: (ContractorEntity) -> Unit,
-    private val onDeleteClick: (ContractorEntity) -> Unit
+    private val onContractorClick: (ContractorEntity) -> Unit
 ) : ListAdapter<ContractorEntity, ContractorsAdapter.ContractorViewHolder>(ContractorDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ContractorViewHolder {
         val binding = ItemContractorBinding.inflate(
             LayoutInflater.from(parent.context), parent, false
         )
-        return ContractorViewHolder(binding, onEditClick, onDeleteClick)
+        return ContractorViewHolder(binding, onContractorClick)
     }
 
     override fun onBindViewHolder(holder: ContractorViewHolder, position: Int) {
@@ -26,18 +25,13 @@ class ContractorsAdapter(
 
     class ContractorViewHolder(
         private val binding: ItemContractorBinding,
-        private val onEditClick: (ContractorEntity) -> Unit,
-        private val onDeleteClick: (ContractorEntity) -> Unit
+        private val onContractorClick: (ContractorEntity) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(contractor: ContractorEntity) {
             binding.nameTextView.text = contractor.name
-            binding.contactPersonTextView.text = contractor.contactPerson ?: "No contact person"
-            binding.emailTextView.text = contractor.email ?: "No email"
-            binding.phoneTextView.text = contractor.phone ?: "No phone"
 
-            binding.editButton.setOnClickListener { onEditClick(contractor) }
-            binding.deleteButton.setOnClickListener { onDeleteClick(contractor) }
+            binding.root.setOnClickListener { onContractorClick(contractor) }
         }
     }
 

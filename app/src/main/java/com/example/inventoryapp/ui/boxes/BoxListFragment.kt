@@ -104,6 +104,11 @@ class BoxListFragment : Fragment() {
             }
         }
 
+        // Empty state add button
+        binding.emptyAddButton.setOnClickListener {
+            findNavController().navigate(R.id.action_boxList_to_addBox)
+        }
+
         // Select All button
         binding.selectAllButton.setOnClickListener {
             val currentList = adapter.currentList
@@ -181,10 +186,10 @@ class BoxListFragment : Fragment() {
     private fun updateEmptyState(isEmpty: Boolean) {
         if (isEmpty) {
             binding.boxesRecyclerView.visibility = View.GONE
-            binding.emptyStateText.visibility = View.VISIBLE
+            binding.emptyStateLayout.visibility = View.VISIBLE
         } else {
             binding.boxesRecyclerView.visibility = View.VISIBLE
-            binding.emptyStateText.visibility = View.GONE
+            binding.emptyStateLayout.visibility = View.GONE
         }
     }
 

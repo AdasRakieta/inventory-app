@@ -14,8 +14,8 @@
     <color name="surface_elevated">#2D333B</color>
     
     <!-- Border colors -->
-    <color name="border">#30363D</color>
-    <color name="border_muted">#21262D</color>
+    <color name="border">#48515B</color>
+    <color name="border_muted">#30363D</color>
     
     <!-- Text colors -->
     <color name="text_primary">#E6EDF3</color>

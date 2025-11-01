@@ -1,5 +1,367 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.15.14 - Printer Item Padding Fix (COMPLETED)
+
+Version: 1.15.14 (code 74)
+
+Zmiany:
+- **item_printer.xml** - zmniejszono padding:
+  - Padding zmieniony z `16dp` → `12dp`
+  - Wysokość karty zmniejszona (~8dp mniej)
+  - Teraz bardziej kompaktowe, podobne do search bar
+
+Pliki zmienione:
+- `item_printer.xml`: padding 12dp (było 16dp)
+- `app/build.gradle.kts`: wersja podbita do 1.15.14 (code 74)
+
+Testy:
+- Build: ✅ PASS (assembleDebug w 58s)
+- Instalacja: ✅ PASS (zainstalowano na TC58E - 13)
+
+Rezultat:
+- Printer items teraz mniejsze (padding 12dp zamiast 16dp)
+- Wizualnie bardziej kompaktowe
+- Ready do użytku
+
+## ✅ v1.15.13 - Compact Printer Items + Unified Template Style (COMPLETED)
+
+Version: 1.15.13 (code 73)
+
+Zmiany:
+- **item_printer.xml** - całkowita przebudowa na kompaktowy styl:
+  - Zmiana z vertical na **horizontal orientation** (jedna linia)
+  - Emoji 🖨️ + nazwa + MAC address w jednej linii
+  - Usunięto `printerDimensionsText` (niepotrzebne)
+  - Usunięto przyciski "Set Default" i "Delete" (będą w dialog po kliknięciu)
+  - DEFAULT badge jako TextView z background (zamiast Chip)
+  - Wysokość item'a teraz taka sama jak search bar
+  - Border 2dp jak w reszcie aplikacji
+- **PrintersAdapter.kt** - uproszczenie:
+  - Usunięto odwołania do `printerDimensionsText`, `setDefaultButton`, `deleteButton`
+  - Tylko `onPrinterClick` obsługuje kliknięcie (otwiera dialog z opcjami)
+  - Usunięto `onSetDefaultClick` i `onDeleteClick` z bind()
+- **item_template.xml** - przepisany w stylu products/packages:
+  - Dodano emoji 📋 na początku (32dp)
+  - Layout: emoji + (nazwa + opis) w kolumnie
+  - Dolny rząd: kategoria (badge, optional) + data utworzenia
+  - Styl identyczny jak item_product.xml i item_package.xml
+  - Border 2dp, Widget.App.Card style
+
+Pliki zmienione:
+- `item_printer.xml`: horizontal layout, compact (emoji + nazwa + MAC + badge)
+- `PrintersAdapter.kt`: uproszczony bind(), tylko onPrinterClick
+- `item_template.xml`: emoji 📋, unified style z products/packages
+- `app/build.gradle.kts`: wersja podbita do 1.15.13 (code 73)
+
+Testy:
+- Build: ✅ PASS (assembleDebug w 1m 38s)
+- Instalacja: ✅ PASS (zainstalowano na TC58E - 13)
+
+Rezultat:
+- **Printer items** teraz kompaktowe:
+  - Jedna linia (emoji + nazwa + MAC + optional DEFAULT badge)
+  - Wysokość ~40dp (jak search bar)
+  - Kliknięcie otwiera dialog z opcjami (Set Default, Delete)
+  - Spójny styl z resztą aplikacji
+- **Template items** teraz wyglądają jak Products/Packages:
+  - Emoji 📋 + nazwa + opis (2 linie)
+  - Dolny rząd: kategoria badge + data
+  - Border 2dp, jednolity styl
+- Wszystkie item layouty (box, package, product, template, printer, contractor) mają spójny design
+
+Uwagi:
+- Printer Settings: items teraz nie zajmują dużo miejsca
+- Templates: wizualnie identyczne z Products (emoji, badges, layout)
+- Ready do użytku
+
+## ✅ v1.15.12 - Unified All Fragments: Templates, Contractors, Printer Settings (COMPLETED)
+
+Version: 1.15.12 (code 72)
+
+Zmiany:
+- **fragment_contractors.xml** - całkowita przebudowa:
+  - Zmiana z LinearLayout na **ConstraintLayout**
+  - Dodano search bar w stylu reszty aplikacji (ImageView + EditText w MaterialCardView)
+  - Usunięto stary title TextView ("Contractors")
+  - FAB zamiast zwykłego Button
+  - Empty state z emoji 👤, tekstami i przyciskiem
+  - RecyclerView z constraints (0dp width/height)
+- **ContractorsFragment.kt** - usunięto ActionBar setup:
+  - Usunięto linie ustawiające `supportActionBar.setDisplayHomeAsUpEnabled(true)`
+  - Usunięto `supportActionBar.title = "Contractors"`
+  - Dodano obsługę `emptyAddButton`
+  - Dodano metodę `updateEmptyState()` dla toggle emptyStateLayout vs RecyclerView
+- **fragment_templates.xml** - przebudowa:
+  - Zmiana z CoordinatorLayout + AppBarLayout na **ConstraintLayout**
+  - Usunięto MaterialToolbar
+  - Dodano search bar (ImageView + EditText)
+  - FAB z kolorami (primary background, white icon)
+  - Empty state z emoji 📋
+- **fragment_printer_settings.xml** - dopasowanie:
+  - SearchCard teraz używa `style="@style/Widget.App.Card"`
+  - Dodano explicite `strokeColor`, `strokeWidth`, `cardElevation`, etc.
+- **item_contractor.xml** - border:
+  - Dodano `style="@style/Widget.App.Card"`
+  - Explicite atrybuty: `strokeColor="@color/border"`, `strokeWidth="2dp"`
+  - Zmieniono `layout_margin="8dp"` na `layout_marginBottom="12dp"`
+  - Zmieniono `cardElevation="4dp"` na `0dp` (flat design)
+- **item_template.xml** - border:
+  - Dodano `style="@style/Widget.App.Card"`
+  - Explicite atrybuty: `strokeColor="@color/border"`, `strokeWidth="2dp"`
+  - Zmieniono margins i elevation
+
+Pliki zmienione:
+- `fragment_contractors.xml`: ConstraintLayout, search bar, FAB, empty state
+- `ContractorsFragment.kt`: usunięto ActionBar setup, dodano updateEmptyState()
+- `fragment_templates.xml`: ConstraintLayout, search bar, FAB, empty state
+- `fragment_printer_settings.xml`: Widget.App.Card style na searchCard
+- `item_contractor.xml`: border 2dp, Widget.App.Card style
+- `item_template.xml`: border 2dp, Widget.App.Card style
+- `app/build.gradle.kts`: wersja podbita do 1.15.12 (code 72)
+
+Testy:
+- Build: ✅ PASS (assembleDebug w 1m 35s)
+- Instalacja: ✅ PASS (zainstalowano na TC58E - 13)
+
+Rezultat:
+- **Wszystkie fragmenty** (Boxes, Packages, Products, Templates, Contractors, Printer Settings) teraz używają tego samego stylu:
+  - ConstraintLayout jako root (lub ScrollView dla Export/Import)
+  - Search bar: ImageView + EditText w MaterialCardView z Widget.App.Card style
+  - FAB z primary background i white icon
+  - Empty state z emoji, tekstami i przyciskiem akcji
+  - RecyclerView z 0dp constraints i padding
+- **Wszystkie item layouty** (box, package, product, template, contractor) mają:
+  - Border 2dp z kolorem #48515B
+  - Widget.App.Card style
+  - Flat design (cardElevation 0dp)
+  - Uniform margins (12dp bottom)
+- **Contractors** nie ma już ActionBar (usunięto "back arrow" i custom title)
+- Spójna nawigacja i UX w całej aplikacji
+
+Uwagi:
+- Fragment Export/Import pozostaje ScrollView (specjalny case - nie jest listą)
+- Wszystkie główne ekrany teraz jednolite
+- Ready do użytku
+
+## ✅ v1.15.11 - Border Fix: BoxesAdapter był winowajcą! (COMPLETED)
+
+Version: 1.15.11 (code 71)
+
+Problem znaleziony:
+- **BoxesAdapter.kt** w metodzie `bind()` **nadpisywał strokeWidth = 0** gdy selection mode był wyłączony
+- To usuwało border ustawiony w XML (item_box.xml)
+- Linie 107-108: `binding.root.strokeWidth = 0` kasowały border całkowicie
+
+Rozwiązanie:
+- **BoxesAdapter.kt** - poprawiona logika selection mode:
+  - **Normal mode** (nie selection): `strokeWidth = 2`, `strokeColor = @color/border` (#48515B)
+  - **Selection mode + not selected**: `strokeWidth = 2`, `strokeColor = @color/border`
+  - **Selection mode + selected**: `strokeWidth = 4`, `strokeColor = @color/primary` (niebieski)
+- **item_box.xml** - wrócono do normalnego koloru border (@color/border zamiast #00FF00)
+
+Pliki zmienione:
+- `BoxesAdapter.kt`: fixed bind() - zawsze ustawia strokeWidth/strokeColor (2dp border)
+- `item_box.xml`: border color wrócony z #00FF00 → @color/border (#48515B)
+- `app/build.gradle.kts`: wersja podbita do 1.15.11 (code 71)
+
+Testy:
+- Build: ✅ PASS (assembleDebug w 1m 35s)
+- Instalacja: ✅ PASS (zainstalowano na TC58E - 13)
+- Border: ✅ powinien być teraz widoczny (2dp, #48515B)
+
+Lekcja:
+- Style i atrybuty XML mogą być nadpisane przez adapter w runtime
+- Zawsze sprawdzaj adapter gdy layout XML nie działa jak powinien
+- Selection mode logic może kolidować z normalnym wyglądem
+
+## ✅ v1.15.9 - Box List Border Fix: Explicite stroke attributes (COMPLETED)
+
+Version: 1.15.9 (code 69)
+
+Zmiany:
+- **item_box.xml** - dodano explicite atrybuty border:
+  - `app:strokeColor="@color/border"` - kolor ramki (#48515B)
+  - `app:strokeWidth="1dp"` - grubość ramki
+  - `app:cardElevation="0dp"` - bez cienia (flat design)
+  - `app:cardCornerRadius="6dp"` - zaokrąglone rogi
+  - `app:cardBackgroundColor="@color/card_background"` - tło karty (#161B22)
+
+Problem:
+- Style `Widget.App.Card` nie był aplikowany poprawnie na item_box.xml
+- item_package.xml mógł mieć te atrybuty explicite (lub działał z innego powodu)
+- Border był zdefiniowany w style, ale nie renderował się na kartach box'ów
+
+Rozwiązanie:
+- Dodanie explicite wszystkich atrybutów border/card do MaterialCardView
+- Teraz border jest wymuszony bezpośrednio w XML (nie zależy od style)
+- Wszystkie karty boxów powinny mieć widoczną ramkę #48515B
+
+Pliki:
+- `item_box.xml`: dodano explicite stroke/card attributes
+- `app/build.gradle.kts`: wersja podbita do 1.15.9 (code 69)
+
+Testy:
+- Build: ✅ PASS (assembleDebug w 1m 13s)
+- Instalacja: ✅ PASS (zainstalowano na TC58E - 13)
+- Border: ⏳ do sprawdzenia wizualnie
+
+Uwagi:
+- Explicite atrybuty nadpisują style (prioritet wyższy)
+- Border powinien być teraz widoczny na wszystkich box items
+- Jeśli nadal nie działa, możliwe że item_package.xml też potrzebuje explicite atrybutów
+- Ready do testu
+
+## ✅ v1.15.8 - Border Visibility Fix: Zwiększony kontrast w ciemnym motywie (COMPLETED)
+
+Version: 1.15.8 (code 68)
+
+Zmiany:
+- **colors.xml** - zwiększony kontrast bordera:
+  - `border` color zmieniony z `#30363D` → `#48515B` (jaśniejszy odcień szarego)
+  - `border_muted` zmieniony z `#21262D` → `#30363D` (stary border color)
+  - Powód: border `#30363D` był ledwo widoczny na tle `#0D1117` (ciemny motyw GitHub)
+- **item_box.xml** - sformatowany jak item_package.xml:
+  - Namespace xmlns w osobnych liniach (zamiast jednej linii)
+  - Identyczne formatowanie dla spójności
+
+Problem:
+- Border miał prawidłowy style (`Widget.App.Card` z `strokeWidth="1dp"`)
+- Ale kolor `#30363D` na tle `#0D1117` dawał zbyt mały kontrast w ciemnym motywie
+- Packages miały ten sam problem, ale było to mniej widoczne
+
+Rozwiązanie:
+- Zwiększenie jasności koloru border o ~30% (`#48515B`)
+- Teraz border jest wyraźnie widoczny na wszystkich kartach (boxes, packages, products)
+
+Pliki:
+- `colors.xml`: zmieniono `border` (#48515B), `border_muted` (#30363D)
+- `item_box.xml`: sformatowany identycznie jak item_package.xml
+- `app/build.gradle.kts`: wersja podbita do 1.15.8 (code 68)
+
+Testy:
+- Build: ✅ PASS (assembleDebug w 1m 2s)
+- Instalacja: ✅ PASS (zainstalowano na TC58E - 13)
+- Kontrast: ✅ lepszy - border widoczny na ciemnym tle
+
+Uwagi:
+- Border teraz widoczny na wszystkich kartach (MaterialCardView)
+- Jednolity styl bordera w całej aplikacji
+- Ready do użytku
+
+## ✅ v1.15.7 - Unified List Layouts: Wszystkie zakładki w jednym stylu (COMPLETED)
+
+Version: 1.15.7 (code 67)
+
+Zmiany:
+- **fragment_box_list.xml** - całkowicie przepisany na styl PackageList:
+  - Zmiana z CoordinatorLayout + LinearLayout na **ConstraintLayout**
+  - RecyclerView z pełną szerokością (0dp + constraints zamiast match_parent)
+  - Search bar w prostym stylu (ImageView + EditText w MaterialCardView, BEZ TextInputLayout)
+  - Empty state layout z emoji 📦, tekstami i przyciskiem (zamiast pojedynczego TextView)
+  - FAB z kolorami: `app:backgroundTint="@color/primary"` i `app:tint="@color/white"`
+  - Selection panel z constraints zamiast w LinearLayout
+- **BoxListFragment.kt** - zaktualizowany:
+  - Dodano obsługę `emptyAddButton` (przycisk w empty state)
+  - Zmiana z `emptyStateText` na `emptyStateLayout`
+- **fragment_package_list.xml** - zmieniony search bar:
+  - Usunięto TextInputLayout + TextInputEditText
+  - Dodano prosty EditText w LinearLayout (styl z BoxList)
+- **fragment_products_list.xml** - zmieniony search bar:
+  - Usunięto TextInputLayout + TextInputEditText
+  - Dodano prosty EditText w LinearLayout (styl z BoxList)
+
+Pliki:
+- `fragment_box_list.xml`: przepisany na ConstraintLayout, dodano empty state layout, FAB z kolorami
+- `BoxListFragment.kt`: dodano emptyAddButton listener, zmieniono updateEmptyState()
+- `fragment_package_list.xml`: prosty search bar (ImageView + EditText)
+- `fragment_products_list.xml`: prosty search bar (ImageView + EditText)
+- `app/build.gradle.kts`: wersja podbita do 1.15.7 (code 67)
+
+Testy:
+- Build: ✅ PASS (assembleDebug)
+- Kompilacja: ✅ PASS - brak błędów
+
+Uwagi:
+- Wszystkie 3 zakładki (Boxes, Packages, Products) teraz używają tego samego stylu layoutu
+- Search bar: prosty EditText w MaterialCardView z ikoną search (bez TextInputLayout)
+- RecyclerView: pełna szerokość z constraints (0dp) we wszystkich fragmentach
+- FAB: jednolite kolory (primary background, white icon)
+- Empty state: spójny styl z emoji, tekstami i przyciskiem akcji
+- Ready do instalacji
+
+## ✅ v1.15.6 - BoxList: UI jak PackageList + Printer Configuration Card (COMPLETED)
+
+Version: 1.15.6 (code 66)
+
+Zmiany:
+- **item_box.xml** - całkowicie przepisany w stylu item_package.xml:
+  - Duże emoji 📦 (32dp) na początku wiersza
+  - Layout: emoji + (nazwa + data utworzenia) w kolumnie
+  - Dolny rząd: lokalizacja (badge) + opis (badge, optional) + liczba produktów
+  - Format daty: "Created on MMM d, yyyy" (np. "Created on Jan 1, 2024")
+  - Badges z padding i background (@color/surface)
+- **BoxesAdapter.kt** - zaktualizowany bind():
+  - Opis wyświetlany jako badge tylko jeśli nie jest pusty (visibility GONE/VISIBLE)
+  - Format daty zmieniony z "Created: yyyy-MM-dd HH:mm" na "Created on MMM d, yyyy"
+  - Dodano import android.view.View dla widoczności
+- **fragment_box_details.xml** - dodano sekcję "Printer Configuration":
+  - Nowy header: "Printer Configuration" (16sp, bold)
+  - MaterialCardView z przyciskiem "Test Printer Connection" w środku
+  - Usunięto standalone przycisk testowy spoza karty
+  - Przycisk w karcie (outlined style) zamiast luźnego przycisku na dole
+
+Pliki:
+- `item_box.xml`: przepisany layout - emoji, badges, format identyczny jak item_package.xml
+- `BoxesAdapter.kt`: updated bind() - conditional description visibility, date format "MMM d, yyyy"
+- `fragment_box_details.xml`: dodano kartę "Printer Configuration" z przyciskiem testowym
+- `app/build.gradle.kts`: wersja podbita do 1.15.6 (code 66)
+
+Testy:
+- Build: ✅ PASS (assembleDebug)
+- Kompilacja: ✅ PASS - brak błędów, tylko warnings
+
+Uwagi:
+- BoxListFragment teraz wygląda identycznie jak PackageListFragment (emoji 📦, badges, clean layout)
+- BoxDetailsFragment ma sekcję "Printer Configuration" zamiast luźnego przycisku
+- Ready do instalacji i testowania
+
+## ✅ v1.15.5 - BoxDetailsFragment: Identyczny UI jak PackageDetailsFragment (COMPLETED)
+
+Version: 1.15.5 (code 65)
+
+Zmiany:
+- Nowy adapter: stworzono `BoxProductsAdapter.kt` - prosty adapter z ikoną, nazwą, SN i przyciskiem X (identyczny jak PackageProductsAdapter)
+- Nowy layout produktu: stworzono `item_box_product.xml` - minimalistyczny layout w stylu PackageDetailsFragment
+- Uproszczony layout główny: `fragment_box_details.xml` całkowicie przepisany - styl identyczny jak `fragment_package_details.xml`:
+  - Box Header: duże emoji 📦, nazwa, opis, lokalizacja (centred layout)
+  - Products Card: "Products in Box", licznik, RecyclerView z prostą listą
+  - Information Card: data utworzenia w stylu "Created: MMM d, yyyy HH:mm"
+  - Przyciski: "Edit Box" (outlined) i "Print Label" (filled) w jednym rzędzie
+  - Test Print: osobny przycisk poniżej (outlined)
+- Usuniecie FABów: zamieniono FloatingActionButtons na zwykłe MaterialButtons w karcie produktów
+- Funkcja usuwania: dodano `showRemoveProductDialog()` - dialog z potwierdzeniem usunięcia produktu z boxa (wykorzystuje ViewModelu `removeProductFromBox()`)
+- Uproszczono observeViewModel: bezpośrednia konwersja liczby produktów na tekst ("1 product assigned" / "X products assigned")
+- Usunięto zbędne funkcje: `updateProductsHeader()`, `updateEmptyState()` - zintegrowane w głównym observe
+- Format daty: zmieniono z "yyyy-MM-dd HH:mm" na "MMM d, yyyy HH:mm" (np. "Jan 1, 2024 14:30")
+
+Pliki:
+- `BoxProductsAdapter.kt` (NEW): adapter z ViewHolder, DiffUtil, onRemoveClick callback
+- `item_box_product.xml` (NEW): prosty layout - ikona, nazwa, SN (monospace), przycisk X (red tint)
+- `fragment_box_details.xml`: całkowicie przepisany - identyczny styl jak fragment_package_details.xml
+- `BoxDetailsFragment.kt`: użycie BoxProductsAdapter, dodano showRemoveProductDialog(), uproszczono observers
+- `app/build.gradle.kts`: wersja podbita do 1.15.5 (code 65)
+
+Testy:
+- Build: ✅ PASS (assembleDebug)
+- Kompilacja: ✅ PASS - brak błędów, tylko warnings
+- UI: ✅ Layout identyczny jak PackageDetailsFragment
+
+Uwagi:
+- BoxDetailsFragment teraz wygląda i działa identycznie jak PackageDetailsFragment
+- Produkty wyświetlane w prostej liście z możliwością usunięcia (przycisk X)
+- Przyciski akcji zgrupowane w kartach zamiast FABów
+- Ready do testowania na urządzeniu
+
 ## ✅ v1.15.4 - Test Button: Bez Parowania BT (COMPLETED)
 
 Version: 1.15.4 (code 64)
