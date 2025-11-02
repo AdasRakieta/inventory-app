@@ -24,7 +24,7 @@ import com.example.inventoryapp.data.local.entities.*
         ImportBackupEntity::class,
         PrinterEntity::class
     ],
-    version = 13,
+    version = 15,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -283,6 +283,35 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Migration 13 -> 14: Add label dimension fields to printers table
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Add new columns for label dimensions and DPI
+                // Default values: 50mm width, null height (continuous roll), 203 DPI
+                database.execSQL("""
+                    ALTER TABLE `printers` ADD COLUMN `labelWidthMm` INTEGER NOT NULL DEFAULT 50
+                """.trimIndent())
+                
+                database.execSQL("""
+                    ALTER TABLE `printers` ADD COLUMN `labelHeightMm` INTEGER DEFAULT NULL
+                """.trimIndent())
+                
+                database.execSQL("""
+                    ALTER TABLE `printers` ADD COLUMN `dpi` INTEGER NOT NULL DEFAULT 203
+                """.trimIndent())
+            }
+        }
+
+        // Migration 14 -> 15: Add font size field to printers table
+        private val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Add font size column with default "small"
+                database.execSQL("""
+                    ALTER TABLE `printers` ADD COLUMN `fontSize` TEXT NOT NULL DEFAULT 'small'
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -290,7 +319,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "inventory_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

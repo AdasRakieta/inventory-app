@@ -5,6 +5,7 @@ import com.example.inventoryapp.data.local.dao.BoxWithCount
 import com.example.inventoryapp.data.local.entities.BoxEntity
 import com.example.inventoryapp.data.local.entities.BoxProductCrossRef
 import com.example.inventoryapp.data.local.entities.ProductEntity
+import com.example.inventoryapp.data.local.entities.ProductWithCategory
 import kotlinx.coroutines.flow.Flow
 
 class BoxRepository(private val boxDao: BoxDao, private val productDao: com.example.inventoryapp.data.local.dao.ProductDao) {
@@ -16,6 +17,8 @@ class BoxRepository(private val boxDao: BoxDao, private val productDao: com.exam
     fun getBoxById(boxId: Long): Flow<BoxEntity?> = boxDao.getBoxById(boxId)
 
     fun getProductsInBox(boxId: Long): Flow<List<ProductEntity>> = boxDao.getProductsInBox(boxId)
+    
+    fun getProductsWithCategoriesInBox(boxId: Long): Flow<List<ProductWithCategory>> = boxDao.getProductsWithCategoriesInBox(boxId)
 
     fun getProductCountInBox(boxId: Long): Flow<Int> = boxDao.getProductCountInBox(boxId)
 

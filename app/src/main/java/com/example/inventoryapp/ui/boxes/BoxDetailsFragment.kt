@@ -169,7 +169,7 @@ class BoxDetailsFragment : Fragment() {
     private fun printBoxLabelWithPrinter(printer: PrinterEntity) {
         viewLifecycleOwner.lifecycleScope.launch {
             val box = viewModel.box.value
-            val products = viewModel.productsInBox.value
+            val productsWithCategories = viewModel.productsWithCategories.value
 
             if (box == null) {
                 Toast.makeText(requireContext(), "Box data not available", Toast.LENGTH_SHORT).show()
@@ -177,36 +177,14 @@ class BoxDetailsFragment : Fragment() {
             }
 
             try {
-                // Generate formatted text content for printing
-                val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                val textContent = buildString {
-                    // Header
-                    append("Box: ${box.name}\n")
-                    if (!box.description.isNullOrBlank()) {
-                        append("Description: ${box.description}\n")
-                    }
-                    append("Created: ${dateFormat.format(box.createdAt)}\n")
-                    append("Printer: ${printer.name}\n\n")
-
-                    // Products section
-                    append("Products:\n")
-                    products.forEachIndexed { index, product ->
-                        val productNumber = index + 1
-                        val name = product.name
-                        val sn = product.serialNumber ?: "N/A"
-
-                        // Check if name + SN fits in one line (approximate character limit)
-                        val combinedLength = name.length + sn.length + 3 // +3 for ": " and ","
-                        if (combinedLength <= 25) { // Fits in one line
-                            append("$productNumber. $name: $sn,\n")
-                        } else { // Split into two lines
-                            append("$productNumber. $name:\n")
-                            append("$sn,\n")
-                        }
-                    }
-                }
+                // Generate ZPL label using printer dimensions and smart wrapping
+                val zplContent = com.example.inventoryapp.printer.ZplContentGenerator.generateBoxLabel(
+                    box = box,
+                    products = productsWithCategories,
+                    printer = printer
+                )
                 
-                // Connect to printer and print single label with all products
+                // Connect to printer and send ZPL
                 val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), printer.macAddress)
                 if (socket == null) {
                     Toast.makeText(
@@ -217,14 +195,14 @@ class BoxDetailsFragment : Fragment() {
                     return@launch
                 }
 
-                // Print text label
-                val success = BluetoothPrinterHelper.printText(socket, textContent)
+                // Send ZPL to printer
+                val success = BluetoothPrinterHelper.printZpl(socket, zplContent)
                 socket.close()
                 
                 if (success) {
                     Toast.makeText(
                         requireContext(), 
-                        "✅ Label printed on ${printer.name}", 
+                        "✅ Label printed on ${printer.name}\n${productsWithCategories.size} products", 
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {

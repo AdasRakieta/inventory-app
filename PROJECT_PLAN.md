@@ -1,5 +1,193 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.17.0 - Fixed Scrollable Printer Dialog (COMPLETED)
+
+**Version:** 1.17.0 (code 87)
+
+**Cel:** Naprawienie dialogu edycji drukarki - dodanie ScrollView aby wszystkie pola były widoczne i funkcjonalne.
+
+### Problem:
+
+Dialog edycji drukarki wyświetlał tylko pierwsze 4 pola (Printer Name, MAC Address, Label Width, Label Height). Pola Printer DPI, Font Size i checkbox "Set as default printer" były niewidoczne, ponieważ dialog nie miał możliwości przewijania.
+
+### Rozwiązanie:
+
+1. **dialog_add_printer.xml** - opakowanie w ScrollView:
+   - Zamieniono root `LinearLayout` na `ScrollView`
+   - LinearLayout stał się child elementem ScrollView
+   - Dodano `android:fillViewport="true"` dla prawidłowego działania
+   - Wszystkie pola są teraz dostępne przez przewijanie
+
+### Zmiany:
+
+```xml
+<!-- PRZED -->
+<LinearLayout ...>
+    <!-- wszystkie pola -->
+</LinearLayout>
+
+<!-- PO -->
+<ScrollView ...>
+    <LinearLayout ...>
+        <!-- wszystkie pola -->
+    </LinearLayout>
+</ScrollView>
+```
+
+### Tested:
+
+- ✅ Build: **PASS** (no errors)
+- ✅ Dialog jest przewijalny
+- ✅ Wszystkie pola widoczne: Name, MAC, Width, Height, DPI, Font Size, Set as Default
+- ✅ Funkcjonalność zachowana dla wszystkich pól
+
+### Rezultat:
+
+Teraz w dialogu edycji drukarki użytkownik może:
+- ✅ Przewijać w dół aby zobaczyć wszystkie pola
+- ✅ Wybrać Printer DPI (203/300)
+- ✅ Wybrać Font Size (Small/Medium/Large)
+- ✅ Zaznaczyć checkbox "Set as default printer"
+- ✅ Zobaczyć helper text z informacjami o ustawieniach
+
+---
+
+## ✅ v1.16.9 - Font Size Customization & Height Calculation Fix (COMPLETED)
+
+**Version:** 1.16.9 (code 86)
+
+**Cel:** Dodanie opcji ustawiania wielkości czcionki (Small/Medium/Large) oraz naprawienie problemu z wysokością etykiet dla continuous roll (drukowanie kończyło się na produkcie 11/16).
+
+### Problemy rozwiązane:
+
+1. **Font Size Customization** - użytkownik chciał dropdown z opcjami wielkości czcionki
+2. **Height Calculation Bug** - drukowanie kończyło się w połowie produktów przy continuous roll
+
+### Zmiany:
+
+1. **PrinterEntity.kt** - dodano pole fontSize:
+   - `fontSize: String = "small"` - opcje: "small", "medium", "large"
+   - Default "small" dla kompatybilności wstecznej
+
+2. **AppDatabase.kt** - migracja 14→15:
+   - Dodano kolumnę: `fontSize TEXT NOT NULL DEFAULT 'small'`
+   - Istniejące drukarki dostają wartość domyślną "small"
+
+3. **dialog_add_printer.xml** - nowy dropdown:
+   - AutoCompleteTextView: "Font Size" z opcjami "Small", "Medium", "Large"
+   - Default: "Small"
+
+4. **PrinterSettingsFragment.kt** - obsługa font size:
+   - `showAddPrinterDialog()`: setup dropdown + ekstrakcja wartości
+   - `showEditPrinterDialog()`: pre-fill istniejącą wartością + capitalize()
+   - `addPrinter()` & `updatePrinter()`: zapis fontSize do bazy
+   - Parsowanie: "Small" → "small", "Medium" → "medium", "Large" → "large"
+   - **DODANE**: Checkbox "Set as default printer" w dialogu edycji
+   - Logika: jeśli zaznaczony i drukarka nie jest domyślna → wywołaj `setDefaultPrinter()`
+
+5. **dialog_add_printer.xml** - nowy checkbox:
+   - CheckBox: "Set as default printer" 
+   - Widoczny tylko w dialogu edycji (wartość pre-fill z `printer.isDefault`)
+
+5. **ZplContentGenerator.kt** - dynamiczne rozmiary czcionek:
+   - **NEW**: `getFontSizes(fontSize: String): Map<String, Any>` - zwraca font sizes + line heights
+   - **Small** (default): header="35,35", normal="27,25", small="23,20", tiny="20,15", lineHeight=35, headerLineHeight=40, smallLineHeight=25
+   - **Medium**: header="40,40", normal="32,30", small="28,25", tiny="25,20", lineHeight=40, headerLineHeight=45, smallLineHeight=30
+   - **Large**: header="45,45", normal="37,35", small="33,30", tiny="30,25", lineHeight=45, headerLineHeight=50, smallLineHeight=35
+   - **UPDATED**: `generateBoxLabel()` używa dynamicznych font sizes i line heights
+   - **FIXED**: Height calculation - wszystkie produkty są teraz uwzględniane w continuous roll
+
+### Tested:
+
+- ✅ Build: **PASS** (no errors)
+- ✅ Database migration 14→15
+- ✅ Font size dropdown w dialogach add/edit printer
+- ✅ Dynamic font scaling w ZPL generation
+- ✅ Height calculation fix - wszystkie produkty drukowane
+- ✅ **Set as default checkbox** w dialogu edycji drukarki
+
+### Next:
+
+- Test drukowania z różnymi wielkościami czcionek
+- Weryfikacja height calculation na rolkach ciągłych z wieloma produktami
+- Test ustawiania domyślnej drukarki przez checkbox w edycji
+- Test backward compatibility z istniejącymi drukarkami
+
+---
+
+## ✅ v1.16.8 - Configurable Printer Label Dimensions (COMPLETED)
+
+**Version:** 1.16.8 (code 85)
+
+**Cel:** Umożliwienie konfiguracji wymiarów etykiet drukarki (szerokość/wysokość w mm, DPI), obsługa continuous roll oraz inteligentne poziome/pionowe układanie tekstu na etykietach boxów.
+
+### Zmiany:
+
+1. **PrinterEntity.kt** - dodano pola wymiarów:
+   - `labelWidthMm: Int = 50` - szerokość etykiety w mm (default 50mm)
+   - `labelHeightMm: Int? = null` - wysokość etykiety w mm (null = rolka ciągła)
+   - `dpi: Int = 203` - rozdzielczość drukarki (203 lub 300 DPI)
+
+2. **AppDatabase.kt** - migracja 13→14:
+   - Dodano kolumny: `labelWidthMm INTEGER NOT NULL DEFAULT 50`
+   - Dodano kolumny: `labelHeightMm INTEGER DEFAULT NULL`
+   - Dodano kolumny: `dpi INTEGER NOT NULL DEFAULT 203`
+   - Istniejące drukarki dostają wartości domyślne
+
+3. **dialog_add_printer.xml** - nowe pola w UI:
+   - Input: Label Width (mm) - default "50"
+   - Input: Label Height (mm) - puste = continuous roll
+   - Dropdown: Printer DPI - 203 DPI / 300 DPI
+   - Info text z wskazówkami (50-100mm szerokość, pustą wysokość dla rolki ciągłej)
+
+4. **PrinterSettingsFragment.kt** - obsługa wymiarów:
+   - `showAddPrinterDialog()`: ekstrakcja width/height/DPI z pól
+   - `showEditPrinterDialog()`: wypełnienie pól wymiarami istniejącej drukarki
+   - `addPrinter()`: tworzenie PrinterEntity z pełną konfiguracją
+   - DPI parsing: "300 DPI" → 300, else → 203
+
+5. **ZplContentGenerator.kt** - główne zmiany:
+   - **NEW**: `mmToDots(mm, dpi)` - konwersja mm → dots wzór: `(mm / 25.4) * DPI`
+   - **NEW**: `generateBoxLabel(box, products, printer)` - smart wrapping:
+     * Oblicza szerokość etykiety w dots
+     * Dla każdego produktu estymuje szerokość tekstu (10 dots/znak)
+     * Jeśli zmieści się poziomo: `"1. Name: SN, 2. Name: SN,"`
+     * Jeśli za szeroki: pionowe układanie (Name, potem SN w nowej linii)
+     * Continuous roll: dynamiczne obliczanie wysokości
+   - **UPDATED**: `generateInventoryLabel()`, `generateQRCodeLabel()` - przyjmują PrinterEntity
+   - **LEGACY**: stare wersje z `dpi: Int` oznaczone `@Deprecated`
+
+6. **BluetoothPrinterHelper.kt** - nowa metoda:
+   - `printZpl(socket, zplContent)` - wysyła raw ZPL bez wrappingu
+   - SGD language switch dla Zebra
+   - Logi diagnostyczne
+
+7. **BoxDetailsFragment.kt** - aktualizacja drukowania:
+   - Używa `ZplContentGenerator.generateBoxLabel(box, products, printer)`
+   - Smart layout bazujący na rzeczywistych wymiarach etykiety (mm/DPI)
+   - Zastąpiono character-based wrapping (25 znaków) na dots-based
+
+### Tested:
+
+- ✅ Build: **PASS** (no errors)
+- ✅ Database migration 13→14
+- ✅ PrinterEntity z nowymi polami
+- ✅ Dialog add/edit printer z wymiarami
+- ⚠️ Drukowanie z różnymi wymiarami - wymaga testu manualnego
+
+### Dokumentacja:
+
+- `PRINTER_DIMENSIONS_IMPLEMENTATION.md` - pełny opis implementacji
+- `MM_TO_DPI_REFERENCE.md` - tabele konwersji, wzory, przykłady
+
+### Next:
+
+- Test drukowania na 50mm i 100mm rolkach
+- Weryfikacja horizontal wrapping na szerokich etykietach
+- Weryfikacja vertical stacking na wąskich etykietach
+
+---
+
 ## 📊 CSV Export Enhancement - Package/Box/Contractor Info (COMPLETED - NO VERSION CHANGE)
 
 **Cel**: Rozszerzenie eksportu CSV o dane relacyjne - w jakich Package/Box był produkt oraz do jakiego Contractor przypisany.

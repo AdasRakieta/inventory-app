@@ -92,6 +92,22 @@ class PrinterSettingsFragment : Fragment() {
         
         val nameInput = dialogView.findViewById<TextInputEditText>(R.id.printerNameInput)
         val macInput = dialogView.findViewById<TextInputEditText>(R.id.printerMacInput)
+        val widthInput = dialogView.findViewById<TextInputEditText>(R.id.labelWidthInput)
+        val heightInput = dialogView.findViewById<TextInputEditText>(R.id.labelHeightInput)
+        val dpiInput = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.printerDpiInput)
+        
+        // Setup DPI dropdown
+        val dpiOptions = arrayOf("203 DPI", "300 DPI")
+        val dpiAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, dpiOptions)
+        dpiInput.setAdapter(dpiAdapter)
+        dpiInput.setText("203 DPI", false)
+        
+        // Setup Font Size dropdown
+        val fontSizeInput = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.printerFontSizeInput)
+        val fontSizeOptions = arrayOf("Small", "Medium", "Large")
+        val fontSizeAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, fontSizeOptions)
+        fontSizeInput.setAdapter(fontSizeAdapter)
+        fontSizeInput.setText("Small", false)
         
         // Auto-format MAC address
         macInput.doAfterTextChanged {
@@ -112,9 +128,20 @@ class PrinterSettingsFragment : Fragment() {
             .setPositiveButton("Add") { _, _ ->
                 val name = nameInput.text.toString().trim()
                 val mac = macInput.text.toString().trim()
+                val width = widthInput.text.toString().toIntOrNull() ?: 50
+                val height = heightInput.text.toString().toIntOrNull()
+                val dpi = when (dpiInput.text.toString()) {
+                    "300 DPI" -> 300
+                    else -> 203
+                }
+                val fontSize = when (fontSizeInput.text.toString().lowercase()) {
+                    "medium" -> "medium"
+                    "large" -> "large"
+                    else -> "small"
+                }
                 
                 if (validatePrinterInput(name, mac)) {
-                    addPrinter(name, mac)
+                    addPrinter(name, mac, width, height, dpi, fontSize)
                 }
             }
             .setNegativeButton("Cancel", null)
@@ -127,10 +154,30 @@ class PrinterSettingsFragment : Fragment() {
         
         val nameInput = dialogView.findViewById<TextInputEditText>(R.id.printerNameInput)
         val macInput = dialogView.findViewById<TextInputEditText>(R.id.printerMacInput)
+        val widthInput = dialogView.findViewById<TextInputEditText>(R.id.labelWidthInput)
+        val heightInput = dialogView.findViewById<TextInputEditText>(R.id.labelHeightInput)
+        val dpiInput = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.printerDpiInput)
+        val fontSizeInput = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.printerFontSizeInput)
+        val setDefaultCheckbox = dialogView.findViewById<android.widget.CheckBox>(R.id.setDefaultCheckbox)
+        
+        // Setup DPI dropdown
+        val dpiOptions = arrayOf("203 DPI", "300 DPI")
+        val dpiAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, dpiOptions)
+        dpiInput.setAdapter(dpiAdapter)
+        
+        // Setup Font Size dropdown
+        val fontSizeOptions = arrayOf("Small", "Medium", "Large")
+        val fontSizeAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, fontSizeOptions)
+        fontSizeInput.setAdapter(fontSizeAdapter)
         
         // Pre-fill with existing values
         nameInput.setText(printer.name)
         macInput.setText(printer.macAddress)
+        widthInput.setText(printer.labelWidthMm.toString())
+        heightInput.setText(printer.labelHeightMm?.toString() ?: "")
+        dpiInput.setText(if (printer.dpi == 300) "300 DPI" else "203 DPI", false)
+        fontSizeInput.setText(printer.fontSize.replaceFirstChar { it.uppercase() }, false)
+        setDefaultCheckbox.isChecked = printer.isDefault
         
         // Auto-format MAC address
         macInput.doAfterTextChanged {
@@ -151,12 +198,33 @@ class PrinterSettingsFragment : Fragment() {
             .setPositiveButton("Save") { _, _ ->
                 val name = nameInput.text.toString().trim()
                 val mac = macInput.text.toString().trim()
+                val width = widthInput.text.toString().toIntOrNull() ?: 50
+                val height = heightInput.text.toString().toIntOrNull()
+                val dpi = when (dpiInput.text.toString()) {
+                    "300 DPI" -> 300
+                    else -> 203
+                }
+                val fontSize = when (fontSizeInput.text.toString().lowercase()) {
+                    "medium" -> "medium"
+                    "large" -> "large"
+                    else -> "small"
+                }
                 
                 if (validatePrinterInput(name, mac)) {
+                    // Update printer data first
                     updatePrinter(printer.copy(
                         name = name,
-                        macAddress = mac
+                        macAddress = mac,
+                        labelWidthMm = width,
+                        labelHeightMm = height,
+                        dpi = dpi,
+                        fontSize = fontSize
                     ))
+                    
+                    // Set as default if checkbox is checked and printer is not already default
+                    if (setDefaultCheckbox.isChecked && !printer.isDefault) {
+                        setDefaultPrinter(printer)
+                    }
                 }
             }
             .setNegativeButton("Cancel", null)
@@ -191,7 +259,7 @@ class PrinterSettingsFragment : Fragment() {
         return true
     }
 
-    private fun addPrinter(name: String, mac: String) {
+    private fun addPrinter(name: String, mac: String, widthMm: Int, heightMm: Int?, dpi: Int, fontSize: String = "small") {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val isFirstPrinter = printerRepository.getPrinterCount() == 0
@@ -199,6 +267,10 @@ class PrinterSettingsFragment : Fragment() {
                 val printer = PrinterEntity(
                     name = name,
                     macAddress = mac,
+                    labelWidthMm = widthMm,
+                    labelHeightMm = heightMm,
+                    dpi = dpi,
+                    fontSize = fontSize,
                     isDefault = isFirstPrinter // First printer is default
                 )
                 

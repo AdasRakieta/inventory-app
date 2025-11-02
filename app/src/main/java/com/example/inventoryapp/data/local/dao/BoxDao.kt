@@ -4,6 +4,7 @@ import androidx.room.*
 import com.example.inventoryapp.data.local.entities.BoxEntity
 import com.example.inventoryapp.data.local.entities.BoxProductCrossRef
 import com.example.inventoryapp.data.local.entities.ProductEntity
+import com.example.inventoryapp.data.local.entities.ProductWithCategory
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -44,6 +45,15 @@ interface BoxDao {
         ORDER BY products.createdAt DESC
     """)
     fun getProductsInBox(boxId: Long): Flow<List<ProductEntity>>
+    
+    @Transaction
+    @Query("""
+        SELECT products.* FROM products
+        INNER JOIN box_product_cross_ref ON products.id = box_product_cross_ref.productId
+        WHERE box_product_cross_ref.boxId = :boxId
+        ORDER BY products.createdAt DESC
+    """)
+    fun getProductsWithCategoriesInBox(boxId: Long): Flow<List<ProductWithCategory>>
     
     @Query("""
         SELECT COUNT(*) FROM box_product_cross_ref

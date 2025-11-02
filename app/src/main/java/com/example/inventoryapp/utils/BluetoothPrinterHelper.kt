@@ -159,6 +159,53 @@ class BluetoothPrinterHelper {
         }
         
         /**
+         * Send raw ZPL content to Zebra printer
+         * @param socket Active Bluetooth socket connection
+         * @param zplContent Complete ZPL program (including ^XA and ^XZ)
+         * @return true if sent successfully, false otherwise
+         */
+        suspend fun printZpl(
+            socket: BluetoothSocket,
+            zplContent: String
+        ): Boolean = withContext(Dispatchers.IO) {
+            var outputStream: OutputStream? = null
+            try {
+                outputStream = socket.outputStream
+                
+                // Try to switch the printer to ZPL language first (Zebra SGD command)
+                runCatching {
+                    val sgd = "! U1 setvar \"device.languages\" \"zpl\"\r\n".toByteArray(Charsets.UTF_8)
+                    Log.d(TAG, "Sending SGD language switch command")
+                    outputStream.write(sgd)
+                    outputStream.flush()
+                    Thread.sleep(100) // Wait for language switch
+                    Log.d(TAG, "SGD language switch sent successfully")
+                }.onFailure { e ->
+                    Log.w(TAG, "Failed to send SGD language switch", e)
+                }
+
+                // Send ZPL program
+                val zplBytes = zplContent.toByteArray(Charsets.UTF_8)
+                Log.d(TAG, "Sending ZPL content (${zplBytes.size} bytes)")
+                outputStream.write(zplBytes)
+                outputStream.flush()
+                Thread.sleep(200) // Wait for printing
+                Log.d(TAG, "ZPL sent successfully")
+
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending ZPL", e)
+                false
+            } finally {
+                try {
+                    outputStream?.flush()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error flushing output stream", e)
+                }
+            }
+        }
+        
+        /**
          * Print QR code bitmap via Bluetooth
          */
         suspend fun printQRCode(

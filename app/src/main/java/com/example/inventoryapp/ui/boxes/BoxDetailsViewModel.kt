@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.inventoryapp.data.local.entities.BoxEntity
 import com.example.inventoryapp.data.local.entities.ProductEntity
+import com.example.inventoryapp.data.local.entities.ProductWithCategory
 import com.example.inventoryapp.data.repository.BoxRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +29,10 @@ class BoxDetailsViewModel(
     // Products in this box
     private val _productsInBox = MutableStateFlow<List<ProductEntity>>(emptyList())
     val productsInBox: StateFlow<List<ProductEntity>> = _productsInBox.asStateFlow()
+    
+    // Products with categories for printing
+    private val _productsWithCategories = MutableStateFlow<List<ProductWithCategory>>(emptyList())
+    val productsWithCategories: StateFlow<List<ProductWithCategory>> = _productsWithCategories.asStateFlow()
 
     // Error message
     val errorMessage = MutableStateFlow<String?>(null)
@@ -45,6 +50,7 @@ class BoxDetailsViewModel(
     init {
         loadBox()
         loadProducts()
+        loadProductsWithCategories()
     }
 
     /**
@@ -65,6 +71,17 @@ class BoxDetailsViewModel(
         viewModelScope.launch {
             boxRepository.getProductsInBox(boxId).collect { products ->
                 _productsInBox.value = products
+            }
+        }
+    }
+    
+    /**
+     * Load products with categories for printing
+     */
+    private fun loadProductsWithCategories() {
+        viewModelScope.launch {
+            boxRepository.getProductsWithCategoriesInBox(boxId).collect { products ->
+                _productsWithCategories.value = products
             }
         }
     }
