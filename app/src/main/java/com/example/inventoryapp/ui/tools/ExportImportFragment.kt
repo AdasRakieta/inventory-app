@@ -28,9 +28,13 @@ import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.ProductRepository
 import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductTemplateRepository
+import com.example.inventoryapp.data.repository.BoxRepository
+import com.example.inventoryapp.data.repository.ContractorRepository
 import com.example.inventoryapp.data.local.entity.ImportPreview
 import com.example.inventoryapp.data.local.entity.ImportPreviewFilter
 import com.example.inventoryapp.data.local.entities.PrinterEntity
+import com.example.inventoryapp.data.local.entities.PackageProductCrossRef
+import com.example.inventoryapp.data.local.entities.BoxProductCrossRef
 import com.example.inventoryapp.utils.QRCodeGenerator
 import com.example.inventoryapp.utils.BluetoothPrinterHelper
 import com.example.inventoryapp.utils.PrinterSelectionHelper
@@ -63,6 +67,8 @@ class ExportImportFragment : Fragment() {
     private lateinit var productRepository: ProductRepository
     private lateinit var packageRepository: PackageRepository
     private lateinit var templateRepository: ProductTemplateRepository
+    private lateinit var boxRepository: BoxRepository
+    private lateinit var contractorRepository: ContractorRepository
     
     // Multi-QR state
     private var currentMultiQrBitmaps: List<Bitmap> = emptyList()
@@ -157,6 +163,8 @@ class ExportImportFragment : Fragment() {
         productRepository = ProductRepository(database.productDao())
         packageRepository = PackageRepository(database.packageDao(), database.productDao())
         templateRepository = ProductTemplateRepository(database.productTemplateDao())
+        boxRepository = com.example.inventoryapp.data.repository.BoxRepository(database.boxDao(), database.productDao())
+        contractorRepository = com.example.inventoryapp.data.repository.ContractorRepository(database.contractorDao())
         val backupRepository = com.example.inventoryapp.data.repository.ImportBackupRepository(database.importBackupDao())
         val boxRepository = com.example.inventoryapp.data.repository.BoxRepository(database.boxDao(), database.productDao())
         val contractorRepository = com.example.inventoryapp.data.repository.ContractorRepository(database.contractorDao())
@@ -193,10 +201,6 @@ class ExportImportFragment : Fragment() {
 
         binding.scanQrButton.setOnClickListener {
             scanQRToImport()
-        }
-
-        binding.printQrCodeButton.setOnClickListener {
-            printQRCodeWithPrinterSelection()
         }
         
         binding.previousQrButton.setOnClickListener {
@@ -501,13 +505,11 @@ class ExportImportFragment : Fragment() {
     private fun printMultiPartQRCodes(qrBitmaps: List<Bitmap>, printer: PrinterEntity) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                binding.printerStatusText.text = "Connecting to ${printer.name}..."
                 
                 val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), printer.macAddress)
                 if (socket != null) {
                     var successCount = 0
                     qrBitmaps.forEachIndexed { index, bitmap ->
-                        binding.printerStatusText.text = "Printing ${index + 1}/${qrBitmaps.size}..."
                         
                         val header = "Database Export - Part ${index + 1}/${qrBitmaps.size}"
                         val footer = "Scan all parts in order"
@@ -521,19 +523,16 @@ class ExportImportFragment : Fragment() {
                     }
                     socket.close()
                     
-                    binding.printerStatusText.text = "✅ Printed $successCount/${qrBitmaps.size} QR codes"
                     Toast.makeText(
                         requireContext(), 
                         "✅ Successfully printed $successCount/${qrBitmaps.size} QR codes to ${printer.name}",
                         Toast.LENGTH_LONG
                     ).show()
                 } else {
-                    binding.printerStatusText.text = "❌ Failed to connect to ${printer.name}"
                     Toast.makeText(requireContext(), "❌ Failed to connect to printer", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
                 AppLogger.logError("Multi-Part Print", e)
-                binding.printerStatusText.text = "❌ Print error"
                 Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
@@ -625,7 +624,6 @@ class ExportImportFragment : Fragment() {
         val macAddress = binding.printerMacEditText.text.toString().trim()
 
         // Show loading
-        binding.printerStatusText.text = "Exporting data and connecting to Zebra printer..."
         binding.printZebraButton.isEnabled = false
 
         // Export data to JSON and print QR code
@@ -638,7 +636,6 @@ class ExportImportFragment : Fragment() {
                 if (!exportSuccess) {
                     requireActivity().runOnUiThread {
                         binding.printZebraButton.isEnabled = true
-                        binding.printerStatusText.text = "Export failed"
                         Toast.makeText(requireContext(), "Failed to export data", Toast.LENGTH_SHORT).show()
                     }
                     return@launch
@@ -666,17 +663,14 @@ class ExportImportFragment : Fragment() {
                 requireActivity().runOnUiThread {
                     binding.printZebraButton.isEnabled = true
                     if (error == null) {
-                        binding.printerStatusText.text = "QR code printed successfully!"
                         Toast.makeText(requireContext(), "QR code with inventory data sent to printer", Toast.LENGTH_SHORT).show()
                     } else {
-                        binding.printerStatusText.text = "Print failed: $error"
                         Toast.makeText(requireContext(), "Print failed: $error", Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
                 requireActivity().runOnUiThread {
                     binding.printZebraButton.isEnabled = true
-                    binding.printerStatusText.text = "Print error: ${e.message}"
                     Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -722,7 +716,6 @@ class ExportImportFragment : Fragment() {
         // Print QR code to entered MAC address
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                binding.printerStatusText.text = "Connecting to printer...\nMAC: $macAddress"
                 
                 // Save MAC address for future use
                 savePrinterMacAddress(macAddress)
@@ -756,23 +749,18 @@ class ExportImportFragment : Fragment() {
                         socket.close()
                         
                         if (success) {
-                            binding.printerStatusText.text = "✅ Print sent to:\n$macAddress"
                             Toast.makeText(requireContext(), "✅ QR code printed successfully!", Toast.LENGTH_SHORT).show()
                         } else {
-                            binding.printerStatusText.text = "❌ Print failed"
                             Toast.makeText(requireContext(), "❌ Print failed - check printer", Toast.LENGTH_SHORT).show()
                         }
                     } else {
-                        binding.printerStatusText.text = "❌ Failed to connect\nMAC: $macAddress"
                         Toast.makeText(requireContext(), "❌ Connection failed. Check:\n1. Bluetooth ON\n2. Printer ON\n3. MAC address correct\n4. Printer in range", Toast.LENGTH_LONG).show()
                     }
                     qrBitmap.recycle()
                 } else {
-                    binding.printerStatusText.text = "❌ QR generation failed"
                     Toast.makeText(requireContext(), "Failed to generate QR code", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                binding.printerStatusText.text = "❌ Error: ${e.message}"
                 Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_LONG).show()
                 android.util.Log.e("ExportImport", "Print error", e)
             }
@@ -789,17 +777,39 @@ class ExportImportFragment : Fragment() {
     private fun printQRCodeWithPrinter(printer: PrinterEntity) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                binding.printerStatusText.text = "Generating QR code..."
                 
                 // Generate QR with full database export
                 val products = productRepository.getAllProducts().first()
                 val packages = packageRepository.getAllPackages().first()
                 val templates = templateRepository.getAllTemplates().first()
+                val boxes = boxRepository.getAllBoxes().first()
+                val contractors = contractorRepository.getAllContractors().first()
+                
+                // Collect relations
+                val packageProductRelations = mutableListOf<PackageProductCrossRef>()
+                packages.forEach { pkg ->
+                    val productsInPackage = packageRepository.getProductsInPackage(pkg.id).first()
+                    productsInPackage.forEach { product ->
+                        packageProductRelations.add(PackageProductCrossRef(pkg.id, product.id))
+                    }
+                }
+                
+                val boxProductRelations = mutableListOf<BoxProductCrossRef>()
+                boxes.forEach { box ->
+                    val productsInBox = boxRepository.getProductsInBox(box.id).first()
+                    productsInBox.forEach { product ->
+                        boxProductRelations.add(BoxProductCrossRef(box.id, product.id))
+                    }
+                }
                 
                 val exportData = ExportData(
                     products = products,
                     packages = packages,
-                    templates = templates
+                    templates = templates,
+                    boxes = boxes,
+                    contractors = contractors,
+                    packageProductRelations = packageProductRelations,
+                    boxProductRelations = boxProductRelations
                 )
                 
                 val gson = GsonBuilder().create()
@@ -812,11 +822,9 @@ class ExportImportFragment : Fragment() {
                 
                 if (qrBitmap != null) {
                     // Single QR succeeded - print it
-                    binding.printerStatusText.text = "Connecting to ${printer.name}..."
                     
                     val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), printer.macAddress)
                     if (socket != null) {
-                        binding.printerStatusText.text = "Printing..."
                         
                         val header = "INVENTORY DATABASE"
                         val footer = "${products.size}P ${packages.size}Pk ${templates.size}T"
@@ -825,24 +833,19 @@ class ExportImportFragment : Fragment() {
                         socket.close()
                         
                         if (success) {
-                            binding.printerStatusText.text = "✅ Printed successfully"
                             Toast.makeText(requireContext(), "✅ Print sent to ${printer.name}", Toast.LENGTH_SHORT).show()
                         } else {
-                            binding.printerStatusText.text = "❌ Print failed"
                             Toast.makeText(requireContext(), "❌ Print failed - check printer", Toast.LENGTH_SHORT).show()
                         }
                     } else {
-                        binding.printerStatusText.text = "❌ Connection failed"
                         Toast.makeText(requireContext(), "❌ Failed to connect to ${printer.name}", Toast.LENGTH_LONG).show()
                     }
                     qrBitmap.recycle()
                 } else {
                     // Single QR failed - offer multi-part
-                    binding.printerStatusText.text = "Database too large for single QR"
                     showMultiPartPrintDialog(jsonContent, printer)
                 }
             } catch (e: Exception) {
-                binding.printerStatusText.text = "❌ Error: ${e.message}"
                 Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
                 AppLogger.e("QRPrint", "Print error", e)
             }
@@ -859,7 +862,6 @@ class ExportImportFragment : Fragment() {
                 printMultiPartDatabase(jsonContent, printer)
             }
             .setNegativeButton("Cancel") { _, _ ->
-                binding.printerStatusText.text = ""
             }
             .show()
     }
@@ -867,7 +869,6 @@ class ExportImportFragment : Fragment() {
     private fun printMultiPartDatabase(jsonContent: String, printer: PrinterEntity) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                binding.printerStatusText.text = "Generating multi-part QR codes..."
                 
                 val qrBitmaps = QRCodeGenerator.generateMultiPartQRCodes(jsonContent, 384, 384)
                 
@@ -884,16 +885,13 @@ class ExportImportFragment : Fragment() {
                                 printMultiPartQRCodes(qrBitmaps, printer)
                             }
                             .setNegativeButton("Cancel") { _, _ ->
-                                binding.printerStatusText.text = ""
                             }
                             .show()
                     }
                 } else {
-                    binding.printerStatusText.text = "❌ Failed to generate QR codes"
                     Toast.makeText(requireContext(), "Failed to generate QR codes", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                binding.printerStatusText.text = "❌ Error: ${e.message}"
                 Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                 AppLogger.e("QRPrint", "Multi-part generation error", e)
             }
@@ -969,7 +967,6 @@ class ExportImportFragment : Fragment() {
         }
 
         val pairedDevices = zebraPrinterManager.getPairedDevices()
-        binding.printerStatusText.text = "Found ${pairedDevices.size} paired Bluetooth devices"
 
         if (pairedDevices.isNotEmpty()) {
             showPairedDevicesDialog(pairedDevices)

@@ -12,6 +12,9 @@ import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.local.entities.PackageEntity
 import com.example.inventoryapp.data.local.entities.ProductTemplateEntity
 import com.example.inventoryapp.data.local.entities.PackageProductCrossRef
+import com.example.inventoryapp.data.local.entities.BoxEntity
+import com.example.inventoryapp.data.local.entities.BoxProductCrossRef
+import com.example.inventoryapp.data.local.entities.ContractorEntity
 import com.example.inventoryapp.data.local.entities.ImportBackupEntity
 import com.example.inventoryapp.data.local.entity.ImportPreview
 import com.example.inventoryapp.utils.AppLogger
@@ -29,12 +32,15 @@ import java.io.FileWriter
  * Enhanced export data structure with relationships
  */
 data class ExportData(
-    val version: Int = 2, // Incremented version for new structure
+    val version: Int = 3, // Incremented version for boxes, contractors and all relations
     val exportedAt: Long = System.currentTimeMillis(),
     val products: List<ProductEntity>,
     val packages: List<PackageEntity>,
     val templates: List<ProductTemplateEntity>,
-    val packageProductRelations: List<PackageProductCrossRef> = emptyList() // Product-Package relations
+    val boxes: List<BoxEntity>,
+    val contractors: List<ContractorEntity>,
+    val packageProductRelations: List<PackageProductCrossRef> = emptyList(), // Product-Package relations
+    val boxProductRelations: List<BoxProductCrossRef> = emptyList() // Product-Box relations
 )
 
 class ExportImportViewModel(
@@ -75,6 +81,8 @@ class ExportImportViewModel(
             val products = productRepository.getAllProducts().first()
             val packages = packageRepository.getAllPackages().first()
             val templates = templateRepository.getAllTemplates().first()
+            val boxes = boxRepository.getAllBoxes().first()
+            val contractors = contractorRepository.getAllContractors().first()
             
             // Collect all package-product relationships
             val packageProductRelations = mutableListOf<PackageProductCrossRef>()
@@ -89,12 +97,29 @@ class ExportImportViewModel(
                     )
                 }
             }
+            
+            // Collect all box-product relationships
+            val boxProductRelations = mutableListOf<BoxProductCrossRef>()
+            boxes.forEach { box ->
+                val productsInBox = boxRepository.getProductsInBox(box.id).first()
+                productsInBox.forEach { product ->
+                    boxProductRelations.add(
+                        BoxProductCrossRef(
+                            boxId = box.id,
+                            productId = product.id
+                        )
+                    )
+                }
+            }
 
             val exportData = ExportData(
                 products = products,
                 packages = packages,
                 templates = templates,
-                packageProductRelations = packageProductRelations
+                boxes = boxes,
+                contractors = contractors,
+                packageProductRelations = packageProductRelations,
+                boxProductRelations = boxProductRelations
             )
 
             // Ensure parent directory exists
@@ -104,7 +129,7 @@ class ExportImportViewModel(
                 gson.toJson(exportData, writer)
             }
 
-            val message = "Export successful: ${products.size} products, ${packages.size} packages, ${templates.size} templates, ${packageProductRelations.size} relations"
+            val message = "Export successful: ${products.size} products, ${packages.size} packages, ${boxes.size} boxes, ${contractors.size} contractors, ${templates.size} templates, ${packageProductRelations.size} pkg-relations, ${boxProductRelations.size} box-relations"
             _status.value = message
             AppLogger.logAction("Export Completed", message)
             true
@@ -286,9 +311,25 @@ class ExportImportViewModel(
             var importedProducts = 0
             var importedPackages = 0
             var importedTemplates = 0
-            var importedRelations = 0
+            var importedBoxes = 0
+            var importedContractors = 0
+            var importedPackageRelations = 0
+            var importedBoxRelations = 0
 
-            // Step 1: Import templates first (no dependencies)
+            // Step 1: Import contractors first (no dependencies)
+            val contractorIdMap = mutableMapOf<Long, Long>()
+            exportData.contractors.forEach { contractor ->
+                try {
+                    val oldId = contractor.id
+                    val newId = contractorRepository.insertContractor(contractor.copy(id = 0))
+                    contractorIdMap[oldId] = newId
+                    importedContractors++
+                } catch (e: Exception) {
+                    AppLogger.w("Import", "Skipped contractor: ${contractor.name}", e)
+                }
+            }
+
+            // Step 2: Import templates (no dependencies)
             exportData.templates.forEach { template ->
                 try {
                     templateRepository.insertTemplate(template.copy(id = 0))
@@ -298,7 +339,7 @@ class ExportImportViewModel(
                 }
             }
 
-            // Step 2: Import products and track ID mapping (old ID -> new ID)
+            // Step 3: Import products and track ID mapping (old ID -> new ID)
             val productIdMap = mutableMapOf<Long, Long>()
             exportData.products.forEach { product ->
                 try {
@@ -311,12 +352,16 @@ class ExportImportViewModel(
                 }
             }
 
-            // Step 3: Import packages and track ID mapping (old ID -> new ID)
+            // Step 4: Import packages and track ID mapping (old ID -> new ID)
             val packageIdMap = mutableMapOf<Long, Long>()
             exportData.packages.forEach { pkg ->
                 try {
                     val oldId = pkg.id
-                    val newId = packageRepository.insertPackage(pkg.copy(id = 0))
+                    // Remap contractor ID if exists
+                    val newContractorId = pkg.contractorId?.let { contractorIdMap[it] }
+                    val newId = packageRepository.insertPackage(
+                        pkg.copy(id = 0, contractorId = newContractorId)
+                    )
                     packageIdMap[oldId] = newId
                     importedPackages++
                 } catch (e: Exception) {
@@ -324,7 +369,20 @@ class ExportImportViewModel(
                 }
             }
 
-            // Step 4: Import package-product relationships using mapped IDs
+            // Step 5: Import boxes and track ID mapping
+            val boxIdMap = mutableMapOf<Long, Long>()
+            exportData.boxes.forEach { box ->
+                try {
+                    val oldId = box.id
+                    val newId = boxRepository.insertBox(box.copy(id = 0))
+                    boxIdMap[oldId] = newId
+                    importedBoxes++
+                } catch (e: Exception) {
+                    AppLogger.w("Import", "Skipped box: ${box.name}", e)
+                }
+            }
+
+            // Step 6: Import package-product relationships using mapped IDs
             exportData.packageProductRelations.forEach { relation ->
                 try {
                     val newPackageId = packageIdMap[relation.packageId]
@@ -332,16 +390,33 @@ class ExportImportViewModel(
                     
                     if (newPackageId != null && newProductId != null) {
                         packageRepository.addProductToPackage(newPackageId, newProductId)
-                        importedRelations++
+                        importedPackageRelations++
                     } else {
-                        AppLogger.w("Import", "Skipped relation - package ${relation.packageId} or product ${relation.productId} not found")
+                        AppLogger.w("Import", "Skipped pkg relation - package ${relation.packageId} or product ${relation.productId} not found")
                     }
                 } catch (e: Exception) {
-                    AppLogger.w("Import", "Skipped relation: package ${relation.packageId} -> product ${relation.productId}", e)
+                    AppLogger.w("Import", "Skipped pkg relation: package ${relation.packageId} -> product ${relation.productId}", e)
                 }
             }
 
-            val message = "Import successful: $importedProducts products, $importedPackages packages, $importedTemplates templates, $importedRelations relations"
+            // Step 7: Import box-product relationships using mapped IDs
+            exportData.boxProductRelations.forEach { relation ->
+                try {
+                    val newBoxId = boxIdMap[relation.boxId]
+                    val newProductId = productIdMap[relation.productId]
+                    
+                    if (newBoxId != null && newProductId != null) {
+                        boxRepository.addProductToBox(newBoxId, newProductId)
+                        importedBoxRelations++
+                    } else {
+                        AppLogger.w("Import", "Skipped box relation - box ${relation.boxId} or product ${relation.productId} not found")
+                    }
+                } catch (e: Exception) {
+                    AppLogger.w("Import", "Skipped box relation: box ${relation.boxId} -> product ${relation.productId}", e)
+                }
+            }
+
+            val message = "Import successful: $importedProducts products, $importedPackages packages, $importedBoxes boxes, $importedContractors contractors, $importedTemplates templates, $importedPackageRelations pkg-relations, $importedBoxRelations box-relations"
             _status.value = message
             AppLogger.logAction("Import Completed", message)
             checkForRecentBackup() // Update backup status
@@ -365,6 +440,8 @@ class ExportImportViewModel(
             val products = productRepository.getAllProducts().first()
             val packages = packageRepository.getAllPackages().first()
             val templates = templateRepository.getAllTemplates().first()
+            val boxes = boxRepository.getAllBoxes().first()
+            val contractors = contractorRepository.getAllContractors().first()
             
             val packageProductRelations = mutableListOf<PackageProductCrossRef>()
             packages.forEach { pkg ->
@@ -378,12 +455,28 @@ class ExportImportViewModel(
                     )
                 }
             }
+            
+            val boxProductRelations = mutableListOf<BoxProductCrossRef>()
+            boxes.forEach { box ->
+                val productsInBox = boxRepository.getProductsInBox(box.id).first()
+                productsInBox.forEach { product ->
+                    boxProductRelations.add(
+                        BoxProductCrossRef(
+                            boxId = box.id,
+                            productId = product.id
+                        )
+                    )
+                }
+            }
 
             val backupData = ExportData(
                 products = products,
                 packages = packages,
                 templates = templates,
-                packageProductRelations = packageProductRelations
+                boxes = boxes,
+                contractors = contractors,
+                packageProductRelations = packageProductRelations,
+                boxProductRelations = boxProductRelations
             )
 
             val backupJson = gson.toJson(backupData)
@@ -438,6 +531,12 @@ class ExportImportViewModel(
             templateRepository.getAllTemplates().first().forEach { template ->
                 templateRepository.deleteTemplate(template)
             }
+            boxRepository.getAllBoxes().first().forEach { box ->
+                boxRepository.deleteBox(box)
+            }
+            contractorRepository.getAllContractors().first().forEach { contractor ->
+                contractorRepository.deleteContractor(contractor)
+            }
             
             // Restore from backup
             _status.value = "Restoring data from backup..."
@@ -445,7 +544,23 @@ class ExportImportViewModel(
             var restoredProducts = 0
             var restoredPackages = 0
             var restoredTemplates = 0
-            var restoredRelations = 0
+            var restoredBoxes = 0
+            var restoredContractors = 0
+            var restoredPackageRelations = 0
+            var restoredBoxRelations = 0
+            
+            // Restore contractors first (no dependencies)
+            val contractorIdMap = mutableMapOf<Long, Long>()
+            backupData.contractors.forEach { contractor ->
+                try {
+                    val oldId = contractor.id
+                    val newId = contractorRepository.insertContractor(contractor.copy(id = 0))
+                    contractorIdMap[oldId] = newId
+                    restoredContractors++
+                } catch (e: Exception) {
+                    AppLogger.w("Restore", "Failed to restore contractor: ${contractor.name}", e)
+                }
+            }
             
             // Restore templates
             backupData.templates.forEach { template ->
@@ -470,12 +585,15 @@ class ExportImportViewModel(
                 }
             }
             
-            // Restore packages with ID mapping
+            // Restore packages with ID mapping and contractor mapping
             val packageIdMap = mutableMapOf<Long, Long>()
             backupData.packages.forEach { pkg ->
                 try {
                     val oldId = pkg.id
-                    val newId = packageRepository.insertPackage(pkg.copy(id = 0))
+                    val newContractorId = pkg.contractorId?.let { contractorIdMap[it] }
+                    val newId = packageRepository.insertPackage(
+                        pkg.copy(id = 0, contractorId = newContractorId)
+                    )
                     packageIdMap[oldId] = newId
                     restoredPackages++
                 } catch (e: Exception) {
@@ -483,7 +601,20 @@ class ExportImportViewModel(
                 }
             }
             
-            // Restore relations
+            // Restore boxes with ID mapping
+            val boxIdMap = mutableMapOf<Long, Long>()
+            backupData.boxes.forEach { box ->
+                try {
+                    val oldId = box.id
+                    val newId = boxRepository.insertBox(box.copy(id = 0))
+                    boxIdMap[oldId] = newId
+                    restoredBoxes++
+                } catch (e: Exception) {
+                    AppLogger.w("Restore", "Failed to restore box: ${box.name}", e)
+                }
+            }
+            
+            // Restore package-product relations
             backupData.packageProductRelations.forEach { relation ->
                 try {
                     val newPackageId = packageIdMap[relation.packageId]
@@ -491,17 +622,32 @@ class ExportImportViewModel(
                     
                     if (newPackageId != null && newProductId != null) {
                         packageRepository.addProductToPackage(newPackageId, newProductId)
-                        restoredRelations++
+                        restoredPackageRelations++
                     }
                 } catch (e: Exception) {
-                    AppLogger.w("Restore", "Failed to restore relation", e)
+                    AppLogger.w("Restore", "Failed to restore package relation", e)
+                }
+            }
+            
+            // Restore box-product relations
+            backupData.boxProductRelations.forEach { relation ->
+                try {
+                    val newBoxId = boxIdMap[relation.boxId]
+                    val newProductId = productIdMap[relation.productId]
+                    
+                    if (newBoxId != null && newProductId != null) {
+                        boxRepository.addProductToBox(newBoxId, newProductId)
+                        restoredBoxRelations++
+                    }
+                } catch (e: Exception) {
+                    AppLogger.w("Restore", "Failed to restore box relation", e)
                 }
             }
             
             // Delete the used backup
             backupRepository.deleteBackup(backup)
             
-            val message = "Undo successful: Restored $restoredProducts products, $restoredPackages packages, $restoredTemplates templates, $restoredRelations relations"
+            val message = "Undo successful: Restored $restoredProducts products, $restoredPackages packages, $restoredBoxes boxes, $restoredContractors contractors, $restoredTemplates templates, $restoredPackageRelations pkg-relations, $restoredBoxRelations box-relations"
             _status.value = message
             AppLogger.logAction("Undo Completed", message)
             checkForRecentBackup() // Update backup status
