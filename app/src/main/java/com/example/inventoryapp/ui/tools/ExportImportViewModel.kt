@@ -6,6 +6,8 @@ import com.example.inventoryapp.data.repository.ProductRepository
 import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductTemplateRepository
 import com.example.inventoryapp.data.repository.ImportBackupRepository
+import com.example.inventoryapp.data.repository.BoxRepository
+import com.example.inventoryapp.data.repository.ContractorRepository
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.local.entities.PackageEntity
 import com.example.inventoryapp.data.local.entities.ProductTemplateEntity
@@ -39,7 +41,9 @@ class ExportImportViewModel(
     private val productRepository: ProductRepository,
     private val packageRepository: PackageRepository,
     private val templateRepository: ProductTemplateRepository,
-    private val backupRepository: ImportBackupRepository
+    private val backupRepository: ImportBackupRepository,
+    private val boxRepository: BoxRepository,
+    private val contractorRepository: ContractorRepository
 ) : ViewModel() {
 
     private val _status = MutableStateFlow("")
@@ -118,27 +122,71 @@ class ExportImportViewModel(
             _status.value = "Exporting to CSV..."
             
             val products = productRepository.getAllProducts().first()
+            val contractors = contractorRepository.getAllContractors().first()
             
             // Ensure parent directory exists
             outputFile.parentFile?.mkdirs()
             
             FileWriter(outputFile).use { writer ->
-                // CSV Header
-                writer.append("ID,Name,Category ID,Serial Number,Description,Created At,Updated At\n")
+                // CSV Header with extended information
+                writer.append("Product ID,")
+                writer.append("Product Name,")
+                writer.append("Category ID,")
+                writer.append("Serial Number,")
+                writer.append("Description,")
+                writer.append("Quantity,")
+                writer.append("Package ID,")
+                writer.append("Package Name,")
+                writer.append("Contractor ID,")
+                writer.append("Contractor Name,")
+                writer.append("Box ID,")
+                writer.append("Box Name,")
+                writer.append("Box Description,")
+                writer.append("Created At,")
+                writer.append("Updated At\n")
                 
                 // CSV Data
                 products.forEach { product ->
+                    // Find package for this product
+                    val productPackage = try {
+                        packageRepository.getPackageByProductId(product.id).first()
+                    } catch (e: Exception) {
+                        null
+                    }
+                    
+                    // Find contractor for the package
+                    val contractor = if (productPackage?.contractorId != null) {
+                        contractors.find { it.id == productPackage.contractorId }
+                    } else {
+                        null
+                    }
+                    
+                    // Find box for this product
+                    val productBox = try {
+                        boxRepository.getBoxByProductId(product.id).first()
+                    } catch (e: Exception) {
+                        null
+                    }
+                    
                     writer.append("${product.id},")
                     writer.append("\"${product.name}\",")
                     writer.append("${product.categoryId ?: ""},")
                     writer.append("\"${product.serialNumber ?: ""}\",")
                     writer.append("\"${product.description ?: ""}\",")
+                    writer.append("${product.quantity},")
+                    writer.append("${productPackage?.id ?: ""},")
+                    writer.append("\"${productPackage?.name ?: ""}\",")
+                    writer.append("${contractor?.id ?: ""},")
+                    writer.append("\"${contractor?.name ?: ""}\",")
+                    writer.append("${productBox?.id ?: ""},")
+                    writer.append("\"${productBox?.name ?: ""}\",")
+                    writer.append("\"${productBox?.description ?: ""}\",")
                     writer.append("${product.createdAt},")
                     writer.append("${product.updatedAt}\n")
                 }
             }
             
-            val message = "CSV export successful: ${products.size} products"
+            val message = "CSV export successful: ${products.size} products with package/box/contractor info"
             _status.value = message
             AppLogger.logAction("CSV Export Completed", message)
             true

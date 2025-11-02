@@ -52,4 +52,8 @@ class BoxRepository(private val boxDao: BoxDao, private val productDao: com.exam
     suspend fun isProductInBox(boxId: Long, productId: Long): Boolean {
         return boxDao.isProductInBox(boxId, productId)
     }
+    
+    fun getBoxByProductId(productId: Long): Flow<BoxEntity?> {
+        return boxDao.getBoxForProduct(productId)
+    }
 }

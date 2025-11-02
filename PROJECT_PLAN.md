@@ -1,5 +1,62 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## 📊 CSV Export Enhancement - Package/Box/Contractor Info (COMPLETED - NO VERSION CHANGE)
+
+**Cel**: Rozszerzenie eksportu CSV o dane relacyjne - w jakich Package/Box był produkt oraz do jakiego Contractor przypisany.
+
+### Struktura CSV (przed → po):
+
+**PRZED (7 kolumn):**
+```
+Product ID, Product Name, Category ID, Serial Number, Description, Created At, Updated At
+```
+
+**PO (15 kolumn):**
+```
+Product ID, Product Name, Category ID, Serial Number, Description, Quantity, 
+Package ID, Package Name, Contractor ID, Contractor Name, 
+Box ID, Box Name, Box Description, Created At, Updated At
+```
+
+### Zmiany:
+
+1. **BoxDao.kt**:
+   - ✅ Dodano `getBoxForProduct(productId: Long): Flow<BoxEntity?>`
+   - Query: `SELECT * FROM boxes INNER JOIN box_product_cross_ref ON boxes.id = box_product_cross_ref.boxId WHERE box_product_cross_ref.productId = :productId LIMIT 1`
+   - Adnotacja: `@RewriteQueriesToDropUnusedColumns` (Room optimization)
+
+2. **BoxRepository.kt**:
+   - ✅ Dodano `getBoxByProductId(productId: Long): Flow<BoxEntity?>`
+   - Deleguje do `boxDao.getBoxForProduct(productId)`
+
+3. **PackageRepository.kt**:
+   - ✅ Dodano `getPackageByProductId(productId: Long)` - alias do istniejącej `getPackageForProduct()`
+
+4. **ExportImportViewModel.kt**:
+   - ✅ Rozszerzony konstruktor: dodano `BoxRepository` i `ContractorRepository`
+   - ✅ Przepisana metoda `exportToCsv()`:
+     - Dla każdego produktu: query package → query contractor (z package.contractorId) → query box
+     - Użycie `Flow.first()` dla konwersji Flow → pojedyncza wartość
+     - Try-catch dla brakujących relacji (null-safe)
+     - Usunięto nieużywane zmienne `packages` i `boxes`
+   - Header CSV: 15 kolumn (usunięto Package Description - pole nie istnieje w PackageEntity!)
+
+5. **ExportImportFragment.kt**:
+   - ✅ Zaktualizowana inicjalizacja ViewModel (linie 160-172)
+   - Dodano `boxRepository` i `contractorRepository` z `AppDatabase.getDatabase(requireContext())`
+
+### Tested:
+- Build: ✅ **PASS** (no warnings)
+- CSV structure: ✅ 15 columns with relational data
+- Null handling: ✅ Empty strings for missing relations
+
+### Notes:
+- **Performance**: N+1 query pattern (1 package query + 1 contractor query + 1 box query per product)
+- Future optimization: Single complex JOIN query with LEFT JOINs
+- **NO VERSION INCREMENT** per user request ("nie zwiększając wersji")
+
+---
+
 ## ✅ v1.16.7 - Bulk Scan Fix + Select All/Deselect All (COMPLETED)
 
 Version: 1.16.7 (code 84)

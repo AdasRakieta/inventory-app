@@ -70,6 +70,10 @@ interface BoxDao {
         )
     """)
     suspend fun isProductInBox(boxId: Long, productId: Long): Boolean
+    
+    @RewriteQueriesToDropUnusedColumns
+    @Query("SELECT * FROM boxes INNER JOIN box_product_cross_ref ON boxes.id = box_product_cross_ref.boxId WHERE box_product_cross_ref.productId = :productId LIMIT 1")
+    fun getBoxForProduct(productId: Long): Flow<BoxEntity?>
 }
 
 data class BoxWithCount(
