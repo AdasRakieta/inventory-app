@@ -156,11 +156,23 @@ class BoxListFragment : Fragment() {
             getString(R.string.select_all)
         }
 
-        // Update FAB icon
+        // Update FAB icon and position
         if (selectionMode) {
             binding.addBoxFab.setImageResource(android.R.drawable.ic_delete)
+            
+            // Move FAB up to avoid overlapping with selection panel
+            binding.addBoxFab.animate()
+                .translationY(-binding.selectionPanel.height.toFloat() - 16f)
+                .setDuration(200)
+                .start()
         } else {
             binding.addBoxFab.setImageResource(android.R.drawable.ic_input_add)
+            
+            // Move FAB back to original position
+            binding.addBoxFab.animate()
+                .translationY(0f)
+                .setDuration(200)
+                .start()
         }
     }
 

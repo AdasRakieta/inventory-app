@@ -7,17 +7,24 @@ import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.os.Environment
 import android.util.Log
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileWriter
 import java.io.OutputStream
+import java.io.PrintWriter
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 /**
  * Helper class for printing QR codes via Bluetooth thermal printers
  * Supports ESC/POS command protocol
+ * Logs Bluetooth operations to /Documents/inventory/logs/bluetooth_YYYY-MM-DD.txt
  */
 class BluetoothPrinterHelper {
 
@@ -33,6 +40,73 @@ class BluetoothPrinterHelper {
         private val ESC_ALIGN_LEFT = byteArrayOf(0x1B, 0x61, 0x00) // Left alignment
         private val ESC_CUT = byteArrayOf(0x1D, 0x56, 0x00) // Cut paper
         private val LINE_FEED = byteArrayOf(0x0A) // New line
+        
+        // File logging
+        private var logFile: File? = null
+        private var logWriter: PrintWriter? = null
+        private val logDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
+        
+        /**
+         * Initialize file logging for Bluetooth operations
+         * Creates logs directory in Documents/inventory/logs and daily log file
+         */
+        private fun initFileLogging(context: Context) {
+            try {
+                // Use same directory as AppLogger: /Documents/inventory/logs
+                val documentsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+                val logsDir = File(documentsDir, "inventory/logs")
+                if (!logsDir.exists()) {
+                    logsDir.mkdirs()
+                }
+                
+                // Create daily Bluetooth log file
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val dateStr = dateFormat.format(Date())
+                logFile = File(logsDir, "bluetooth_$dateStr.txt")
+                
+                // Open writer in append mode
+                logWriter = PrintWriter(FileWriter(logFile, true), true)
+                
+                Log.d(TAG, "Bluetooth file logging initialized: ${logFile?.absolutePath}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize Bluetooth file logging", e)
+            }
+        }
+        
+        /**
+         * Write log entry to both Logcat and file
+         */
+        private fun logToFile(context: Context?, level: String, message: String) {
+            try {
+                context?.let {
+                    if (logWriter == null || logFile == null) {
+                        initFileLogging(it)
+                    }
+                }
+                
+                val timestamp = logDateFormat.format(Date())
+                val logEntry = "[$timestamp] [$level] $message"
+                
+                logWriter?.println(logEntry)
+                logWriter?.flush()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to write to log file", e)
+            }
+        }
+        
+        /**
+         * Close file logging
+         */
+        private fun closeFileLogging() {
+            try {
+                logWriter?.flush()
+                logWriter?.close()
+                logWriter = null
+                logFile = null
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to close file logging", e)
+            }
+        }
         
         /**
          * Scan for paired Bluetooth devices
@@ -73,134 +147,491 @@ class BluetoothPrinterHelper {
          * Note: BLUETOOTH and BLUETOOTH_ADMIN are normal permissions on API ≤30 (auto-granted at install)
          */
     suspend fun connectToPrinter(context: Context, macAddress: String): BluetoothSocket? = withContext(Dispatchers.IO) {
+            val startTime = System.currentTimeMillis()
+            
+            // Initialize file logging
+            initFileLogging(context)
+            
+            val logMsg1 = "═══════════════════════════════════════════════════════"
+            val logMsg2 = "🔌 CONNECTION ATTEMPT STARTED"
+            val logMsg3 = "Target MAC: $macAddress"
+            val logMsg4 = "Timestamp: ${java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault()).format(Date())}"
+            
+            Log.i(TAG, logMsg1)
+            Log.i(TAG, logMsg2)
+            Log.i(TAG, logMsg3)
+            Log.i(TAG, logMsg4)
+            
+            logToFile(context, "INFO", logMsg1)
+            logToFile(context, "INFO", logMsg2)
+            logToFile(context, "INFO", logMsg3)
+            logToFile(context, "INFO", logMsg4)
+            
             try {
                 val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-                if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
-                    Log.w(TAG, "Bluetooth not available or not enabled")
+                if (bluetoothAdapter == null) {
+                    val msg = "❌ FATAL: Bluetooth adapter is NULL - device doesn't support Bluetooth"
+                    Log.e(TAG, msg)
+                    logToFile(context, "ERROR", msg)
+                    closeFileLogging()
                     return@withContext null
                 }
                 
+                if (!bluetoothAdapter.isEnabled) {
+                    val msg = "❌ FATAL: Bluetooth is DISABLED - please enable Bluetooth"
+                    Log.e(TAG, msg)
+                    logToFile(context, "ERROR", msg)
+                    closeFileLogging()
+                    return@withContext null
+                }
+                
+                val msg = "✓ Bluetooth adapter OK, enabled"
+                Log.d(TAG, msg)
+                logToFile(context, "DEBUG", msg)
+                
                 val device = bluetoothAdapter.getRemoteDevice(macAddress)
+                @Suppress("MissingPermission")
+                val deviceName = device.name ?: "Unknown"
+                val msg1 = "📱 Device found: $deviceName (MAC: $macAddress)"
+                Log.i(TAG, msg1)
+                logToFile(context, "INFO", msg1)
                 
                 // Cancel discovery to improve connection speed
                 @Suppress("MissingPermission")
-                bluetoothAdapter.cancelDiscovery()
+                if (bluetoothAdapter.isDiscovering) {
+                    bluetoothAdapter.cancelDiscovery()
+                    val msg2 = "✓ Cancelled ongoing discovery"
+                    Log.d(TAG, msg2)
+                    logToFile(context, "DEBUG", msg2)
+                }
                 
                 // Try multiple connection methods for better compatibility
-                // Reordered to PREFER INSECURE methods first (no pairing required)
                 var socket: BluetoothSocket? = null
+                var methodNumber = 0
 
                 // Method 1: Reflection-based INSECURE connection on channel 1 (commonly works on Zebra)
+                methodNumber++
+                val method1Start = System.currentTimeMillis()
+                val method1Title = "🔧 METHOD $methodNumber: Insecure RFCOMM (channel 1, reflection)"
+                Log.i(TAG, "")
+                Log.i(TAG, method1Title)
+                logToFile(context, "INFO", "")
+                logToFile(context, "INFO", method1Title)
                 try {
                     @Suppress("MissingPermission")
                     val insecureMethod = runCatching {
                         device.javaClass.getMethod("createInsecureRfcommSocket", Int::class.javaPrimitiveType)
                     }.getOrNull()
+                    
                     if (insecureMethod != null) {
+                        val msg1 = "  ↳ Reflection method found, creating socket..."
+                        Log.d(TAG, msg1)
+                        logToFile(context, "DEBUG", msg1)
                         socket = insecureMethod.invoke(device, 1) as BluetoothSocket
+                        val msg2 = "  ↳ Socket created, attempting connect..."
+                        Log.d(TAG, msg2)
+                        logToFile(context, "DEBUG", msg2)
                         socket.connect()
-                        @Suppress("MissingPermission")
-                        Log.d(TAG, "Connected (insecure, ch1 via reflection): ${device.name}")
+                        val elapsed = System.currentTimeMillis() - method1Start
+                        val msg3 = "  ✅ SUCCESS in ${elapsed}ms"
+                        val msg4 = "  Device: $deviceName"
+                        val msg5 = "  Total connection time: ${System.currentTimeMillis() - startTime}ms"
+                        val msg6 = "═══════════════════════════════════════════════════════"
+                        Log.i(TAG, msg3)
+                        Log.i(TAG, msg4)
+                        Log.i(TAG, msg5)
+                        Log.i(TAG, msg6)
+                        logToFile(context, "INFO", msg3)
+                        logToFile(context, "INFO", msg4)
+                        logToFile(context, "INFO", msg5)
+                        logToFile(context, "INFO", msg6)
+                        closeFileLogging()
                         return@withContext socket
+                    } else {
+                        val msg = "  ⚠ Reflection method not available"
+                        Log.w(TAG, msg)
+                        logToFile(context, "WARN", msg)
                     }
                 } catch (e: Exception) {
                     socket?.close()
-                    Log.w(TAG, "Insecure reflection connection failed, trying insecure SPP", e)
+                    val elapsed = System.currentTimeMillis() - method1Start
+                    val msg1 = "  ❌ FAILED in ${elapsed}ms: ${e.javaClass.simpleName}: ${e.message}"
+                    Log.w(TAG, msg1)
+                    logToFile(context, "WARN", msg1)
+                    if (e.stackTrace.isNotEmpty()) {
+                        val msg2 = "  ↳ at ${e.stackTrace[0]}"
+                        Log.w(TAG, msg2)
+                        logToFile(context, "WARN", msg2)
+                    }
                 }
 
                 // Method 2: Insecure RFCOMM over SPP UUID (no pairing/bonding)
+                methodNumber++
+                val method2Start = System.currentTimeMillis()
+                val method2Title = "🔧 METHOD $methodNumber: Insecure SPP UUID"
+                Log.i(TAG, "")
+                Log.i(TAG, method2Title)
+                logToFile(context, "INFO", "")
+                logToFile(context, "INFO", method2Title)
                 try {
                     @Suppress("MissingPermission")
+                    val msg1 = "  ↳ Creating insecure RFCOMM socket with SPP UUID..."
+                    Log.d(TAG, msg1)
+                    logToFile(context, "DEBUG", msg1)
                     socket = device.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
+                    val msg2 = "  ↳ Socket created, attempting connect..."
+                    Log.d(TAG, msg2)
+                    logToFile(context, "DEBUG", msg2)
                     socket.connect()
-                    @Suppress("MissingPermission")
-                    Log.d(TAG, "Connected (insecure SPP): ${device.name}")
+                    val elapsed = System.currentTimeMillis() - method2Start
+                    val msg3 = "  ✅ SUCCESS in ${elapsed}ms"
+                    val msg4 = "  Device: $deviceName"
+                    val msg5 = "  Total connection time: ${System.currentTimeMillis() - startTime}ms"
+                    val msg6 = "═══════════════════════════════════════════════════════"
+                    Log.i(TAG, msg3)
+                    Log.i(TAG, msg4)
+                    Log.i(TAG, msg5)
+                    Log.i(TAG, msg6)
+                    logToFile(context, "INFO", msg3)
+                    logToFile(context, "INFO", msg4)
+                    logToFile(context, "INFO", msg5)
+                    logToFile(context, "INFO", msg6)
+                    closeFileLogging()
                     return@withContext socket
                 } catch (e: Exception) {
                     socket?.close()
-                    Log.w(TAG, "Insecure SPP failed, trying secure reflection ch1", e)
+                    val elapsed = System.currentTimeMillis() - method2Start
+                    val msg1 = "  ❌ FAILED in ${elapsed}ms: ${e.javaClass.simpleName}: ${e.message}"
+                    Log.w(TAG, msg1)
+                    logToFile(context, "WARN", msg1)
+                    if (e.stackTrace.isNotEmpty()) {
+                        val msg2 = "  ↳ at ${e.stackTrace[0]}"
+                        Log.w(TAG, msg2)
+                        logToFile(context, "WARN", msg2)
+                    }
                 }
 
                 // Method 3: Reflection-based SECURE connection (channel 1)
+                methodNumber++
+                val method3Start = System.currentTimeMillis()
+                val method3Title = "🔧 METHOD $methodNumber: Secure RFCOMM (channel 1, reflection)"
+                Log.i(TAG, "")
+                Log.i(TAG, method3Title)
+                logToFile(context, "INFO", "")
+                logToFile(context, "INFO", method3Title)
                 try {
                     @Suppress("MissingPermission")
+                    val msg1 = "  ↳ Getting reflection method for secure socket..."
+                    Log.d(TAG, msg1)
+                    logToFile(context, "DEBUG", msg1)
                     val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
                     socket = method.invoke(device, 1) as BluetoothSocket
+                    val msg2 = "  ↳ Socket created, attempting connect..."
+                    Log.d(TAG, msg2)
+                    logToFile(context, "DEBUG", msg2)
                     socket.connect()
-                    @Suppress("MissingPermission")
-                    Log.d(TAG, "Connected (secure reflection ch1): ${device.name}")
+                    val elapsed = System.currentTimeMillis() - method3Start
+                    val msg3 = "  ✅ SUCCESS in ${elapsed}ms"
+                    val msg4 = "  Device: $deviceName"
+                    val msg5 = "  Total connection time: ${System.currentTimeMillis() - startTime}ms"
+                    val msg6 = "═══════════════════════════════════════════════════════"
+                    Log.i(TAG, msg3)
+                    Log.i(TAG, msg4)
+                    Log.i(TAG, msg5)
+                    Log.i(TAG, msg6)
+                    logToFile(context, "INFO", msg3)
+                    logToFile(context, "INFO", msg4)
+                    logToFile(context, "INFO", msg5)
+                    logToFile(context, "INFO", msg6)
+                    closeFileLogging()
                     return@withContext socket
                 } catch (e: Exception) {
                     socket?.close()
-                    Log.w(TAG, "Secure reflection failed, trying secure SPP (may prompt pairing)", e)
+                    val elapsed = System.currentTimeMillis() - method3Start
+                    val msg1 = "  ❌ FAILED in ${elapsed}ms: ${e.javaClass.simpleName}: ${e.message}"
+                    Log.w(TAG, msg1)
+                    logToFile(context, "WARN", msg1)
+                    if (e.stackTrace.isNotEmpty()) {
+                        val msg2 = "  ↳ at ${e.stackTrace[0]}"
+                        Log.w(TAG, msg2)
+                        logToFile(context, "WARN", msg2)
+                    }
                 }
 
                 // Method 4: Standard SPP (SECURE) as the last resort
+                methodNumber++
+                val method4Start = System.currentTimeMillis()
+                val method4Title = "🔧 METHOD $methodNumber: Secure SPP UUID (may prompt pairing)"
+                Log.i(TAG, "")
+                Log.i(TAG, method4Title)
+                logToFile(context, "INFO", "")
+                logToFile(context, "INFO", method4Title)
                 try {
                     @Suppress("MissingPermission")
+                    val msg1 = "  ↳ Creating secure RFCOMM socket with SPP UUID..."
+                    Log.d(TAG, msg1)
+                    logToFile(context, "DEBUG", msg1)
                     socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+                    val msg2 = "  ↳ Socket created, attempting connect..."
+                    Log.d(TAG, msg2)
+                    logToFile(context, "DEBUG", msg2)
                     socket.connect()
-                    @Suppress("MissingPermission")
-                    Log.d(TAG, "Connected (secure SPP): ${device.name}")
+                    val elapsed = System.currentTimeMillis() - method4Start
+                    val msg3 = "  ✅ SUCCESS in ${elapsed}ms"
+                    val msg4 = "  Device: $deviceName"
+                    val msg5 = "  Total connection time: ${System.currentTimeMillis() - startTime}ms"
+                    val msg6 = "═══════════════════════════════════════════════════════"
+                    Log.i(TAG, msg3)
+                    Log.i(TAG, msg4)
+                    Log.i(TAG, msg5)
+                    Log.i(TAG, msg6)
+                    logToFile(context, "INFO", msg3)
+                    logToFile(context, "INFO", msg4)
+                    logToFile(context, "INFO", msg5)
+                    logToFile(context, "INFO", msg6)
+                    closeFileLogging()
                     return@withContext socket
                 } catch (e: Exception) {
                     socket?.close()
-                    Log.e(TAG, "All connection methods failed", e)
+                    val elapsed = System.currentTimeMillis() - method4Start
+                    val msg1 = "  ❌ FAILED in ${elapsed}ms: ${e.javaClass.simpleName}: ${e.message}"
+                    Log.e(TAG, msg1)
+                    logToFile(context, "ERROR", msg1)
+                    if (e.stackTrace.isNotEmpty()) {
+                        val msg2 = "  ↳ at ${e.stackTrace[0]}"
+                        Log.e(TAG, msg2)
+                        logToFile(context, "ERROR", msg2)
+                    }
                 }
                 
+                val totalTime = System.currentTimeMillis() - startTime
+                val msgErr1 = ""
+                val msgErr2 = "💥 ALL $methodNumber CONNECTION METHODS FAILED"
+                val msgErr3 = "Device: $deviceName (MAC: $macAddress)"
+                val msgErr4 = "Total time: ${totalTime}ms"
+                val msgErr5 = ""
+                val msgErr6 = "Troubleshooting suggestions:"
+                val msgErr7 = "  1. Check if printer is ON and in range"
+                val msgErr8 = "  2. Verify printer is paired in Bluetooth settings"
+                val msgErr9 = "  3. Try removing and re-pairing the device"
+                val msgErr10 = "  4. Restart printer and try again"
+                val msgErr11 = "  5. Check if other apps can connect to printer"
+                val msgErr12 = "═══════════════════════════════════════════════════════"
+                
+                Log.e(TAG, msgErr1)
+                Log.e(TAG, msgErr2)
+                Log.e(TAG, msgErr3)
+                Log.e(TAG, msgErr4)
+                Log.e(TAG, msgErr5)
+                Log.e(TAG, msgErr6)
+                Log.e(TAG, msgErr7)
+                Log.e(TAG, msgErr8)
+                Log.e(TAG, msgErr9)
+                Log.e(TAG, msgErr10)
+                Log.e(TAG, msgErr11)
+                Log.e(TAG, msgErr12)
+                
+                logToFile(context, "ERROR", msgErr1)
+                logToFile(context, "ERROR", msgErr2)
+                logToFile(context, "ERROR", msgErr3)
+                logToFile(context, "ERROR", msgErr4)
+                logToFile(context, "ERROR", msgErr5)
+                logToFile(context, "ERROR", msgErr6)
+                logToFile(context, "ERROR", msgErr7)
+                logToFile(context, "ERROR", msgErr8)
+                logToFile(context, "ERROR", msgErr9)
+                logToFile(context, "ERROR", msgErr10)
+                logToFile(context, "ERROR", msgErr11)
+                logToFile(context, "ERROR", msgErr12)
+                
+                closeFileLogging()
                 null
             } catch (e: SecurityException) {
-                Log.e(TAG, "Security exception - missing Bluetooth permissions", e)
+                val msgSec1 = "❌ SECURITY EXCEPTION - Missing Bluetooth permissions"
+                val msgSec2 = "═══════════════════════════════════════════════════════"
+                Log.e(TAG, msgSec1, e)
+                Log.e(TAG, msgSec2)
+                logToFile(context, "ERROR", msgSec1 + ": " + e.message)
+                logToFile(context, "ERROR", msgSec2)
+                closeFileLogging()
                 null
             } catch (e: Exception) {
-                Log.e(TAG, "Error connecting to printer", e)
+                val msgUnex1 = "❌ UNEXPECTED ERROR during connection"
+                val msgUnex2 = "═══════════════════════════════════════════════════════"
+                Log.e(TAG, msgUnex1, e)
+                Log.e(TAG, msgUnex2)
+                logToFile(context, "ERROR", msgUnex1 + ": " + e.message)
+                logToFile(context, "ERROR", msgUnex2)
+                closeFileLogging()
                 null
             }
         }
         
         /**
          * Send raw ZPL content to Zebra printer
+         * @param context Application context for file logging
          * @param socket Active Bluetooth socket connection
          * @param zplContent Complete ZPL program (including ^XA and ^XZ)
          * @return true if sent successfully, false otherwise
          */
         suspend fun printZpl(
+            context: Context?,
             socket: BluetoothSocket,
             zplContent: String
         ): Boolean = withContext(Dispatchers.IO) {
+            val startTime = System.currentTimeMillis()
+            
+            // Initialize file logging
+            if (context != null) {
+                initFileLogging(context)
+            }
+            
+            val msg1 = ""
+            val msg2 = "───────────────────────────────────────────────────────"
+            val msg3 = "🖨️ PRINT JOB STARTED"
+            val msg4 = "Timestamp: ${java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault()).format(Date())}"
+            val msg5 = "Socket connected: ${socket.isConnected}"
+            
+            Log.i(TAG, msg1)
+            Log.i(TAG, msg2)
+            Log.i(TAG, msg3)
+            Log.i(TAG, msg4)
+            Log.d(TAG, msg5)
+            
+            logToFile(context, "INFO", msg1)
+            logToFile(context, "INFO", msg2)
+            logToFile(context, "INFO", msg3)
+            logToFile(context, "INFO", msg4)
+            logToFile(context, "DEBUG", msg5)
+            
             var outputStream: OutputStream? = null
             try {
                 outputStream = socket.outputStream
+                val msg6 = "✓ Output stream obtained"
+                Log.d(TAG, msg6)
+                logToFile(context, "DEBUG", msg6)
                 
                 // Try to switch the printer to ZPL language first (Zebra SGD command)
+                val sgdStart = System.currentTimeMillis()
                 runCatching {
                     val sgd = "! U1 setvar \"device.languages\" \"zpl\"\r\n".toByteArray(Charsets.UTF_8)
-                    Log.d(TAG, "Sending SGD language switch command")
+                    val msg7 = ""
+                    val msg8 = "📤 Sending SGD language switch command"
+                    val msg9 = "  Command: ${String(sgd, Charsets.UTF_8).trim()}"
+                    Log.d(TAG, msg7)
+                    Log.d(TAG, msg8)
+                    Log.d(TAG, msg9)
+                    logToFile(context, "DEBUG", msg7)
+                    logToFile(context, "DEBUG", msg8)
+                    logToFile(context, "DEBUG", msg9)
                     outputStream.write(sgd)
                     outputStream.flush()
                     Thread.sleep(100) // Wait for language switch
-                    Log.d(TAG, "SGD language switch sent successfully")
+                    val sgdElapsed = System.currentTimeMillis() - sgdStart
+                    val msg10 = "  ✓ SGD sent in ${sgdElapsed}ms"
+                    Log.d(TAG, msg10)
+                    logToFile(context, "DEBUG", msg10)
                 }.onFailure { e ->
-                    Log.w(TAG, "Failed to send SGD language switch", e)
+                    val sgdElapsed = System.currentTimeMillis() - sgdStart
+                    val msgSgdFail = "  ⚠ SGD failed in ${sgdElapsed}ms: ${e.message}"
+                    Log.w(TAG, msgSgdFail)
+                    logToFile(context, "WARN", msgSgdFail)
                 }
 
                 // Send ZPL program
                 val zplBytes = zplContent.toByteArray(Charsets.UTF_8)
-                Log.d(TAG, "Sending ZPL content (${zplBytes.size} bytes)")
+                val zplStart = System.currentTimeMillis()
+                val msgZpl1 = ""
+                val msgZpl2 = "📤 Sending ZPL content"
+                val msgZpl3 = "  Size: ${zplBytes.size} bytes (${String.format("%.2f", zplBytes.size / 1024.0)} KB)"
+                val msgZpl4 = "  Preview (first 100 chars):"
+                val msgZpl5 = "  ${zplContent.take(100).replace("\n", "\\n")}"
+                
+                Log.d(TAG, msgZpl1)
+                Log.d(TAG, msgZpl2)
+                Log.d(TAG, msgZpl3)
+                Log.d(TAG, msgZpl4)
+                Log.d(TAG, msgZpl5)
+                logToFile(context, "DEBUG", msgZpl1)
+                logToFile(context, "DEBUG", msgZpl2)
+                logToFile(context, "DEBUG", msgZpl3)
+                logToFile(context, "DEBUG", msgZpl4)
+                logToFile(context, "DEBUG", msgZpl5)
+                
                 outputStream.write(zplBytes)
                 outputStream.flush()
+                val zplElapsed = System.currentTimeMillis() - zplStart
+                val msgZpl6 = "  ✓ ZPL written to stream in ${zplElapsed}ms"
+                Log.d(TAG, msgZpl6)
+                logToFile(context, "DEBUG", msgZpl6)
+                
                 Thread.sleep(200) // Wait for printing
-                Log.d(TAG, "ZPL sent successfully")
-
+                val totalTime = System.currentTimeMillis() - startTime
+                
+                val msgSuccess1 = ""
+                val msgSuccess2 = "✅ PRINT JOB COMPLETED SUCCESSFULLY"
+                val msgSuccess3 = "Total time: ${totalTime}ms"
+                val msgSuccess4 = "  - SGD command: ~100ms"
+                val msgSuccess5 = "  - ZPL transfer: ${zplElapsed}ms"
+                val msgSuccess6 = "  - Wait for print: 200ms"
+                val msgSuccess7 = "───────────────────────────────────────────────────────"
+                
+                Log.i(TAG, msgSuccess1)
+                Log.i(TAG, msgSuccess2)
+                Log.i(TAG, msgSuccess3)
+                Log.i(TAG, msgSuccess4)
+                Log.i(TAG, msgSuccess5)
+                Log.i(TAG, msgSuccess6)
+                Log.i(TAG, msgSuccess7)
+                
+                logToFile(context, "INFO", msgSuccess1)
+                logToFile(context, "INFO", msgSuccess2)
+                logToFile(context, "INFO", msgSuccess3)
+                logToFile(context, "INFO", msgSuccess4)
+                logToFile(context, "INFO", msgSuccess5)
+                logToFile(context, "INFO", msgSuccess6)
+                logToFile(context, "INFO", msgSuccess7)
+                
+                closeFileLogging()
                 true
             } catch (e: Exception) {
-                Log.e(TAG, "Error sending ZPL", e)
+                val totalTime = System.currentTimeMillis() - startTime
+                val msgFail1 = ""
+                val msgFail2 = "❌ PRINT JOB FAILED"
+                val msgFail3 = "Error: ${e.javaClass.simpleName}: ${e.message}"
+                val msgFail4 = "Time before failure: ${totalTime}ms"
+                
+                Log.e(TAG, msgFail1)
+                Log.e(TAG, msgFail2)
+                Log.e(TAG, msgFail3)
+                Log.e(TAG, msgFail4)
+                logToFile(context, "ERROR", msgFail1)
+                logToFile(context, "ERROR", msgFail2)
+                logToFile(context, "ERROR", msgFail3)
+                logToFile(context, "ERROR", msgFail4)
+                
+                if (e.stackTrace.isNotEmpty()) {
+                    val msgStack = "Stack trace:"
+                    Log.e(TAG, msgStack)
+                    logToFile(context, "ERROR", msgStack)
+                    e.stackTrace.take(3).forEach { 
+                        val msgStackLine = "  at $it"
+                        Log.e(TAG, msgStackLine)
+                        logToFile(context, "ERROR", msgStackLine)
+                    }
+                }
+                val msgFail5 = "───────────────────────────────────────────────────────"
+                Log.e(TAG, msgFail5)
+                logToFile(context, "ERROR", msgFail5)
+                closeFileLogging()
                 false
             } finally {
                 try {
                     outputStream?.flush()
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error flushing output stream", e)
+                    val msgFlush = "Error flushing output stream: ${e.message}"
+                    Log.w(TAG, msgFlush)
+                    logToFile(context, "WARN", msgFlush)
                 }
             }
         }

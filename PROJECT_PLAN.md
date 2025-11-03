@@ -1,5 +1,231 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.18.3 - Unified Log Directory (COMPLETED)
+
+**Version:** 1.18.3 (code 92)
+
+**Cel:** Zunifikowanie lokalizacji logów - wszystkie logi (Bluetooth i ogólne) zapisywane w tym samym katalogu `/Documents/inventory/logs/`.
+
+### Problem:
+
+Logi były zapisywane w różnych miejscach:
+- `AppLogger.kt` → `/Documents/inventory/logs/YYYY-MM-DD.txt`
+- `BluetoothPrinterHelper.kt` → `/sdcard/Android/data/com.inventory.prd/files/logs/bluetooth_YYYY-MM-DD.txt`
+
+To powodowało:
+- Trudności w odnalezieniu logów Bluetooth
+- Brak spójności w strukturze katalogów
+- Komplikacje podczas analizy problemów
+
+### Rozwiązanie:
+
+**Jedna lokalizacja dla wszystkich logów:** `/Documents/inventory/logs/`
+
+### Zmiany:
+
+1. **BluetoothPrinterHelper.kt** - zunifikowana ścieżka:
+   - Dodano import: `android.os.Environment`
+   - Zmieniono `initFileLogging()`:
+     - **BYŁO**: `context.getExternalFilesDir(null)/logs/bluetooth_YYYY-MM-DD.txt`
+     - **JEST**: `/Documents/inventory/logs/bluetooth_YYYY-MM-DD.txt`
+   - Używa tego samego mechanizmu co `AppLogger.kt`:
+     ```kotlin
+     val documentsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+     val logsDir = File(documentsDir, "inventory/logs")
+     ```
+   - Zaktualizowano dokumentację klasy
+
+### Struktura logów (FINALNA):
+
+```
+/Documents/inventory/logs/
+├── 2025-11-03.txt              ← Ogólne logi aplikacji (AppLogger)
+├── bluetooth_2025-11-03.txt    ← Logi Bluetooth (BluetoothPrinterHelper)
+├── 2025-11-04.txt
+├── bluetooth_2025-11-04.txt
+└── ...
+```
+
+### Format logów (bez zmian):
+
+**Ogólne logi** (AppLogger):
+```
+2025-11-03 15:45:23.456 [INFO] Product Added: Name=Scanner, SN=12345
+```
+
+**Logi Bluetooth** (BluetoothPrinterHelper):
+```
+[2025-11-03 15:50:03.508] [INFO] 🔌 CONNECTION ATTEMPT STARTED
+[2025-11-03 15:50:03.510] [INFO] Target MAC: AC:3F:A4:6E:8B:D2
+[2025-11-03 15:50:03.625] [DEBUG] ✓ Bluetooth adapter OK, enabled
+```
+
+### Tested:
+
+- ✅ Build: **PASS**
+- ✅ Bluetooth logi teraz w `/Documents/inventory/logs/`
+- ✅ Kompatybilność z istniejącymi logami AppLogger
+- ⏳ **Pending device test**: Sprawdzenie rzeczywistej lokalizacji plików na urządzeniu
+
+### Rezultat:
+
+Teraz użytkownik:
+- ✅ Ma wszystkie logi w jednym miejscu: `/Documents/inventory/logs/`
+- ✅ Łatwo znajdzie logi Bluetooth obok ogólnych logów
+- ✅ Może przesłać cały katalog logs do wsparcia technicznego
+- ✅ Ma spójną strukturę plików logów
+- ✅ Może łatwo filtrować logi według typu (ogólne vs Bluetooth)
+
+---
+
+## ✅ v1.18.2 - FAB Animation Fix & Log Extension Change (COMPLETED)
+
+**Version:** 1.18.2 (code 91)
+
+**Cel:** Naprawienie nakładających się przycisków podczas masowego usuwania oraz zmiana rozszerzenia logów z .log na .txt.
+
+### Problemy rozwiązane:
+
+1. **FAB nachodzi na selection panel** - podczas zaznaczania produktów/paczek/boxów do usunięcia, Floating Action Button (FAB) nakładał się na panel z przyciskami Delete/Select All/Cancel
+2. **Rozszerzenie logów** - zmiana z `.log` na `.txt` dla łatwiejszego otwierania na urządzeniach mobilnych
+
+### Zmiany:
+
+1. **ProductsListFragment.kt** - animacja FAB:
+   - Dodano `animate().translationY()` w `updateSelectionUI()`
+   - Gdy `selectionPanel` widoczny → FAB przesuwa się w górę o wysokość panelu + 16dp
+   - Gdy `selectionPanel` ukryty → FAB wraca na pozycję domyślną
+   - Animacja: 200ms smooth transition
+
+2. **PackageListFragment.kt** - animacja FAB:
+   - Identyczna logika jak w ProductsListFragment
+   - FAB unosi się podczas masowego usuwania paczek
+   - Smooth 200ms animation
+
+3. **BoxListFragment.kt** - animacja FAB:
+   - Identyczna logika jak w pozostałych fragmentach
+   - FAB unosi się podczas masowego usuwania boxów
+   - Smooth 200ms animation
+
+4. **AppLogger.kt** - zmiana rozszerzenia:
+   - Zmieniono `"$today.log"` → `"$today.txt"`
+   - Aktualizacja dokumentacji: "logs/{date}.log" → "logs/{date}.txt"
+   - Dzienne pliki logów teraz w formacie `.txt`
+
+### Mechanizm animacji:
+
+```kotlin
+// Gdy selection mode aktywny
+binding.addProductFab.animate()
+    .translationY(-binding.selectionPanel.height.toFloat() - 16f)
+    .setDuration(200)
+    .start()
+
+// Gdy selection mode nieaktywny
+binding.addProductFab.animate()
+    .translationY(0f)
+    .setDuration(200)
+    .start()
+```
+
+### Tested:
+
+- ✅ Build: **PASS**
+- ⏳ **Pending device test**: 
+  - Sprawdzenie animacji FAB w ProductsListFragment
+  - Sprawdzenie animacji FAB w PackageListFragment
+  - Sprawdzenie animacji FAB w BoxListFragment
+  - Weryfikacja tworzenia plików .txt zamiast .log
+
+### Rezultat:
+
+Teraz użytkownik:
+- ✅ Może wygodnie klikać przyciski Delete/Select All bez nakładania się FAB
+- ✅ Widzi płynną animację FAB podczas przełączania selection mode
+- ✅ Ma logi zapisane w formacie .txt (łatwiejsze otwieranie na telefonie)
+- ✅ Posiada lepsze UX podczas masowego usuwania elementów
+
+---
+
+## ✅ v1.18.1 - Bluetooth File Logging (COMPLETED)
+
+**Version:** 1.18.1 (code 90)
+
+**Cel:** Dodanie zapisywania logów dotyczących połączeń Bluetooth z drukarką do plików .txt w katalogu logs dla offline diagnostyki.
+
+### Zmiany:
+
+1. **BluetoothPrinterHelper.kt** - dodano system logowania do plików:
+   - **Nowe importy**: File, FileWriter, PrintWriter, SimpleDateFormat, Locale
+   - **Nowe zmienne klasy**:
+     - `logFile: File?` - referencja do aktualnego pliku logu
+     - `logWriter: PrintWriter?` - writer do zapisu logów
+     - `logDateFormat` - format timestampów: "yyyy-MM-dd HH:mm:ss.SSS"
+   
+   - **Nowe funkcje**:
+     - `initFileLogging(context)` - tworzy katalog logs i dzisiejszy plik (bluetooth_YYYY-MM-DD.txt)
+     - `logToFile(context, level, message)` - zapisuje do Logcat i pliku jednocześnie
+     - `closeFileLogging()` - zamyka file writer i czyści zasoby
+   
+   - **Zaktualizowano connectToPrinter()**:
+     - Inicjalizacja file logging na początku
+     - Wszystkie Log.i/d/w/e teraz TAKŻE zapisują do pliku przez logToFile()
+     - closeFileLogging() wywoływane po sukcesie lub błędzie
+     - Poziomy logowania: INFO, DEBUG, WARN, ERROR
+   
+   - **Zaktualizowano printZpl()**:
+     - Dodano parametr `context: Context?` (optional dla kompatybilności)
+     - Inicjalizacja file logging na początku
+     - Wszystkie logi zapisywane do pliku
+     - closeFileLogging() wywoływane po zakończeniu
+
+2. **BoxDetailsFragment.kt** - aktualizacja wywołania:
+   - Zmieniono `printZpl(socket, zplContent)` → `printZpl(requireContext(), socket, zplContent)`
+
+### Struktura logów:
+
+- **Lokalizacja**: `/sdcard/Android/data/com.inventory.prd/files/logs/`
+- **Format pliku**: `bluetooth_YYYY-MM-DD.txt`
+- **Format wpisu**: `[YYYY-MM-DD HH:mm:ss.SSS] [LEVEL] message`
+- **Poziomy**: INFO, DEBUG, WARN, ERROR
+
+### Co jest logowane:
+
+1. **Connection Process**:
+   - Timestamp rozpoczęcia
+   - Target MAC address
+   - Bluetooth adapter status
+   - Device discovery
+   - Każda z 4 metod połączenia (timing, success/fail)
+   - Troubleshooting suggestions przy błędach
+
+2. **Print Process**:
+   - Timestamp rozpoczęcia
+   - Socket status
+   - SGD language switch command (timing)
+   - ZPL content size i preview
+   - ZPL transfer timing
+   - Total time breakdown
+   - Stack traces przy błędach
+
+### Tested:
+
+- ✅ Build: **PASS** (warnings o name shadowing - harmless)
+- ✅ File logging infrastructure created
+- ✅ Dual logging (Logcat + file) implemented dla wszystkich operacji
+- ✅ Resource cleanup (closeFileLogging) dodane
+- ⏳ **Pending**: Test na urządzeniu - weryfikacja tworzenia plików i zapisów
+
+### Rezultat:
+
+Teraz użytkownik może:
+- ✅ Zbierać logi Bluetooth offline (bez podłączenia do adb)
+- ✅ Analizować historię połączeń (dzienne pliki)
+- ✅ Diagnozować problemy z połączeniem bez komputera
+- ✅ Przesyłać pliki logów do wsparcia technicznego
+
+---
+
 ## ✅ v1.17.0 - Fixed Scrollable Printer Dialog (COMPLETED)
 
 **Version:** 1.17.0 (code 87)

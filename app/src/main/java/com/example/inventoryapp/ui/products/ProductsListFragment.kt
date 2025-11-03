@@ -131,12 +131,24 @@ class ProductsListFragment : Fragment() {
             
             // Change FAB to cancel icon
             binding.addProductFab.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+            
+            // Move FAB up to avoid overlapping with selection panel
+            binding.addProductFab.animate()
+                .translationY(-binding.selectionPanel.height.toFloat() - 16f)
+                .setDuration(200)
+                .start()
         } else {
             // Hide selection panel
             binding.selectionPanel.visibility = View.GONE
             
             // Restore FAB to add icon
             binding.addProductFab.setImageResource(android.R.drawable.ic_input_add)
+            
+            // Move FAB back to original position
+            binding.addProductFab.animate()
+                .translationY(0f)
+                .setDuration(200)
+                .start()
         }
     }
 

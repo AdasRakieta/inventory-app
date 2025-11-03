@@ -167,26 +167,49 @@ class BoxDetailsFragment : Fragment() {
     }
 
     private fun printBoxLabelWithPrinter(printer: PrinterEntity) {
+        val startTime = System.currentTimeMillis()
+        android.util.Log.i("BoxDetails", "═══════════════════════════════════════════════════════")
+        android.util.Log.i("BoxDetails", "🎯 PRINT LABEL REQUEST")
+        android.util.Log.i("BoxDetails", "Printer: ${printer.name}")
+        android.util.Log.i("BoxDetails", "MAC: ${printer.macAddress}")
+        android.util.Log.i("BoxDetails", "DPI: ${printer.dpi}, Size: ${printer.labelWidthMm}x${printer.labelHeightMm ?: "auto"}mm")
+        android.util.Log.i("BoxDetails", "Font: ${printer.fontSize}")
+        
         viewLifecycleOwner.lifecycleScope.launch {
             val box = viewModel.box.value
             val productsWithCategories = viewModel.productsWithCategories.value
 
             if (box == null) {
+                android.util.Log.e("BoxDetails", "❌ Box data is NULL")
                 Toast.makeText(requireContext(), "Box data not available", Toast.LENGTH_SHORT).show()
                 return@launch
             }
 
+            android.util.Log.d("BoxDetails", "Box: ${box.name}, Products: ${productsWithCategories.size}")
+
             try {
                 // Generate ZPL label using printer dimensions and smart wrapping
+                val genStart = System.currentTimeMillis()
+                android.util.Log.d("BoxDetails", "")
+                android.util.Log.d("BoxDetails", "📝 Generating ZPL content...")
                 val zplContent = com.example.inventoryapp.printer.ZplContentGenerator.generateBoxLabel(
                     box = box,
                     products = productsWithCategories,
                     printer = printer
                 )
+                val genElapsed = System.currentTimeMillis() - genStart
+                android.util.Log.d("BoxDetails", "✓ ZPL generated in ${genElapsed}ms (${zplContent.length} chars)")
                 
                 // Connect to printer and send ZPL
+                android.util.Log.d("BoxDetails", "")
+                android.util.Log.d("BoxDetails", "🔌 Attempting connection to printer...")
+                val connStart = System.currentTimeMillis()
                 val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), printer.macAddress)
+                val connElapsed = System.currentTimeMillis() - connStart
+                
                 if (socket == null) {
+                    android.util.Log.e("BoxDetails", "❌ Connection failed after ${connElapsed}ms")
+                    android.util.Log.e("BoxDetails", "═══════════════════════════════════════════════════════")
                     Toast.makeText(
                         requireContext(),
                         "❌ Failed to connect to ${printer.name}\nMAC: ${printer.macAddress}\n\nCheck:\n1. Printer is ON\n2. Bluetooth enabled\n3. In range",
@@ -195,20 +218,52 @@ class BoxDetailsFragment : Fragment() {
                     return@launch
                 }
 
+                android.util.Log.d("BoxDetails", "✓ Connected in ${connElapsed}ms")
+
                 // Send ZPL to printer
-                val success = BluetoothPrinterHelper.printZpl(socket, zplContent)
+                android.util.Log.d("BoxDetails", "")
+                android.util.Log.d("BoxDetails", "📤 Sending ZPL to printer...")
+                val printStart = System.currentTimeMillis()
+                val success = BluetoothPrinterHelper.printZpl(requireContext(), socket, zplContent)
+                val printElapsed = System.currentTimeMillis() - printStart
+                
                 socket.close()
+                socket.close()
+                android.util.Log.d("BoxDetails", "Socket closed")
+                
+                val totalTime = System.currentTimeMillis() - startTime
                 
                 if (success) {
+                    android.util.Log.i("BoxDetails", "")
+                    android.util.Log.i("BoxDetails", "✅ PRINT COMPLETED SUCCESSFULLY")
+                    android.util.Log.i("BoxDetails", "Total time: ${totalTime}ms")
+                    android.util.Log.i("BoxDetails", "  - ZPL generation: ${genElapsed}ms")
+                    android.util.Log.i("BoxDetails", "  - Connection: ${connElapsed}ms")
+                    android.util.Log.i("BoxDetails", "  - Print: ${printElapsed}ms")
+                    android.util.Log.i("BoxDetails", "═══════════════════════════════════════════════════════")
+                    
                     Toast.makeText(
                         requireContext(), 
                         "✅ Label printed on ${printer.name}\n${productsWithCategories.size} products", 
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {
+                    android.util.Log.e("BoxDetails", "")
+                    android.util.Log.e("BoxDetails", "❌ PRINT FAILED (ZPL send error)")
+                    android.util.Log.e("BoxDetails", "Total time: ${totalTime}ms")
+                    android.util.Log.e("BoxDetails", "═══════════════════════════════════════════════════════")
+                    
                     Toast.makeText(requireContext(), "❌ Failed to print label", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
+                val totalTime = System.currentTimeMillis() - startTime
+                android.util.Log.e("BoxDetails", "")
+                android.util.Log.e("BoxDetails", "💥 EXCEPTION DURING PRINT")
+                android.util.Log.e("BoxDetails", "Error: ${e.javaClass.simpleName}: ${e.message}")
+                android.util.Log.e("BoxDetails", "Time before error: ${totalTime}ms")
+                android.util.Log.e("BoxDetails", "Stack trace:", e)
+                android.util.Log.e("BoxDetails", "═══════════════════════════════════════════════════════")
+                
                 Toast.makeText(requireContext(), "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }

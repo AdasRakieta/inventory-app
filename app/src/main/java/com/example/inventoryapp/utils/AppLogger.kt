@@ -15,7 +15,7 @@ import java.util.*
 
 /**
  * Centralized logging utility for the Inventory App
- * Logs to both Logcat and file system at /Documents/inventory/logs/{date}.log
+ * Logs to both Logcat and file system at /Documents/inventory/logs/{date}.txt
  */
 object AppLogger {
     private const val TAG = "InventoryApp"
@@ -47,7 +47,7 @@ object AppLogger {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val today = dateFormat.format(Date())
         val logsDir = getLogsDirectory()
-        return File(logsDir, "$today.log")
+        return File(logsDir, "$today.txt")
     }
     
     /**
