@@ -17,67 +17,76 @@
         android:orientation="horizontal"
         android:padding="12dp">
 
-        <!-- Icon indicator -->
-        <ImageView
-            android:id="@+id/itemIcon"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center_vertical"
-            android:padding="8dp"
-            android:contentDescription="@string/item_type_icon"
-            tools:src="@android:drawable/ic_input_add" />
+        <CheckBox
+            android:id="@+id/itemCheckbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical" />
 
-        <!-- Item details -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="8dp"
             android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/typeBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:textSize="12sp"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                tools:text="📦 Package" />
 
             <TextView
                 android:id="@+id/itemTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="?android:attr/textColorPrimary"
-                android:maxLines="1"
-                android:ellipsize="end"
                 tools:text="Product Name" />
 
             <TextView
-                android:id="@+id/itemSubtitle"
+                android:id="@+id/itemSerialNumber"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:textSize="14sp"
                 android:textColor="?android:attr/textColorSecondary"
-                android:maxLines="2"
-                android:ellipsize="end"
+                android:visibility="gone"
+                tools:visibility="visible"
                 tools:text="SN: 123456789" />
 
             <TextView
-                android:id="@+id/itemCategory"
+                android:id="@+id/itemDescription"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:textSize="12sp"
+                android:textSize="14sp"
                 android:textColor="?android:attr/textColorSecondary"
-                android:maxLines="1"
-                tools:text="Category: Electronics" />
-        </LinearLayout>
+                android:visibility="gone"
+                tools:visibility="visible"
+                tools:text="Description text" />
 
-        <!-- Status badge -->
-        <com.google.android.material.chip.Chip
-            android:id="@+id/statusChip"
-            style="@style/Widget.MaterialComponents.Chip.Action"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
-            android:clickable="false"
-            android:textSize="12sp"
-            tools:text="NEW" />
+            <TextView
+                android:id="@+id/itemRelations"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="12sp"
+                android:textStyle="italic"
+                android:textColor="?android:attr/textColorTertiary"
+                android:visibility="gone"
+                tools:visibility="visible"
+                tools:text="📦 Package: H16 | 📦 Box: box 1" />
+        </LinearLayout>
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>
