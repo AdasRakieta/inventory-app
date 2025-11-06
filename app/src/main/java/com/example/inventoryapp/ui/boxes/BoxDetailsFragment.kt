@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.inventoryapp.InventoryApplication
 import com.example.inventoryapp.data.local.entities.PrinterEntity
 import com.example.inventoryapp.data.local.entities.ProductEntity
+import com.example.inventoryapp.data.models.PrinterModel
 import com.example.inventoryapp.databinding.FragmentBoxDetailsBinding
 import com.example.inventoryapp.utils.BluetoothPrinterHelper
 import com.example.inventoryapp.utils.PrinterSelectionHelper
@@ -204,7 +205,15 @@ class BoxDetailsFragment : Fragment() {
                 android.util.Log.d("BoxDetails", "")
                 android.util.Log.d("BoxDetails", "🔌 Attempting connection to printer...")
                 val connStart = System.currentTimeMillis()
-                val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), printer.macAddress)
+                
+                // Use model-specific connection strategy
+                val printerModel = PrinterModel.fromString(printer.model)
+                android.util.Log.d("BoxDetails", "Using ${printerModel.displayName} connection strategy")
+                val socket = BluetoothPrinterHelper.connectToPrinterWithModel(
+                    requireContext(), 
+                    printer.macAddress,
+                    printerModel
+                )
                 val connElapsed = System.currentTimeMillis() - connStart
                 
                 if (socket == null) {
@@ -280,7 +289,13 @@ class BoxDetailsFragment : Fragment() {
             try {
                 Toast.makeText(requireContext(), "Testing printer: ${printer.name}", Toast.LENGTH_SHORT).show()
 
-                val socket = BluetoothPrinterHelper.connectToPrinter(requireContext(), printer.macAddress)
+                // Use model-specific connection strategy
+                val printerModel = PrinterModel.fromString(printer.model)
+                val socket = BluetoothPrinterHelper.connectToPrinterWithModel(
+                    requireContext(), 
+                    printer.macAddress,
+                    printerModel
+                )
                 if (socket != null) {
                     val success = BluetoothPrinterHelper.sendTestLabel(socket)
                     BluetoothPrinterHelper.disconnect(socket)

@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -35,11 +36,13 @@ import com.example.inventoryapp.data.local.entity.ImportPreviewFilter
 import com.example.inventoryapp.data.local.entities.PrinterEntity
 import com.example.inventoryapp.data.local.entities.PackageProductCrossRef
 import com.example.inventoryapp.data.local.entities.BoxProductCrossRef
+import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.utils.QRCodeGenerator
 import com.example.inventoryapp.utils.BluetoothPrinterHelper
 import com.example.inventoryapp.utils.PrinterSelectionHelper
 import com.example.inventoryapp.utils.AppLogger
 import com.example.inventoryapp.utils.FileHelper
+import com.example.inventoryapp.utils.CategoryHelper
 import com.example.inventoryapp.printer.ZebraPrinterManager
 import com.example.inventoryapp.printer.ZplContentGenerator
 import com.example.inventoryapp.utils.DeviceInfo
@@ -50,6 +53,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileReader
+import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.*
 import java.net.NetworkInterface
@@ -77,6 +82,13 @@ class ExportImportFragment : Fragment() {
     companion object {
         private const val PREFS_NAME = "printer_preferences"
         private const val KEY_PRINTER_MAC = "printer_mac_address"
+    }
+
+    // CSV file picker launcher
+    private val csvPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        uri?.let { importCsvFile(it) }
     }
 
     private val createFileLauncher = registerForActivityResult(
@@ -195,6 +207,19 @@ class ExportImportFragment : Fragment() {
             showUndoConfirmationDialog()
         }
 
+        // CSV Export/Import buttons
+        binding.exportCsvButton.setOnClickListener {
+            exportAllProductsToCsv()
+        }
+
+        binding.importCsvButton.setOnClickListener {
+            csvPickerLauncher.launch("text/*")
+        }
+
+        binding.downloadCsvTemplateButton.setOnClickListener {
+            downloadCsvTemplate()
+        }
+
         binding.shareQrButton.setOnClickListener {
             shareViaQR()
         }
@@ -283,7 +308,7 @@ class ExportImportFragment : Fragment() {
                 if (success) {
                     Toast.makeText(
                         requireContext(),
-                        "Exported to: Documents/inventory/exports/",
+                        "Exported 5 CSV files to: Documents/inventory/exports/",
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -645,18 +670,13 @@ class ExportImportFragment : Fragment() {
                 val jsonData = tempFile.readText()
                 tempFile.delete() // Clean up temp file
 
-                // Compress data if needed (automatic based on size)
-                val qrData = if (jsonData.length > 2000) {
-                    // Use compression for large data
-                    QRCodeGenerator.compressAndEncode(jsonData)
-                } else {
-                    // Use raw JSON for small data
-                    jsonData
-                }
+                // Use plain JSON for QR codes - no compression
+                // This ensures compatibility between different devices/scanners
+                val qrData = jsonData
                 
-                AppLogger.d("ZebraPrint", "Original data: ${jsonData.length} chars, QR data: ${qrData.length} chars")
+                AppLogger.d("ZebraPrint", "QR data: ${qrData.length} chars (plain JSON)")
 
-                // Generate QR code label with compressed data
+                // Generate QR code label with plain JSON data
                 val zplContent = ZplContentGenerator.generateQRCodeLabel(qrData)
                 val error = zebraPrinterManager.printDocument(macAddress, zplContent)
 
@@ -928,13 +948,10 @@ class ExportImportFragment : Fragment() {
                 val gson = GsonBuilder().create()
                 val jsonContent = gson.toJson(exportData)
                 
-                // Use automatic compression based on data size
-                val qrData = if (jsonContent.length > 2000) {
-                    QRCodeGenerator.compressAndEncode(jsonContent)
-                } else {
-                    jsonContent
-                }
-                AppLogger.d("TestQRPrint", "Original: ${jsonContent.length} chars, QR: ${qrData.length} chars")
+                // Use plain JSON for QR codes - no compression
+                // This ensures compatibility between different devices/scanners
+                val qrData = jsonContent
+                AppLogger.d("TestQRPrint", "QR data: ${qrData.length} chars (plain JSON)")
                 
                 val qrBitmap = QRCodeGenerator.generateQRCode(qrData, 384, 384)
                 if (qrBitmap != null) {
@@ -1103,6 +1120,9 @@ class ExportImportFragment : Fragment() {
         val subtitle: android.widget.TextView = dialogView.findViewById(R.id.dialogSubtitle)
         val recyclerView: androidx.recyclerview.widget.RecyclerView = dialogView.findViewById(R.id.previewRecyclerView)
         val emptyState: android.widget.TextView = dialogView.findViewById(R.id.emptyStateText)
+        val selectionCount: android.widget.TextView = dialogView.findViewById(R.id.selectionCountText)
+        val btnSelectAll: com.google.android.material.button.MaterialButton = dialogView.findViewById(R.id.btnSelectAll)
+        val btnDeselectAll: com.google.android.material.button.MaterialButton = dialogView.findViewById(R.id.btnDeselectAll)
         val btnCancel: com.google.android.material.button.MaterialButton = dialogView.findViewById(R.id.btnCancel)
         val btnConfirm: com.google.android.material.button.MaterialButton = dialogView.findViewById(R.id.btnConfirmImport)
         
@@ -1140,13 +1160,44 @@ class ExportImportFragment : Fragment() {
         val adapter = ImportPreviewAdapter()
         recyclerView.adapter = adapter
         
-        // TODO: Implement new unified adapter logic
+        // Function to update selection count
+        fun updateSelectionCount() {
+            val count = adapter.getSelectedItems().size
+            selectionCount.text = "$count items selected"
+        }
+        
         // Function to update displayed items based on filter
         fun updateDisplayedItems(filter: ImportPreviewFilter) {
-            // Temporary empty list to make build pass
-            adapter.submitList(emptyList())
-            recyclerView.visibility = View.GONE
-            emptyState.visibility = View.VISIBLE
+            val items = when (filter) {
+                is ImportPreviewFilter.All -> {
+                    preview.newProducts.map { ImportPreviewItem.ProductItem(it, true) } +
+                    preview.updateProducts.map { ImportPreviewItem.ProductItem(it, false) } +
+                    preview.newPackages.map { ImportPreviewItem.PackageItem(it, true) } +
+                    preview.updatePackages.map { ImportPreviewItem.PackageItem(it, false) } +
+                    preview.newTemplates.map { ImportPreviewItem.TemplateItem(it, true) }
+                }
+                is ImportPreviewFilter.NewProducts -> {
+                    preview.newProducts.map { ImportPreviewItem.ProductItem(it, true) }
+                }
+                is ImportPreviewFilter.UpdateProducts -> {
+                    preview.updateProducts.map { ImportPreviewItem.ProductItem(it, false) }
+                }
+                is ImportPreviewFilter.NewPackages -> {
+                    preview.newPackages.map { ImportPreviewItem.PackageItem(it, true) }
+                }
+                is ImportPreviewFilter.UpdatePackages -> {
+                    preview.updatePackages.map { ImportPreviewItem.PackageItem(it, false) }
+                }
+                is ImportPreviewFilter.NewTemplates -> {
+                    preview.newTemplates.map { ImportPreviewItem.TemplateItem(it, true) }
+                }
+            }
+            
+            adapter.submitList(items)
+            adapter.selectAll() // Select all by default when filter changes
+            updateSelectionCount()
+            recyclerView.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
+            emptyState.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
         }
         
         // Initial display - show all
@@ -1160,6 +1211,17 @@ class ExportImportFragment : Fragment() {
         chipUpdatePackages.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.UpdatePackages) }
         chipNewTemplates.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.NewTemplates) }
         
+        // Selection buttons
+        btnSelectAll.setOnClickListener {
+            adapter.selectAll()
+            updateSelectionCount()
+        }
+        
+        btnDeselectAll.setOnClickListener {
+            adapter.deselectAll()
+            updateSelectionCount()
+        }
+        
         // Cancel button
         btnCancel.setOnClickListener {
             importFile.delete()
@@ -1168,14 +1230,71 @@ class ExportImportFragment : Fragment() {
         
         // Confirm import button
         btnConfirm.setOnClickListener {
+            val selectedIds = adapter.getSelectedItems()
+            
+            if (selectedIds.isEmpty()) {
+                Toast.makeText(requireContext(), "Please select at least one item to import", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            
             dialog.dismiss()
             viewLifecycleOwner.lifecycleScope.launch {
-                val success = viewModel.importFromJson(importFile)
-                importFile.delete()
-                if (success) {
-                    Toast.makeText(requireContext(), "Import successful", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(requireContext(), "Import failed", Toast.LENGTH_SHORT).show()
+                try {
+                    // Read original file
+                    val gson = GsonBuilder().create()
+                    val originalData = FileReader(importFile).use { reader ->
+                        gson.fromJson(reader, ExportData::class.java)
+                    }
+                    
+                    // Filter data by selected IDs
+                    val filteredData = ExportData(
+                        products = originalData.products.filter { 
+                            (it.serialNumber ?: it.id.toString()) in selectedIds 
+                        },
+                        packages = originalData.packages.filter { 
+                            it.id.toString() in selectedIds 
+                        },
+                        templates = originalData.templates.filter { 
+                            it.id.toString() in selectedIds 
+                        },
+                        boxes = originalData.boxes.filter { 
+                            it.id.toString() in selectedIds 
+                        },
+                        contractors = originalData.contractors.filter { 
+                            it.id.toString() in selectedIds 
+                        },
+                        packageProductRelations = originalData.packageProductRelations.filter {
+                            it.packageId.toString() in selectedIds || it.productId.toString() in selectedIds
+                        },
+                        boxProductRelations = originalData.boxProductRelations.filter {
+                            it.boxId.toString() in selectedIds || it.productId.toString() in selectedIds
+                        }
+                    )
+                    
+                    // Create temporary file with filtered data
+                    val tempFile = File(requireContext().cacheDir, "filtered_import_${System.currentTimeMillis()}.json")
+                    FileWriter(tempFile).use { writer ->
+                        gson.toJson(filteredData, writer)
+                    }
+                    
+                    // Import filtered data
+                    val success = viewModel.importFromJson(tempFile)
+                    tempFile.delete()
+                    importFile.delete()
+                    
+                    if (success) {
+                        Toast.makeText(
+                            requireContext(), 
+                            "✅ Imported ${selectedIds.size} items successfully!", 
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        Toast.makeText(requireContext(), "Import failed", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    importFile.delete()
+                    Toast.makeText(requireContext(), "Import error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    AppLogger.logError("Import", e)
                 }
             }
         }
@@ -1190,6 +1309,128 @@ class ExportImportFragment : Fragment() {
         // Hide navigation controls
         binding.multiQrNavigationLayout.visibility = View.GONE
         binding.printAllQrButton.visibility = View.GONE
+    }
+
+    // ===== CSV IMPORT/EXPORT FUNCTIONS =====
+
+    private fun exportAllProductsToCsv() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // Use Documents/inventory/exports (same as database backup)
+                val exportsDir = FileHelper.getExportsDirectory()
+                
+                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                val csvFile = File(exportsDir, "inventory_export_$timestamp.csv")
+                
+                // Use unified CSV export (all entities in one file)
+                val success = viewModel.exportToUnifiedCsv(csvFile)
+                
+                if (success) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Exported inventory to:\n${csvFile.name}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    
+                    AppLogger.logAction("Unified CSV Export", "Success: ${csvFile.absolutePath}")
+                } else {
+                    Toast.makeText(
+                        requireContext(),
+                        "Export failed. Check logs for details.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                
+            } catch (e: Exception) {
+                Toast.makeText(
+                    requireContext(),
+                    "Export failed: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+                AppLogger.logError("Unified CSV Export", e)
+            }
+        }
+    }
+
+    private fun downloadCsvTemplate() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val exportsDir = FileHelper.getExportsDirectory()
+                val templateFile = File(exportsDir, "inventory_template.csv")
+                
+                // Copy template from assets to Documents/inventory/exports
+                val assetManager = requireContext().assets
+                assetManager.open("inventory_template.csv").use { input ->
+                    templateFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                
+                Toast.makeText(
+                    requireContext(),
+                    "Template downloaded to:\n${templateFile.name}\n\nYou can now edit it with Excel or any spreadsheet app.",
+                    Toast.LENGTH_LONG
+                ).show()
+                
+                AppLogger.logAction("CSV Template Download", "Success: ${templateFile.absolutePath}")
+                
+            } catch (e: Exception) {
+                Toast.makeText(
+                    requireContext(),
+                    "Template download failed: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+                AppLogger.logError("CSV Template Download", e)
+            }
+        }
+    }
+
+    private fun importCsvFile(uri: Uri) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // Copy file from URI to cache
+                val tempFile = File(requireContext().cacheDir, "import_temp_${System.currentTimeMillis()}.csv")
+                requireContext().contentResolver.openInputStream(uri)?.use { input ->
+                    tempFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                
+                // Parse CSV to ExportData for preview
+                val exportData = viewModel.parseUnifiedCsvToExportData(tempFile)
+                
+                if (exportData == null) {
+                    tempFile.delete()
+                    Toast.makeText(
+                        requireContext(),
+                        "Failed to parse CSV file. Please check the format.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@launch
+                }
+                
+                // Convert ExportData to temp JSON file for preview
+                val gson = com.google.gson.GsonBuilder().create()
+                val jsonFile = File(requireContext().cacheDir, "temp_csv_preview_${System.currentTimeMillis()}.json")
+                com.google.gson.stream.JsonWriter(FileWriter(jsonFile)).use { writer ->
+                    gson.toJson(exportData, ExportData::class.java, writer)
+                }
+                
+                // Clean up CSV file
+                tempFile.delete()
+                
+                // Show import preview (same as JSON import)
+                showImportPreviewDialog(jsonFile)
+                
+            } catch (e: Exception) {
+                Toast.makeText(
+                    requireContext(),
+                    "Error reading CSV file: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+                AppLogger.logError("CSV Import", e)
+            }
+        }
     }
 
     override fun onDestroyView() {

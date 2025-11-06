@@ -134,7 +134,7 @@ class ProductsListFragment : Fragment() {
             
             // Move FAB up to avoid overlapping with selection panel
             binding.addProductFab.animate()
-                .translationY(-binding.selectionPanel.height.toFloat() - 16f)
+                .translationY(-binding.selectionPanel.height.toFloat() - 75f)
                 .setDuration(200)
                 .start()
         } else {
@@ -202,6 +202,10 @@ class ProductsListFragment : Fragment() {
             showCategoryFilterDialog()
         }
         
+        binding.statusFilterButton.setOnClickListener {
+            showPackageStatusFilterDialog()
+        }
+        
         binding.sortButton.setOnClickListener {
             showSortDialog()
         }
@@ -209,21 +213,65 @@ class ProductsListFragment : Fragment() {
     
     private fun showCategoryFilterDialog() {
         val categories = CategoryHelper.getAllCategories()
-        val categoryNames = arrayOf("All Categories") + categories.map { "${it.icon} ${it.name}" }.toTypedArray()
-        
-        val currentCategoryId = viewModel.selectedCategoryId.value
-        val currentSelection = if (currentCategoryId == null) {
-            0
-        } else {
-            categories.indexOfFirst { it.id == currentCategoryId } + 1
+        val categoryNames = categories.map { "${it.icon} ${it.name}" }.toTypedArray()
+        val selectedCategoryIds = viewModel.selectedCategoryIds.value.toMutableSet()
+        val checkedItems = BooleanArray(categories.size) { index ->
+            categories[index].id in selectedCategoryIds
         }
         
         AlertDialog.Builder(requireContext())
-            .setTitle("Filter by Category")
-            .setSingleChoiceItems(categoryNames, currentSelection) { dialog, which ->
-                val selectedCategoryId = if (which == 0) null else categories[which - 1].id
-                viewModel.setCategoryFilter(selectedCategoryId)
-                dialog.dismiss()
+            .setTitle("Filter by Categories")
+            .setMultiChoiceItems(categoryNames, checkedItems) { _, which, isChecked ->
+                val categoryId = categories[which].id
+                if (isChecked) {
+                    selectedCategoryIds.add(categoryId)
+                } else {
+                    selectedCategoryIds.remove(categoryId)
+                }
+            }
+            .setPositiveButton("Apply") { _, _ ->
+                viewModel.setCategoryFilters(selectedCategoryIds)
+            }
+            .setNeutralButton("Clear") { _, _ ->
+                viewModel.setCategoryFilters(emptySet())
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun showPackageStatusFilterDialog() {
+        val statuses = listOf("PREPARATION", "READY", "SHIPPED", "DELIVERED", "UNASSIGNED")
+        val statusNames = statuses.map { status ->
+            when (status) {
+                "PREPARATION" -> "📦 Preparation"
+                "READY" -> "✅ Ready"
+                "SHIPPED" -> "🚚 Shipped"
+                "DELIVERED" -> "📬 Delivered"
+                "UNASSIGNED" -> "❓ Unassigned"
+                else -> status
+            }
+        }.toTypedArray()
+        
+        val selectedStatuses = viewModel.selectedPackageStatuses.value.toMutableSet()
+        val checkedItems = BooleanArray(statuses.size) { index ->
+            statuses[index] in selectedStatuses
+        }
+        
+        AlertDialog.Builder(requireContext())
+            .setTitle("Filter by Package Status")
+            .setMultiChoiceItems(statusNames, checkedItems) { _, which, isChecked ->
+                val status = statuses[which]
+                if (isChecked) {
+                    selectedStatuses.add(status)
+                } else {
+                    selectedStatuses.remove(status)
+                }
+            }
+            .setPositiveButton("Apply") { _, _ ->
+                viewModel.setPackageStatusFilters(selectedStatuses)
+            }
+            .setNeutralButton("Clear") { _, _ ->
+                viewModel.setPackageStatusFilters(emptySet())
             }
             .setNegativeButton("Cancel", null)
             .show()

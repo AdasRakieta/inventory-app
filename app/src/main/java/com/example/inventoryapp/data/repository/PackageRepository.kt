@@ -2,6 +2,7 @@ package com.example.inventoryapp.data.repository
 
 import com.example.inventoryapp.data.local.dao.PackageDao
 import com.example.inventoryapp.data.local.dao.ProductDao
+import com.example.inventoryapp.data.local.dao.PackageWithCount
 import com.example.inventoryapp.data.local.entities.PackageEntity
 import com.example.inventoryapp.data.local.entities.PackageProductCrossRef
 import com.example.inventoryapp.data.local.entities.ProductEntity
@@ -16,6 +17,8 @@ class PackageRepository(
 ) {
     
     fun getAllPackages(): Flow<List<PackageEntity>> = packageDao.getAllPackages()
+    
+    fun getAllPackagesWithCount(): Flow<List<PackageWithCount>> = packageDao.getAllPackagesWithCount()
     
     fun getPackageById(packageId: Long): Flow<PackageEntity?> = 
         packageDao.getPackageById(packageId)
@@ -143,5 +146,23 @@ class PackageRepository(
     
     suspend fun isProductInPackage(packageId: Long, productId: Long): Boolean {
         return packageDao.isProductInPackage(packageId, productId)
+    }
+    
+    /**
+     * Update package status
+     */
+    suspend fun updatePackageStatus(packageId: Long, newStatus: String) {
+        val packageEntity = getPackageById(packageId).first() ?: return
+        val updatedPackage = packageEntity.copy(status = newStatus)
+        updatePackage(updatedPackage)
+    }
+    
+    /**
+     * Update package contractor
+     */
+    suspend fun updatePackageContractor(packageId: Long, contractorId: Long?) {
+        val packageEntity = getPackageById(packageId).first() ?: return
+        val updatedPackage = packageEntity.copy(contractorId = contractorId)
+        updatePackage(updatedPackage)
     }
 }

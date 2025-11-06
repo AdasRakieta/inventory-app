@@ -149,8 +149,11 @@ class ImportPreviewFragment : Fragment() {
             // Step 5: Remove any remaining extra whitespace
             cleanJson = cleanJson.trim()
             
-            // Step 6: Check for GZIP compression and decompress
-            cleanJson = com.example.inventoryapp.utils.QRCodeGenerator.decodeAndDecompress(cleanJson)
+            // Step 6: Check for GZIP compression and decompress (legacy support)
+            // New QR codes use plain JSON, old ones may still use GZIP compression
+            if (cleanJson.startsWith("GZIP:")) {
+                cleanJson = com.example.inventoryapp.utils.QRCodeGenerator.decodeAndDecompress(cleanJson)
+            }
 
             // Debug: Log first 300 chars of cleaned JSON
             val preview = if (cleanJson.length > 300) cleanJson.take(300) + "..." else cleanJson

@@ -32,6 +32,9 @@
         <action
             android:id="@+id/action_home_to_printer_settings"
             app:destination="@id/printerSettingsFragment" />
+        <action
+            android:id="@+id/action_home_to_inventory_count"
+            app:destination="@id/inventoryCountListFragment" />
     </fragment>
 
     <fragment
@@ -298,5 +301,24 @@
         android:id="@+id/printerSettingsFragment"
         android:name="com.example.inventoryapp.ui.settings.PrinterSettingsFragment"
         android:label="Printer Settings" />
+
+    <!-- Inventory Count -->
+    <fragment
+        android:id="@+id/inventoryCountListFragment"
+        android:name="com.example.inventoryapp.ui.inventorycount.InventoryCountListFragment"
+        android:label="Inventory Count">
+        <action
+            android:id="@+id/action_inventoryCountList_to_inventoryCountSession"
+            app:destination="@id/inventoryCountSessionFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/inventoryCountSessionFragment"
+        android:name="com.example.inventoryapp.ui.inventorycount.InventoryCountSessionFragment"
+        android:label="Count Session">
+        <argument
+            android:name="sessionId"
+            app:argType="long" />
+    </fragment>
 
 </navigation>

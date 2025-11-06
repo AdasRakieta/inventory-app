@@ -28,14 +28,15 @@ object QRCodeGenerator {
     
     /**
      * Generate QR code bitmap from data object
-     * Automatically compresses data and handles unlimited sizes
+     * Uses plain JSON (no compression) for better cross-device compatibility
      */
     fun <T> generateQRCode(data: T, width: Int = 512, height: Int = 512): Bitmap? {
         return try {
             val jsonString = gson.toJson(data)
             
-            // Always use compression for better data capacity
-            val qrData = compressAndEncode(jsonString)
+            // Use plain JSON for QR codes - no compression needed
+            // This ensures compatibility between different devices/scanners
+            val qrData = jsonString
             
             val hints = hashMapOf<EncodeHintType, Any>(
                 EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
@@ -59,7 +60,7 @@ object QRCodeGenerator {
     /**
      * Generate multiple QR codes for extremely large datasets (pagination)
      * Returns list of bitmaps, each containing a chunk of data
-     * No size limit - will split into as many QR codes as needed
+     * Uses plain JSON (no compression) for better cross-device compatibility
      */
     fun <T> generateMultiPartQRCodes(
         data: T, 
@@ -69,16 +70,16 @@ object QRCodeGenerator {
     ): List<Bitmap> {
         return try {
             val jsonString = gson.toJson(data)
-            val compressed = compressAndEncode(jsonString)
             
-            // If compressed data fits in one QR, return single QR
-            if (compressed.length <= maxChunkSize) {
+            // Use plain JSON - no compression for better compatibility
+            // If data fits in one QR, return single QR
+            if (jsonString.length <= maxChunkSize) {
                 val bitmap = generateQRCode(data, width, height)
                 return if (bitmap != null) listOf(bitmap) else emptyList()
             }
             
             // Split into chunks - no limit on number of chunks
-            val chunks = compressed.chunked(maxChunkSize)
+            val chunks = jsonString.chunked(maxChunkSize)
             val totalParts = chunks.size
             
             chunks.mapIndexedNotNull { index, chunk ->

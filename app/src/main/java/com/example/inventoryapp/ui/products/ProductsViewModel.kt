@@ -28,8 +28,13 @@ class ProductsViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
     
-    private val _selectedCategoryId = MutableStateFlow<Long?>(null)
-    val selectedCategoryId: StateFlow<Long?> = _selectedCategoryId
+    // Changed to Set for multiple category selection
+    private val _selectedCategoryIds = MutableStateFlow<Set<Long>>(emptySet())
+    val selectedCategoryIds: StateFlow<Set<Long>> = _selectedCategoryIds
+    
+    // Package status filter
+    private val _selectedPackageStatuses = MutableStateFlow<Set<String>>(emptySet())
+    val selectedPackageStatuses: StateFlow<Set<String>> = _selectedPackageStatuses
     
     private val _sortOrder = MutableStateFlow(ProductSortOrder.NAME_ASC)
     val sortOrder: StateFlow<ProductSortOrder> = _sortOrder
@@ -61,9 +66,10 @@ class ProductsViewModel(
     val products: StateFlow<List<ProductWithPackage>> = combine(
         allProducts,
         _searchQuery,
-        _selectedCategoryId,
+        _selectedCategoryIds,
+        _selectedPackageStatuses,
         _sortOrder
-    ) { products, query, categoryId, sortOrder ->
+    ) { products, query, categoryIds, packageStatuses, sortOrder ->
         var filtered = products
         
         // Apply search filter
@@ -75,9 +81,17 @@ class ProductsViewModel(
             }
         }
         
-        // Apply category filter
-        if (categoryId != null) {
-            filtered = filtered.filter { it.productEntity.categoryId == categoryId }
+        // Apply category filter (multiple selection)
+        if (categoryIds.isNotEmpty()) {
+            filtered = filtered.filter { it.productEntity.categoryId in categoryIds }
+        }
+        
+        // Apply package status filter (multiple selection)
+        if (packageStatuses.isNotEmpty()) {
+            filtered = filtered.filter { productWithPackage ->
+                val status = productWithPackage.packageEntity?.status ?: "UNASSIGNED"
+                status in packageStatuses
+            }
         }
         
         // Apply sorting
@@ -101,10 +115,17 @@ class ProductsViewModel(
         }
     }
     
-    fun setCategoryFilter(categoryId: Long?) {
-        _selectedCategoryId.value = categoryId
+    fun setCategoryFilters(categoryIds: Set<Long>) {
+        _selectedCategoryIds.value = categoryIds
         viewModelScope.launch {
-            AppLogger.logAction("Product Category Filter", "Category ID: $categoryId")
+            AppLogger.logAction("Product Category Filters", "Categories: ${categoryIds.joinToString()}")
+        }
+    }
+    
+    fun setPackageStatusFilters(statuses: Set<String>) {
+        _selectedPackageStatuses.value = statuses
+        viewModelScope.launch {
+            AppLogger.logAction("Product Package Status Filters", "Statuses: ${statuses.joinToString()}")
         }
     }
     

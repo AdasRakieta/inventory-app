@@ -38,6 +38,11 @@ object CategoryHelper {
         return categories.find { it.name.equals(name, ignoreCase = true) }?.id
     }
     
+    /**
+     * Alias for getCategoryIdByName for consistency
+     */
+    fun getCategoryId(name: String): Long? = getCategoryIdByName(name)
+    
     fun getCategoryNames(): List<String> {
         return categories.map { it.name }
     }

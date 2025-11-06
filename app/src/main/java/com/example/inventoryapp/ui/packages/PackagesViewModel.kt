@@ -3,6 +3,7 @@ package com.example.inventoryapp.ui.packages
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.inventoryapp.data.local.dao.PackageWithCount
 import com.example.inventoryapp.data.local.entities.PackageEntity
 import com.example.inventoryapp.data.repository.ContractorRepository
 import com.example.inventoryapp.data.repository.PackageRepository
@@ -16,17 +17,26 @@ class PackagesViewModel(
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
+    
+    // Filter states
+    private val _selectedStatuses = MutableStateFlow<Set<String>>(emptySet())
+    private val _selectedContractorIds = MutableStateFlow<Set<Long>>(emptySet())
+    
+    // Sort state
+    private val _sortOrder = MutableStateFlow(PackageSortOrder.NAME_ASC)
+    val sortOrder: StateFlow<PackageSortOrder> = _sortOrder
 
-    private val allPackagesWithCount: StateFlow<List<PackageWithCount>> = 
+    // Combine packages with their product counts and contractors
+    private val allPackagesWithCount: StateFlow<List<PackageWithCountAndContractor>> = 
         combine(
-            packageRepository.getAllPackages(),
+            packageRepository.getAllPackagesWithCount(),
             contractorRepository.getAllContractors()
-        ) { packages, contractors ->
-            packages.map { pkg ->
-                val contractor = pkg.contractorId?.let { contractorId ->
+        ) { packagesWithCount, contractors ->
+            packagesWithCount.map { packageWithCount ->
+                val contractor = packageWithCount.packageEntity.contractorId?.let { contractorId ->
                     contractors.find { it.id == contractorId }
                 }
-                PackageWithCount(pkg, 0, contractor)
+                PackageWithCountAndContractor(packageWithCount, contractor)
             }
         }.stateIn(
             scope = viewModelScope,
@@ -34,26 +44,83 @@ class PackagesViewModel(
             initialValue = emptyList()
         )
 
-    val packagesWithCount: StateFlow<List<PackageWithCount>> = combine(
+    val packagesWithCount: StateFlow<List<PackageWithCountAndContractor>> = combine(
         allPackagesWithCount,
-        _searchQuery
-    ) { packages, query ->
-        if (query.isBlank()) {
-            packages
-        } else {
-            packages.filter { packageWithCount ->
-                packageWithCount.packageEntity.name.contains(query, ignoreCase = true) ||
-                packageWithCount.packageEntity.status.contains(query, ignoreCase = true)
+        _searchQuery,
+        _selectedStatuses,
+        _selectedContractorIds,
+        _sortOrder
+    ) { packages, query, statuses, contractorIds, sort ->
+        var filtered = packages
+        
+        // Filter by search query
+        if (query.isNotBlank()) {
+            filtered = filtered.filter { item ->
+                item.packageWithCount.packageEntity.name.contains(query, ignoreCase = true) ||
+                item.packageWithCount.packageEntity.status.contains(query, ignoreCase = true) ||
+                item.contractor?.name?.contains(query, ignoreCase = true) == true
             }
+        }
+        
+        // Filter by status
+        if (statuses.isNotEmpty()) {
+            filtered = filtered.filter { item ->
+                item.packageWithCount.packageEntity.status in statuses
+            }
+        }
+        
+        // Filter by contractor
+        if (contractorIds.isNotEmpty()) {
+            filtered = filtered.filter { item ->
+                val contractorId = item.packageWithCount.packageEntity.contractorId
+                if (contractorId == null) {
+                    // Include unassigned if "UNASSIGNED" (represented by -1L) is selected
+                    -1L in contractorIds
+                } else {
+                    contractorId in contractorIds
+                }
+            }
+        }
+        
+        // Sort
+        when (sort) {
+            PackageSortOrder.NAME_ASC -> filtered.sortedBy { it.packageWithCount.packageEntity.name.lowercase() }
+            PackageSortOrder.NAME_DESC -> filtered.sortedByDescending { it.packageWithCount.packageEntity.name.lowercase() }
+            PackageSortOrder.STATUS_ASC -> filtered.sortedBy { it.packageWithCount.packageEntity.status }
+            PackageSortOrder.STATUS_DESC -> filtered.sortedByDescending { it.packageWithCount.packageEntity.status }
+            PackageSortOrder.PRODUCT_COUNT_ASC -> filtered.sortedBy { it.packageWithCount.productCount }
+            PackageSortOrder.PRODUCT_COUNT_DESC -> filtered.sortedByDescending { it.packageWithCount.productCount }
+            PackageSortOrder.DATE_ASC -> filtered.sortedBy { it.packageWithCount.packageEntity.createdAt }
+            PackageSortOrder.DATE_DESC -> filtered.sortedByDescending { it.packageWithCount.packageEntity.createdAt }
         }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+    
+    // Get all contractors for filter dialog
+    val allContractors = contractorRepository.getAllContractors()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+    
+    fun setStatusFilters(statuses: Set<String>) {
+        _selectedStatuses.value = statuses
+    }
+    
+    fun setContractorFilters(contractorIds: Set<Long>) {
+        _selectedContractorIds.value = contractorIds
+    }
+    
+    fun setSortOrder(order: PackageSortOrder) {
+        _sortOrder.value = order
     }
 
     fun createPackage(name: String, status: String = "PREPARATION") {
@@ -77,6 +144,39 @@ class PackagesViewModel(
             packageRepository.deletePackageById(packageId)
         }
     }
+    
+    /**
+     * Bulk update status for multiple packages
+     */
+    fun bulkUpdateStatus(packageIds: Set<Long>, newStatus: String) {
+        viewModelScope.launch {
+            packageIds.forEach { packageId ->
+                packageRepository.updatePackageStatus(packageId, newStatus)
+            }
+        }
+    }
+    
+    /**
+     * Bulk update contractor for multiple packages
+     */
+    fun bulkUpdateContractor(packageIds: Set<Long>, contractorId: Long?) {
+        viewModelScope.launch {
+            packageIds.forEach { packageId ->
+                packageRepository.updatePackageContractor(packageId, contractorId)
+            }
+        }
+    }
+}
+
+enum class PackageSortOrder {
+    NAME_ASC,
+    NAME_DESC,
+    STATUS_ASC,
+    STATUS_DESC,
+    PRODUCT_COUNT_ASC,
+    PRODUCT_COUNT_DESC,
+    DATE_ASC,
+    DATE_DESC
 }
 
 class PackagesViewModelFactory(

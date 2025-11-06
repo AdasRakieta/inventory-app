@@ -2,6 +2,7 @@ package com.example.inventoryapp.data.local.dao
 
 import androidx.lifecycle.LiveData
 import androidx.room.*
+import com.example.inventoryapp.data.local.entities.ContractorEntity
 import com.example.inventoryapp.data.local.entities.PackageEntity
 import com.example.inventoryapp.data.local.entities.PackageProductCrossRef
 import com.example.inventoryapp.data.local.entities.ProductEntity
@@ -51,4 +52,18 @@ interface PackageDao {
         )
     """)
     suspend fun isProductInPackage(packageId: Long, productId: Long): Boolean
+    
+    @Query("""
+        SELECT packages.*, COUNT(package_product_cross_ref.productId) as productCount
+        FROM packages
+        LEFT JOIN package_product_cross_ref ON packages.id = package_product_cross_ref.packageId
+        GROUP BY packages.id
+        ORDER BY packages.createdAt DESC
+    """)
+    fun getAllPackagesWithCount(): Flow<List<PackageWithCount>>
 }
+
+data class PackageWithCount(
+    @Embedded val packageEntity: PackageEntity,
+    val productCount: Int
+)

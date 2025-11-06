@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.inventoryapp.R
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.local.entities.PrinterEntity
+import com.example.inventoryapp.data.models.PrinterModel
 import com.example.inventoryapp.data.repository.PrinterRepository
 import com.example.inventoryapp.databinding.FragmentPrinterSettingsBinding
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -92,9 +93,18 @@ class PrinterSettingsFragment : Fragment() {
         
         val nameInput = dialogView.findViewById<TextInputEditText>(R.id.printerNameInput)
         val macInput = dialogView.findViewById<TextInputEditText>(R.id.printerMacInput)
+        val modelInput = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.printerModelInput)
         val widthInput = dialogView.findViewById<TextInputEditText>(R.id.labelWidthInput)
         val heightInput = dialogView.findViewById<TextInputEditText>(R.id.labelHeightInput)
         val dpiInput = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.printerDpiInput)
+        val fontSizeInput = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.printerFontSizeInput)
+        val setDefaultCheckbox = dialogView.findViewById<android.widget.CheckBox>(R.id.setDefaultCheckbox)
+        
+        // Setup Printer Model dropdown
+        val modelOptions = PrinterModel.getDisplayNames().toTypedArray()
+        val modelAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, modelOptions)
+        modelInput.setAdapter(modelAdapter)
+        modelInput.setText(PrinterModel.GENERIC_ESC_POS.displayName, false)
         
         // Setup DPI dropdown
         val dpiOptions = arrayOf("203 DPI", "300 DPI")
@@ -103,7 +113,6 @@ class PrinterSettingsFragment : Fragment() {
         dpiInput.setText("203 DPI", false)
         
         // Setup Font Size dropdown
-        val fontSizeInput = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.printerFontSizeInput)
         val fontSizeOptions = arrayOf("Small", "Medium", "Large")
         val fontSizeAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, fontSizeOptions)
         fontSizeInput.setAdapter(fontSizeAdapter)
@@ -128,6 +137,7 @@ class PrinterSettingsFragment : Fragment() {
             .setPositiveButton("Add") { _, _ ->
                 val name = nameInput.text.toString().trim()
                 val mac = macInput.text.toString().trim()
+                val modelName = modelInput.text.toString()
                 val width = widthInput.text.toString().toIntOrNull() ?: 50
                 val height = heightInput.text.toString().toIntOrNull()
                 val dpi = when (dpiInput.text.toString()) {
@@ -141,7 +151,10 @@ class PrinterSettingsFragment : Fragment() {
                 }
                 
                 if (validatePrinterInput(name, mac)) {
-                    addPrinter(name, mac, width, height, dpi, fontSize)
+                    // Convert display name to enum name
+                    val printerModel = PrinterModel.values().find { it.displayName == modelName }
+                        ?: PrinterModel.GENERIC_ESC_POS
+                    addPrinter(name, mac, printerModel.name, width, height, dpi, fontSize)
                 }
             }
             .setNegativeButton("Cancel", null)
@@ -154,11 +167,17 @@ class PrinterSettingsFragment : Fragment() {
         
         val nameInput = dialogView.findViewById<TextInputEditText>(R.id.printerNameInput)
         val macInput = dialogView.findViewById<TextInputEditText>(R.id.printerMacInput)
+        val modelInput = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.printerModelInput)
         val widthInput = dialogView.findViewById<TextInputEditText>(R.id.labelWidthInput)
         val heightInput = dialogView.findViewById<TextInputEditText>(R.id.labelHeightInput)
         val dpiInput = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.printerDpiInput)
         val fontSizeInput = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.printerFontSizeInput)
         val setDefaultCheckbox = dialogView.findViewById<android.widget.CheckBox>(R.id.setDefaultCheckbox)
+        
+        // Setup Printer Model dropdown
+        val modelOptions = PrinterModel.getDisplayNames().toTypedArray()
+        val modelAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, modelOptions)
+        modelInput.setAdapter(modelAdapter)
         
         // Setup DPI dropdown
         val dpiOptions = arrayOf("203 DPI", "300 DPI")
@@ -173,6 +192,11 @@ class PrinterSettingsFragment : Fragment() {
         // Pre-fill with existing values
         nameInput.setText(printer.name)
         macInput.setText(printer.macAddress)
+        
+        // Set model display name
+        val printerModel = PrinterModel.fromString(printer.model)
+        modelInput.setText(printerModel.displayName, false)
+        
         widthInput.setText(printer.labelWidthMm.toString())
         heightInput.setText(printer.labelHeightMm?.toString() ?: "")
         dpiInput.setText(if (printer.dpi == 300) "300 DPI" else "203 DPI", false)
@@ -198,6 +222,7 @@ class PrinterSettingsFragment : Fragment() {
             .setPositiveButton("Save") { _, _ ->
                 val name = nameInput.text.toString().trim()
                 val mac = macInput.text.toString().trim()
+                val modelName = modelInput.text.toString()
                 val width = widthInput.text.toString().toIntOrNull() ?: 50
                 val height = heightInput.text.toString().toIntOrNull()
                 val dpi = when (dpiInput.text.toString()) {
@@ -211,10 +236,15 @@ class PrinterSettingsFragment : Fragment() {
                 }
                 
                 if (validatePrinterInput(name, mac)) {
+                    // Convert display name to enum name
+                    val printerModelEnum = PrinterModel.values().find { it.displayName == modelName }
+                        ?: PrinterModel.GENERIC_ESC_POS
+                    
                     // Update printer data first
                     updatePrinter(printer.copy(
                         name = name,
                         macAddress = mac,
+                        model = printerModelEnum.name,
                         labelWidthMm = width,
                         labelHeightMm = height,
                         dpi = dpi,
@@ -259,7 +289,7 @@ class PrinterSettingsFragment : Fragment() {
         return true
     }
 
-    private fun addPrinter(name: String, mac: String, widthMm: Int, heightMm: Int?, dpi: Int, fontSize: String = "small") {
+    private fun addPrinter(name: String, mac: String, model: String, widthMm: Int, heightMm: Int?, dpi: Int, fontSize: String = "small") {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val isFirstPrinter = printerRepository.getPrinterCount() == 0
@@ -267,6 +297,7 @@ class PrinterSettingsFragment : Fragment() {
                 val printer = PrinterEntity(
                     name = name,
                     macAddress = mac,
+                    model = model,
                     labelWidthMm = widthMm,
                     labelHeightMm = heightMm,
                     dpi = dpi,

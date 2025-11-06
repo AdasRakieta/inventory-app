@@ -10,20 +10,21 @@ import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.ItemPackageBinding
 import com.example.inventoryapp.data.local.entities.ContractorEntity
 import com.example.inventoryapp.data.local.entities.PackageEntity
+import com.example.inventoryapp.data.local.dao.PackageWithCount
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-data class PackageWithCount(
-    val packageEntity: PackageEntity,
-    val productCount: Int,
+// UI wrapper for PackageWithCount that includes contractor info
+data class PackageWithCountAndContractor(
+    val packageWithCount: PackageWithCount,
     val contractor: ContractorEntity? = null
 )
 
 class PackagesAdapter(
     private val onPackageClick: (PackageEntity) -> Unit,
     private val onPackageLongClick: (PackageEntity) -> Boolean
-) : ListAdapter<PackageWithCount, PackagesAdapter.PackageViewHolder>(PackageDiffCallback()) {
+) : ListAdapter<PackageWithCountAndContractor, PackagesAdapter.PackageViewHolder>(PackageDiffCallback()) {
 
     private val selectedPackages = mutableSetOf<Long>()
     var selectionMode = false
@@ -53,8 +54,8 @@ class PackagesAdapter(
 
     fun getSelectedCount(): Int = selectedPackages.size
 
-    fun selectAll(packages: List<PackageWithCount>) {
-        packages.forEach { selectedPackages.add(it.packageEntity.id) }
+    fun selectAll(packages: List<PackageWithCountAndContractor>) {
+        packages.forEach { selectedPackages.add(it.packageWithCount.packageEntity.id) }
         notifyDataSetChanged()
     }
 
@@ -85,8 +86,8 @@ class PackagesAdapter(
         private val isSelected: (Long) -> Boolean
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(packageWithCount: PackageWithCount, selectionMode: Boolean) {
-            val pkg = packageWithCount.packageEntity
+        fun bind(item: PackageWithCountAndContractor, selectionMode: Boolean) {
+            val pkg = item.packageWithCount.packageEntity
             
             binding.packageName.text = pkg.name
             binding.packageStatus.text = pkg.status
@@ -96,11 +97,11 @@ class PackagesAdapter(
             binding.packageDate.text = "Created on ${dateFormat.format(Date(pkg.createdAt))}"
             
             // Product count
-            val count = packageWithCount.productCount
+            val count = item.packageWithCount.productCount
             binding.productCount.text = if (count == 1) "1 product" else "$count products"
             
             // Contractor
-            binding.packageContractor.text = packageWithCount.contractor?.name ?: "No contractor"
+            binding.packageContractor.text = item.contractor?.name ?: "No contractor"
 
             // Handle selection state
             val isItemSelected = isSelected(pkg.id)
@@ -128,12 +129,12 @@ class PackagesAdapter(
         }
     }
 
-    private class PackageDiffCallback : DiffUtil.ItemCallback<PackageWithCount>() {
-        override fun areItemsTheSame(oldItem: PackageWithCount, newItem: PackageWithCount): Boolean {
-            return oldItem.packageEntity.id == newItem.packageEntity.id
+    private class PackageDiffCallback : DiffUtil.ItemCallback<PackageWithCountAndContractor>() {
+        override fun areItemsTheSame(oldItem: PackageWithCountAndContractor, newItem: PackageWithCountAndContractor): Boolean {
+            return oldItem.packageWithCount.packageEntity.id == newItem.packageWithCount.packageEntity.id
         }
 
-        override fun areContentsTheSame(oldItem: PackageWithCount, newItem: PackageWithCount): Boolean {
+        override fun areContentsTheSame(oldItem: PackageWithCountAndContractor, newItem: PackageWithCountAndContractor): Boolean {
             return oldItem == newItem
         }
     }

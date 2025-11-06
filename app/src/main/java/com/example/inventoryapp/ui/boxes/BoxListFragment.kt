@@ -162,7 +162,7 @@ class BoxListFragment : Fragment() {
             
             // Move FAB up to avoid overlapping with selection panel
             binding.addBoxFab.animate()
-                .translationY(-binding.selectionPanel.height.toFloat() - 16f)
+                .translationY(-binding.selectionPanel.height.toFloat() - 75f)
                 .setDuration(200)
                 .start()
         } else {

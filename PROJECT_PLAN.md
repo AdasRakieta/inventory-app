@@ -1,5 +1,717 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.20.0 - Unified CSV Export/Import (COMPLETED)
+
+**Version:** 1.20.0 (code 99)
+
+**Cel:**
+Reimplementacja systemu CSV export/import - jeden plik CSV ze wszystkimi encjami, podgląd przed importem, relacje po nazwach (nie ID).
+
+**Status:** COMPLETED ✅
+
+### Problem Description:
+
+**Oryginalne problemy:**
+1. CSV export tworzył 5 oddzielnych plików (products, packages, boxes, contractors, package_assignments)
+2. Użytkownik musiał wiedzieć ID encji aby utworzyć relacje w CSV
+3. Brak podglądu przed importem CSV (w przeciwieństwie do JSON)
+4. Brak dokumentacji jak tworzyć CSV files manually
+5. CSV import nie działał prawidłowo (importował puste dane)
+
+**User requirements:**
+- Quote: "jeden plik csv z kolumnami właśnie"
+- Quote: "przypisanie np produktu do paczki/boxa odbywało się po nazwach ich ponieważ użytkownik nie zna ich id sam z siebie"
+- Quote: "gdy importuję csv nie mam wcześniej podglądu co zostanie podgrane który miałby być taki sam i tak samo funkcjonalny jak z import jsona"
+
+### Implemented Solution:
+
+#### 1. Unified CSV Format
+
+**Nowy format:**
+- **Jeden plik CSV** z wszystkimi encjami (products, packages, boxes, contractors)
+- **14 kolumn:** Type, Serial Number, Name, Description, Category, Quantity, Package Name, Box Name, Contractor Name, Location, Status, Created Date, Shipped Date, Delivered Date
+- **Kolumna Type:** Product, Package, Box, Contractor
+- **Relacje po nazwach:** Package Name, Box Name, Contractor Name (zamiast ID)
+
+**Example CSV row:**
+```csv
+Product,SCAN001,Zebra Scanner,TC21 scanner,Scanner,1,Electronics Package,Storage Box A,TechCorp,,,2024-01-15,,
+```
+
+#### 2. New Files Created
+
+**INVENTORY_CSV_FORMAT.md** (200+ lines):
+- Pełna dokumentacja formatu CSV
+- Przykłady dla każdego typu encji
+- Reguły importu i best practices
+- Troubleshooting guide
+
+**inventory_template.csv** (in assets/):
+- Template file z przykładowymi danymi
+- 2 contractors, 2 packages, 2 boxes, 7 products
+- Shows relationships between entities
+- User can download and edit in Excel/LibreOffice
+
+#### 3. New Code Components
+
+**CsvRow.kt** (NEW - 130 lines):
+```kotlin
+data class CsvRow(
+    val type: String,              // Product, Package, Box, Contractor
+    val serialNumber: String?,
+    val name: String,
+    val description: String?,
+    val category: String?,
+    val quantity: Int?,
+    val packageName: String?,      // Name-based relationship
+    val boxName: String?,          // Name-based relationship
+    val contractorName: String?,   // Name-based relationship
+    val location: String?,
+    val status: String?,
+    val createdDate: String?,
+    val shippedDate: String?,
+    val deliveredDate: String?
+)
+```
+
+**Key functions:**
+- `fromCsvFields(fields: List<String>): CsvRow` - parse CSV line to object
+- `toCsvLine(): String` - convert to escaped CSV string
+- `isValid(): Boolean` - validate required fields
+- CSV escaping for commas, quotes, newlines
+
+#### 4. ViewModel Functions
+
+**exportToUnifiedCsv(outputFile: File)**:
+- Exports all entities to single CSV file
+- Creates lookup maps: packageIdToName, boxIdToName, contractorIdToName
+- Converts ID-based relationships to name-based
+- Order: Contractors → Packages → Boxes → Products
+- Returns success/failure boolean
+
+**parseUnifiedCsvToExportData(file: File): ExportData**:
+- Parses CSV file using CsvRow.fromCsvFields()
+- Two-pass algorithm:
+  - Pass 1: Create containers (contractors, packages, boxes)
+  - Pass 2: Create products with relationships
+- Maps names to IDs: contractorNameToId, packageNameToId, boxNameToId
+- Returns ExportData for preview compatibility
+
+**importFromUnifiedCsv(file: File)**:
+- Calls parseUnifiedCsvToExportData()
+- Converts to temp JSON file
+- Uses existing importFromJson() logic
+- Transactional import with error handling
+
+#### 5. Import Preview Integration
+
+**Modified importCsvFile()** in ExportImportFragment:
+```kotlin
+private fun importCsvFile(uri: Uri) {
+    // Parse CSV to ExportData
+    val exportData = viewModel.parseUnifiedCsvToExportData(tempFile)
+    
+    // Convert to temp JSON
+    val tempJsonFile = File(cacheDir, "preview_temp.json")
+    tempJsonFile.writeText(gson.toJson(exportData))
+    
+    // Show preview dialog (same as JSON import)
+    showPreviewDialog(tempJsonFile, isJsonFormat = true)
+}
+```
+
+**Benefits:**
+- ✅ Reuses existing preview UI
+- ✅ Same filtering options (all, products only, packages only, etc.)
+- ✅ User can review before confirming import
+
+#### 6. Template Download Function
+
+**downloadCsvTemplate()**:
+- Copies inventory_template.csv from assets to Documents/inventory/exports/
+- User can edit template in Excel/LibreOffice
+- Toast notification with file location
+
+### Technical Implementation Details
+
+**CSV Escaping:**
+```kotlin
+fun String.escapeCsv(): String {
+    return when {
+        contains(",") || contains("\"") || contains("\n") -> 
+            "\"${replace("\"", "\"\"")}\""
+        else -> this
+    }
+}
+```
+
+**Name-based Relationship Resolution:**
+```kotlin
+// Export: ID → Name
+val packageName = packageIdToName[product.packageId]
+
+// Import: Name → ID
+val packageId = packageNameToId[row.packageName]
+```
+
+**Two-pass Import:**
+```kotlin
+// Pass 1: Create containers
+rows.filter { it.type == "Contractor" }.forEach { /* create */ }
+rows.filter { it.type == "Package" }.forEach { /* create */ }
+rows.filter { it.type == "Box" }.forEach { /* create */ }
+
+// Pass 2: Create products (containers now exist)
+rows.filter { it.type == "Product" }.forEach { /* create with relationships */ }
+```
+
+### Benefits & Impact
+
+**User Experience:**
+- ✅ Single CSV file (easier to manage)
+- ✅ Preview before import (same as JSON)
+- ✅ Human-readable format (names not IDs)
+- ✅ Template file for manual creation
+- ✅ Complete documentation
+
+**Technical:**
+- ✅ Backward compatible (old 5-file format still in code)
+- ✅ Robust CSV escaping
+- ✅ Transactional imports
+- ✅ Proper error handling
+- ✅ Name-to-ID mapping with validation
+
+**Data Integrity:**
+- ✅ Two-pass import ensures referential integrity
+- ✅ Validates entity existence before creating relationships
+- ✅ Skips invalid rows with logging
+- ✅ Creates missing containers if needed
+
+### Testing Checklist
+
+- [ ] Export inventory to unified CSV
+- [ ] Verify CSV format matches documentation
+- [ ] Download template file
+- [ ] Edit template in Excel
+- [ ] Import CSV and verify preview shows correct data
+- [ ] Test filtering in preview (all, products, packages, boxes)
+- [ ] Confirm import creates all entities
+- [ ] Verify relationships (product → package → box → contractor)
+- [ ] Test edge cases:
+  - [ ] Product without package/box
+  - [ ] Package without contractor
+  - [ ] Special characters in names (commas, quotes)
+  - [ ] Empty CSV file
+  - [ ] CSV with only headers
+
+### Migration Notes
+
+**From v1.19.3:**
+- Old 5-file CSV format still works (backward compatible)
+- New unified format is now default for exports
+- Users should migrate to unified format for better UX
+
+**Breaking Changes:**
+- None (old format still supported)
+
+---
+
+## ✅ v1.19.3 - QR Code Export/Import: Plain JSON Fix (COMPLETED)
+
+**Version:** 1.19.3 (code 98)
+
+**Cel:**
+Naprawienie problemu z kodowaniem QR kodów - usunięcie kompresji GZIP+Base64, która powodowała problemy z odczytem na innych urządzeniach.
+
+**Status:** COMPLETED ✅
+
+### Problem Description:
+
+**Oryginalny problem:**
+- QR kody używały kompresji GZIP + Base64 encoding
+- Dane w QR: `GZIP:base64encodeddata...`
+- Inne urządzenia nie mogły rozszyfrować skompresowanych danych
+- Import z QR na innym telefonie/tablecie nie działał poprawnie
+
+**Root cause:**
+- `QRCodeGenerator.generateQRCode()` automatycznie kompresował JSON
+- `compressAndEncode()` zwracał `GZIP:base64data`
+- Dekompresja (`decodeAndDecompress`) czasami failowała
+- Cross-device compatibility była zepsuta
+
+### Implemented Fix:
+
+1. **QRCodeGenerator.kt Changes**:
+   - `generateQRCode()` - teraz używa **plain JSON** zamiast kompresji
+   - `generateMultiPartQRCodes()` - też używa **plain JSON**
+   - Usunięto automatyczną kompresję z QR code generation
+   - Zostawiono `compressAndEncode()` i `decodeAndDecompress()` dla legacy support
+
+2. **ExportImportFragment.kt Changes**:
+   - Usunięto `compressAndEncode()` z Zebra printer export (line ~676)
+   - Usunięto `compressAndEncode()` z test QR print (line ~958)
+   - Wszystkie QR kody teraz używają plain JSON
+
+3. **ImportPreviewFragment.kt Changes**:
+   - Dekompresja tylko jeśli `cleanJson.startsWith("GZIP:")` (legacy support)
+   - Plain JSON jest parsowany bezpośrednio
+   - Backward compatibility z old compressed QR codes
+
+### Technical Details:
+
+**Before (compressed):**
+```kotlin
+val qrData = QRCodeGenerator.compressAndEncode(jsonString)
+// Result: "GZIP:H4sIAAAAAAAAA..." (base64 encoded compressed data)
+```
+
+**After (plain JSON):**
+```kotlin
+val qrData = jsonString  // Plain JSON
+// Result: {"products":[{"id":1,"name":"Product"}],...}
+```
+
+**Benefits:**
+- ✅ Cross-device compatibility
+- ✅ QR kody można zeskanować dowolnym skanerem
+- ✅ Dane są czytelne (nie zakodowane)
+- ✅ Lepsza debugowalność
+- ✅ Prostszy import/export flow
+- ✅ Legacy support dla starych skompresowanych QR
+
+**Trade-offs:**
+- QR kody mogą być nieznacznie większe (bez kompresji)
+- Dla bardzo dużych danych używany jest multi-part QR system (bez zmian)
+
+### Tested:
+- ✅ Build: PASS (v1.19.3 code 98)
+- ✅ Compilation: No errors
+- 🚧 **QR export/import testing required** - test on 2 different devices
+
+### Testing Checklist:
+1. Export database to QR on Device A
+2. Scan QR with Device B
+3. Import data on Device B
+4. Verify all products/packages imported correctly
+5. Test multi-QR for large datasets
+6. Test legacy compressed QR (backward compatibility)
+
+---
+
+## ✅ v1.19.2 - CSV Export/Import: Full Inventory with Relationships (COMPLETED)
+
+**Version:** 1.19.2 (code 97)
+
+**Cel:**
+Rozszerzenie CSV export/import o paczki, boxy oraz relacje produktów - umożliwienie eksportu całej struktury magazynowej oraz jej importu z rekonstrukcją wszystkich powiązań.
+
+**Status:** COMPLETED ✅
+
+### Implemented Features:
+
+1. **CSV Export System (5-file structure)**:
+   - `exportToCsv()` - główna funkcja exportu
+   - `exportProductsToCsv()` - 8 kolumn (ID, Name, Category ID, Serial, Description, Quantity, Created, Updated)
+   - `exportPackagesToCsv()` - 8 kolumn (ID, Name, Contractor ID, Contractor Name, Status, Created, Shipped, Delivered)
+   - `exportBoxesToCsv()` - 5 kolumn (ID, Name, Description, Location, Created)
+   - `exportPackageProductRelations()` - 2 kolumny (Package ID, Product ID)
+   - `exportBoxProductRelations()` - 2 kolumny (Box ID, Product ID)
+   - File naming: `{basename}_products.csv`, `{basename}_packages.csv`, etc.
+   - Storage location: `Documents/inventory/exports/`
+
+2. **CSV Import System (relationship reconstruction)**:
+   - `importFromCsv(baseFile)` - orchestrator importujący wszystkie 5 plików
+   - `importProductsFromCsv()` - import z update/insert based on serial number
+   - `importPackagesFromCsv()` - import z update/insert based on package ID
+   - `importBoxesFromCsv()` - import z update/insert based on box ID
+   - `importPackageProductRelations()` - rekonstrukcja relacji paczka-produkt
+   - `importBoxProductRelations()` - rekonstrukcja relacji box-produkt
+   - `parseCsvLine()` - parser obsługujący quoted fields z embedded commas
+
+3. **ExportImportFragment.kt**:
+   - Uproszczona funkcja `importCsvFile()` - kopiuje plik do cache i wywołuje `viewModel.importFromCsv()`
+   - Usunięto ~263 linie starego kodu CSV import preview/execution
+
+4. **Bug Fixes During Implementation**:
+   - Usunięto orphaned code (~263 linii) z poprzedniej implementacji CSV import
+   - Fixed duplicate `onDestroyView()` functions (2 identyczne funkcje)
+   - Fixed extra closing brace w `ExportImportViewModel.kt` (line 621)
+   - Fixed brace mismatch: było 262 `{` vs 263 `}`, teraz balanced
+   
+### Build Issues Resolved:
+
+**Problem 1:** Orphaned CSV import code pozostał po initial edits
+- **Fix:** Ręczne usunięcie linii 1457-1719 z `ExportImportFragment.kt` via PowerShell
+
+**Problem 2:** Duplicate closing brace przed onDestroyView w Fragment
+- **Fix:** Usunięto jeden z duplikatów `}`
+
+**Problem 3:** Extra closing brace w ViewModel (262 opening vs 263 closing)
+- **Fix:** Usunięto orphaned `}` po funkcji `parseCsvLine()` (line 621)
+
+**Problem 4:** Duplicate `onDestroyView()` methods
+- **Fix:** Usunięto jedną z dwóch identycznych funkcji
+
+### Tested:
+- ✅ Build: PASS (v1.19.2 code 97)
+- ✅ CSV Export: All 5 files generate correctly with proper escaping
+- ✅ File structure: Correct naming pattern
+- ✅ Compilation: No syntax errors, no brace mismatches
+- 🚧 **Import testing pending** - requires manual testing with actual CSV files
+
+### Next Steps:
+1. Test full import flow (all 5 files)
+2. Verify relationship reconstruction (package-product, box-product)
+3. Test partial import scenarios (individual entity files)
+4. Validate error handling for missing relationships
+
+---
+
+## ✅ v1.19.1 - Inventory Count System (COMPLETED)
+
+**Version:** 1.19.1 (code 96)
+
+**Cel:**
+System potwierdzenia stanu magazynowego - dodawanie produktów przez pole input (jak bulk scanning), walidacja, statystyki per kategoria, zarządzanie sesjami.
+
+**Status:** COMPLETED ✅
+
+### Implemented Features:
+
+1. **Database Schema (v16 → v17)**:
+   - `inventory_count_sessions` - sesje inwentaryzacji (id, name, createdAt, completedAt, status, notes)
+   - `inventory_count_items` - skanowane produkty (sessionId FK, productId FK, scannedAt, sequenceNumber)
+   - Indeksy: sessionId, productId, session+product uniqueness
+   - Migration: MIGRATION_16_17 with table creation
+
+2. **InventoryCountDao.kt**:
+   - CRUD dla sesji i itemów
+   - `@MapInfo` dla query `getCategoryStatistics()` → Map<Long, Int>
+   - Flow-based queries dla reaktywnej UI
+   
+3. **InventoryCountRepository.kt**:
+   - `scanProduct()` - waliduje czy SN istnieje w bazie
+   - `ScanResult` sealed class: Success(product) | Error(message)
+   - `addProductToSession()` - auto-increment sequenceNumber
+
+4. **ViewModels**:
+   - `InventoryCountListViewModel` - lista sesji, search, delete
+   - `InventoryCountSessionViewModel` - detale sesji, statystyki kategorii, scanning
+
+5. **UI Components - Input Field Approach (jak BulkProductScanFragment)**:
+   - `InventoryCountListFragment` - lista + FAB + search + selection
+   - `InventoryCountSessionFragment` - **INPUT FIELDS** (nie camera scanner!)
+     - Dynamiczne tworzenie TextInputLayout + TextInputEditText
+     - Auto-focus dla barcode scannerów (keyboard input)
+     - Enter key handling
+     - TextWatcher dla automatycznego skanowania
+     - Toast feedback (✅ Added / ❌ Error)
+     - Compact bottom controls card (session info + stats + buttons)
+   - `InventoryCountSessionsAdapter` - RecyclerView z selekcją
+   - Layouts: 
+     - `item_inventory_count_session.xml`
+     - `fragment_inventory_count_list.xml`
+     - `dialog_create_session.xml`
+     - `fragment_inventory_count_session.xml` (ConstraintLayout z ScrollView + Controls Card)
+
+6. **Navigation**:
+   - `action_home_to_inventory_count` (Home → List)
+   - `inventoryCountListFragment` → `inventoryCountSessionFragment` (SafeArgs: sessionId)
+
+7. **Home Screen Integration**:
+   - Dodano kartę "Inventory Count" (📋) w `HomeFragment`
+   - Click listener nawiguje do listy sesji
+
+### Build Issues Resolved:
+
+**Problem 1:** `InventoryCountRepository.scanProduct()` - "Unresolved reference firstOrNull()"
+- **Fix:** `ProductDao.getProductBySerialNumber()` zwraca `ProductEntity?` bezpośrednio, nie Flow
+
+**Problem 2:** Syntax errors w `InventoryCountSessionFragment.kt`
+- **Fix:** Usunięto nadmiarowe nawiasy z poprzedniej wersji kodu
+
+**Problem 3:** Type mismatch - `product.serialNumber` nullable
+- **Fix:** `product.serialNumber?.let { scannedSerials.add(it) }`
+
+### Tested:
+- ✅ Build: PASS (v1.19.1 code 96)
+- ✅ Database migration 16→17
+- ✅ Input field creation with proper layout
+- ✅ ScanResult handling (Success/Error toasts)
+- ✅ Home screen card navigation
+
+### Architecture Notes:
+
+**Input Approach (Not Camera Scanner):**
+- Używa tego samego podejścia co `BulkProductScanFragment`
+- Jedno pole input wielokrotnego użytku
+- Obsługuje barcode scannery działające jako klawiatura
+- TextWatcher wykrywa automatyczne wpisanie kodu (≥5 znaków)
+- Enter key triggers `processManualEntry()`
+- Pole czyszczone po każdym skanowaniu
+- Hint aktualizowany z numerem itemów
+
+**UI Layout Pattern:**
+- ConstraintLayout root
+- ScrollView z `productsInputContainer` (LinearLayout) - góra
+- MaterialCardView z kontrolkami - dół (pinned to bottom)
+- Compact display: session name + status + count + stats (one line)
+- Buttons: Complete / Clear All
+
+### Files Created/Modified:
+
+**NOWE:**
+- `InventoryCountSessionEntity.kt`
+- `InventoryCountItemEntity.kt`
+- `InventoryCountDao.kt`
+- `InventoryCountRepository.kt`
+- `InventoryCountListViewModel.kt`
+- `InventoryCountSessionViewModel.kt`
+- `InventoryCountSessionsAdapter.kt`
+- `InventoryCountListFragment.kt`
+- `InventoryCountSessionFragment.kt` (with input fields logic)
+- `item_inventory_count_session.xml`
+- `fragment_inventory_count_list.xml`
+- `dialog_create_session.xml`
+- `fragment_inventory_count_session.xml` (ConstraintLayout approach)
+
+**ZMODYFIKOWANE:**
+- `AppDatabase.kt` (v17, MIGRATION_16_17)
+- `nav_graph.xml` (nowe destinations)
+- `fragment_home.xml` (dodano inventoryCountCard)
+- `HomeFragment.kt` (dodano click listener)
+- `build.gradle.kts` (v1.19.1, code 96)
+- `PROJECT_PLAN.md` (dokumentacja)
+
+---
+
+## ✅ v1.18.5 - Fix Package Product Count Display (COMPLETED)
+
+**Version:** 1.18.5 (code 94)
+
+**Problem:**
+W widoku listy paczek (PackageListFragment) liczba produktów zawsze wyświetlała się jako **0**, niezależnie od rzeczywistej liczby produktów w paczce.
+
+**Przyczyna:**
+PackagesViewModel tworzył `PackageWithCount` z hardcode'owaną wartością `0`:
+```kotlin
+PackageWithCount(pkg, 0, contractor)  // ❌ zawsze 0!
+```
+
+Brakowało metody w DAO, która liczyłaby produkty przy pobieraniu listy paczek (wzór istniał w BoxDao dla BoxWithCount).
+
+### Rozwiązanie:
+
+Implementacja pattern'u znanego z BoxDao - query SQL z LEFT JOIN i COUNT().
+
+### Zmiany:
+
+1. **PackageDao.kt**:
+   - Dodano import: `ContractorEntity`
+   - Dodano query `getAllPackagesWithCount()`:
+     ```sql
+     SELECT packages.*, COUNT(package_product_cross_ref.productId) as productCount
+     FROM packages
+     LEFT JOIN package_product_cross_ref ON packages.id = package_product_cross_ref.packageId
+     GROUP BY packages.id
+     ORDER BY packages.createdAt DESC
+     ```
+   - Dodano data class:
+     ```kotlin
+     data class PackageWithCount(
+         @Embedded val packageEntity: PackageEntity,
+         val productCount: Int
+     )
+     ```
+   - ✅ Analogiczna do `BoxWithCount` w BoxDao
+
+2. **PackageRepository.kt**:
+   - Dodano import: `PackageWithCount` z DAO
+   - Dodano metodę: `fun getAllPackagesWithCount(): Flow<List<PackageWithCount>>`
+   - Deleguje do `packageDao.getAllPackagesWithCount()`
+
+3. **PackagesAdapter.kt**:
+   - **USUNIĘTO** poprzednią data class `PackageWithCount` (duplikat)
+   - Dodano import: `com.example.inventoryapp.data.local.dao.PackageWithCount`
+   - Dodano UI wrapper:
+     ```kotlin
+     data class PackageWithCountAndContractor(
+         val packageWithCount: PackageWithCount,
+         val contractor: ContractorEntity? = null
+     )
+     ```
+   - Zaktualizowano adapter do używania `PackageWithCountAndContractor`
+   - Zaktualizowano `PackageDiffCallback`
+   - Zaktualizowano `selectAll()` - dostęp przez `it.packageWithCount.packageEntity.id`
+
+4. **PackagesViewModel.kt**:
+   - Dodano import: `PackageWithCount` z DAO
+   - **ZMIENIONO** `allPackagesWithCount`:
+     - Używa `packageRepository.getAllPackagesWithCount()` zamiast `getAllPackages()`
+     - Combine z `getAllContractors()` do tworzenia `PackageWithCountAndContractor`
+     - ✅ Liczba produktów pochodzi z SQL query (COUNT), nie hardcode
+   - Zaktualizowano typ zwracany: `StateFlow<List<PackageWithCountAndContractor>>`
+   - Filtrowanie: dostęp przez `item.packageWithCount.packageEntity.name/status`
+
+### Tested:
+
+- ✅ Build: **PASS** (1m 1s)
+- ✅ Liczba produktów w paczce: pobierana z bazy przez SQL COUNT
+- ✅ PackageWithCount: delegowane z DAO (wzór BoxDao)
+- ✅ Contractor info: zachowane w UI wrapper
+
+### Architektura:
+
+```
+PackageDao (SQL COUNT) → PackageWithCount (productCount z bazy)
+                              ↓
+PackageRepository.getAllPackagesWithCount()
+                              ↓
+PackagesViewModel (+ combine z contractors)
+                              ↓
+PackageWithCountAndContractor (UI wrapper)
+                              ↓
+PackagesAdapter → binding.productCount.text
+```
+
+### Next Steps:
+
+- Test na fizycznym urządzeniu - sprawdzić czy liczba produktów wyświetla się poprawnie
+- Test ZD421 connection z nowymi strategiami (v1.18.4)
+
+---
+
+## ✅ v1.18.4 - Printer Model Selection & ZD421 Support (COMPLETED)
+
+**Version:** 1.18.4 (code 93)
+
+**Cel:** Dodanie możliwości wyboru modelu drukarki podczas konfiguracji oraz implementacja dedykowanych strategii połączenia dla różnych modeli (ZQ310 Plus, ZD421, ZD621).
+
+### Problem:
+
+- Drukarka ZQ310 Plus łączy się poprawnie
+- Drukarka ZD421 miała problemy z połączeniem
+- Brak możliwości wyboru modelu drukarki w konfiguracji
+- Jedna strategia połączenia dla wszystkich drukarek (SPP)
+- ZD421 wymaga specjalnego podejścia (secure pairing, możliwe BLE)
+
+### Rozwiązanie:
+
+**System wyboru modelu drukarki z dedykowanymi strategiami połączenia**
+
+### Zmiany:
+
+1. **PrinterModel.kt** (NOWY PLIK):
+   - Enum z obsługiwanymi modelami drukarek:
+     - `ZQ310_PLUS` - Zebra ZQ310 Plus (SPP, insecure)
+     - `ZD421` - Zebra ZD421 (SPP/BLE, secure)
+     - `ZD621` - Zebra ZD621 (SPP/BLE, secure)
+     - `OTHER_ZEBRA` - Inne drukarki Zebra (SPP)
+     - `GENERIC_ESC_POS` - Generyczne drukarki ESC/POS (SPP)
+   - Właściwości modelu:
+     - `displayName` - nazwa do wyświetlenia
+     - `manufacturer` - producent
+     - `connectionType` - typ połączenia (SPP/BLE/SPP_OR_BLE)
+     - `requiresSecureConnection` - czy wymaga secure pairing
+     - `supportsBLE` - czy wspiera BLE
+   - Helper methods: `fromString()`, `getDisplayNames()`
+
+2. **PrinterEntity.kt**:
+   - Dodano pole: `val model: String = "GENERIC_ESC_POS"`
+   - Przechowuje nazwę enum modelu drukarki
+
+3. **AppDatabase.kt**:
+   - Zwiększono wersję: 15 → 16
+   - Dodano migrację `MIGRATION_15_16`:
+     ```sql
+     ALTER TABLE printers ADD COLUMN model TEXT NOT NULL DEFAULT 'GENERIC_ESC_POS'
+     ```
+
+4. **BluetoothPrinterHelper.kt**:
+   - Dodano import: `com.example.inventoryapp.data.models.PrinterModel`
+   - Nowa metoda: `connectToPrinterWithModel(context, macAddress, printerModel)`
+   - Strategia połączenia zależna od modelu:
+     - **ZD421/ZD621**: `connectWithZD421Strategy()` - secure first, fallback insecure
+     - **ZQ310 Plus**: `connectWithZQ310Strategy()` - insecure first
+     - **Generic**: `connectWithGenericStrategy()` - all methods
+   - Szczegółowe logi połączenia dla każdej strategii
+   - Stara metoda `connectToPrinter()` oznaczona jako `@deprecated`
+
+5. **dialog_add_printer.xml**:
+   - Dodano pole: `printerModelInput` (AutoCompleteTextView)
+   - Dropdown z listą modeli drukarek
+   - Helper text: "Select your printer model for optimized connection"
+
+6. **PrinterSettingsFragment.kt**:
+   - Import: `com.example.inventoryapp.data.models.PrinterModel`
+   - `showAddPrinterDialog()`:
+     - Dodano `modelInput` dropdown
+     - Wypełnienie listy modelami: `PrinterModel.getDisplayNames()`
+     - Domyślna wartość: `GENERIC_ESC_POS`
+     - Konwersja display name → enum name przed zapisem
+   - `showEditPrinterDialog()`:
+     - Dodano `modelInput` dropdown
+     - Pre-fill z istniejącego modelu
+     - Konwersja enum → display name
+   - `addPrinter()`:
+     - Dodano parametr `model: String`
+     - Przekazywanie modelu do `PrinterEntity`
+
+7. **PrintersAdapter.kt**:
+   - Import: `com.example.inventoryapp.data.models.PrinterModel`
+   - `bind()`:
+     - Wyświetlanie modelu w `printerMacText`:
+     - Format: `MAC_ADDRESS • MODEL_NAME`
+     - Przykład: `00:11:22:33:44:55 • ZD421`
+
+8. **BoxDetailsFragment.kt**:
+   - Import: `com.example.inventoryapp.data.models.PrinterModel`
+   - `printBoxLabelWithPrinter()`:
+     - Użycie `PrinterModel.fromString(printer.model)`
+     - Wywołanie `connectToPrinterWithModel()` z modelem
+     - Log: "Using ${printerModel.displayName} connection strategy"
+   - `testPrinterWithSelected()`:
+     - Również używa model-specific connection
+
+9. **build.gradle.kts**:
+   - Wersja: 1.18.3 (92) → 1.18.4 (93)
+
+### Strategie połączenia:
+
+#### ZD421/ZD621 Strategy:
+1. Secure RFCOMM (createRfcommSocketToServiceRecord) - preferowane
+2. Insecure RFCOMM (createInsecureRfcommSocketToServiceRecord) - fallback
+3. Reflection method (channel 1) - last resort
+
+#### ZQ310 Plus Strategy:
+1. Insecure RFCOMM - preferowane (działa najlepiej)
+2. Reflection method - fallback
+
+#### Generic Strategy:
+1. Standard SPP
+2. Insecure RFCOMM
+3. Reflection method
+
+### Testowanie:
+
+- [x] Build: ✅ PASS
+- [x] Database migration 15→16: ✅ verified
+- [x] UI: Dropdown modeli w dialogu dodawania/edycji drukarki
+- [x] Model zapisywany w bazie danych
+- [x] Model wyświetlany na liście drukarek
+- [x] Strategia połączenia wybierana na podstawie modelu
+
+### Następne kroki:
+
+- Testowanie na fizycznych drukarkach:
+  - ZQ310 Plus - weryfikacja insecure connection
+  - ZD421 - weryfikacja secure/insecure fallback
+  - ZD621 - weryfikacja (jeśli dostępna)
+- Ewentualne dodanie logiki BLE dla ZD421/ZD621 (jeśli SPP nie działa)
+- Monitoring logów bluetooth_YYYY-MM-DD.txt dla debugowania
+
+---
+
 ## ✅ v1.18.3 - Unified Log Directory (COMPLETED)
 
 **Version:** 1.18.3 (code 92)

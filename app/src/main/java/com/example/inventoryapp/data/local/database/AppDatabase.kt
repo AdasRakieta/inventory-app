@@ -22,9 +22,11 @@ import com.example.inventoryapp.data.local.entities.*
         BoxEntity::class,
         BoxProductCrossRef::class,
         ImportBackupEntity::class,
-        PrinterEntity::class
+        PrinterEntity::class,
+        InventoryCountSessionEntity::class,
+        InventoryCountItemEntity::class
     ],
-    version = 15,
+    version = 17,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -38,6 +40,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun boxDao(): BoxDao
     abstract fun importBackupDao(): ImportBackupDao
     abstract fun printerDao(): PrinterDao
+    abstract fun inventoryCountDao(): InventoryCountDao
 
     companion object {
         @Volatile
@@ -312,6 +315,57 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Migration 15 -> 16: Add printer model field for connection strategy
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Add model column with default "GENERIC_ESC_POS"
+                database.execSQL("""
+                    ALTER TABLE `printers` ADD COLUMN `model` TEXT NOT NULL DEFAULT 'GENERIC_ESC_POS'
+                """.trimIndent())
+            }
+        }
+
+        // Migration 16 -> 17: Add inventory count tables
+        private val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create inventory_count_sessions table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `inventory_count_sessions` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `completedAt` INTEGER,
+                        `status` TEXT NOT NULL,
+                        `notes` TEXT
+                    )
+                """.trimIndent())
+                
+                // Create inventory_count_items table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `inventory_count_items` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `sessionId` INTEGER NOT NULL,
+                        `productId` INTEGER NOT NULL,
+                        `scannedAt` INTEGER NOT NULL,
+                        `sequenceNumber` INTEGER NOT NULL,
+                        FOREIGN KEY(`sessionId`) REFERENCES `inventory_count_sessions`(`id`) ON DELETE CASCADE,
+                        FOREIGN KEY(`productId`) REFERENCES `products`(`id`) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                
+                // Create indices for performance
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS `index_inventory_count_items_sessionId` 
+                    ON `inventory_count_items` (`sessionId`)
+                """.trimIndent())
+                
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS `index_inventory_count_items_productId` 
+                    ON `inventory_count_items` (`productId`)
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -319,7 +373,12 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "inventory_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+                    .addMigrations(
+                        MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, 
+                        MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, 
+                        MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, 
+                        MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17
+                    )
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

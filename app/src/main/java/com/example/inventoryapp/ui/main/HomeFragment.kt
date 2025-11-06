@@ -78,6 +78,11 @@ class HomeFragment : Fragment() {
         binding.boxesCard.setOnClickListener {
             findNavController().navigate(R.id.action_home_to_boxes)
         }
+        
+        // Inventory Count card - navigate to inventory count sessions
+        binding.inventoryCountCard.setOnClickListener {
+            findNavController().navigate(R.id.action_home_to_inventory_count)
+        }
     }
 
     private fun loadStatistics() {

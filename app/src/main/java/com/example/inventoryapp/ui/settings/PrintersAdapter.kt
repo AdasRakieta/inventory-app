@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.inventoryapp.R
 import com.example.inventoryapp.data.local.entities.PrinterEntity
+import com.example.inventoryapp.data.models.PrinterModel
 import com.example.inventoryapp.databinding.ItemPrinterBinding
 
 /**
@@ -37,8 +38,10 @@ class PrintersAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(printer: PrinterEntity) {
+            val printerModel = PrinterModel.fromString(printer.model)
+            
             binding.printerNameText.text = printer.name
-            binding.printerMacText.text = printer.macAddress
+            binding.printerMacText.text = "${printer.macAddress} • ${printerModel.displayName}"
             
             // Show default badge if this is the default printer
             binding.defaultBadge.visibility = if (printer.isDefault) View.VISIBLE else View.GONE

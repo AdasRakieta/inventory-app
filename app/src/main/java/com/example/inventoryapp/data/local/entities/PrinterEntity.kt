@@ -15,6 +15,9 @@ data class PrinterEntity(
     val name: String,
     val macAddress: String,
     
+    // Printer model for connection strategy
+    val model: String = "GENERIC_ESC_POS", // PrinterModel enum name
+    
     // Label dimensions in millimeters
     val labelWidthMm: Int = 50, // Default 50mm width
     val labelHeightMm: Int? = null, // null = continuous roll (auto-height)

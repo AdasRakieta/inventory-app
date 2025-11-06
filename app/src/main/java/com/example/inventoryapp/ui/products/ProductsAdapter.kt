@@ -101,12 +101,26 @@ class ProductsAdapter(
             binding.productCategory.text = CategoryHelper.getCategoryName(product.categoryId)
             binding.categoryIcon.text = CategoryHelper.getCategoryIcon(product.categoryId)
             
-            // Display package information
+            // Display package information with status
             if (pkg != null) {
-                binding.packageInfo.text = pkg.name
+                val statusIcon = when (pkg.status) {
+                    "PREPARATION" -> "📦"
+                    "READY" -> "✅"
+                    "SHIPPED" -> "🚚"
+                    "DELIVERED" -> "📬"
+                    else -> "❓"
+                }
+                val statusText = when (pkg.status) {
+                    "PREPARATION" -> "Preparation"
+                    "READY" -> "Ready"
+                    "SHIPPED" -> "Shipped"
+                    "DELIVERED" -> "Delivered"
+                    else -> pkg.status
+                }
+                binding.packageInfo.text = "$statusIcon ${pkg.name} - $statusText"
                 binding.packageInfo.visibility = View.VISIBLE
             } else {
-                binding.packageInfo.text = "Not in package"
+                binding.packageInfo.text = "❓ Unassigned"
                 binding.packageInfo.visibility = View.VISIBLE
             }
             

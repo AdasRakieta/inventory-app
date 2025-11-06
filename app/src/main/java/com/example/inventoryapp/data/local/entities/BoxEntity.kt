@@ -12,4 +12,8 @@ data class BoxEntity(
     val warehouseLocation: String? = null, // Miejsce w magazynie
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
-)
+) {
+    // Alias for CSV compatibility
+    val location: String?
+        get() = warehouseLocation
+}

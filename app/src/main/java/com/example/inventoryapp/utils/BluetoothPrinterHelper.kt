@@ -10,6 +10,7 @@ import android.graphics.Bitmap
 import android.os.Environment
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.example.inventoryapp.data.models.PrinterModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -25,6 +26,7 @@ import java.util.UUID
  * Helper class for printing QR codes via Bluetooth thermal printers
  * Supports ESC/POS command protocol
  * Logs Bluetooth operations to /Documents/inventory/logs/bluetooth_YYYY-MM-DD.txt
+ * Supports multiple printer models with optimized connection strategies
  */
 class BluetoothPrinterHelper {
 
@@ -142,9 +144,233 @@ class BluetoothPrinterHelper {
         }
         
         /**
+         * Connect to printer by MAC address with model-specific strategy
+         * @param context Application context
+         * @param macAddress MAC address of the printer
+         * @param printerModel Printer model enum for connection strategy
+         * @return BluetoothSocket or null if connection fails
+         */
+        suspend fun connectToPrinterWithModel(
+            context: Context, 
+            macAddress: String,
+            printerModel: PrinterModel
+        ): BluetoothSocket? = withContext(Dispatchers.IO) {
+            initFileLogging(context)
+            
+            logToFile(context, "INFO", "Attempting connection to ${printerModel.displayName} at $macAddress")
+            Log.d(TAG, "Connecting to ${printerModel.displayName} at $macAddress")
+            
+            try {
+                val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+                if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
+                    logToFile(context, "WARN", "Bluetooth not available or not enabled")
+                    Log.w(TAG, "Bluetooth not available or not enabled")
+                    return@withContext null
+                }
+                
+                val device = bluetoothAdapter.getRemoteDevice(macAddress)
+                
+                // Cancel discovery to improve connection speed
+                @Suppress("MissingPermission")
+                bluetoothAdapter.cancelDiscovery()
+                
+                logToFile(context, "INFO", "Trying model-specific connection for ${printerModel.name}")
+                
+                // Use connection strategy based on printer model
+                val socket = when (printerModel) {
+                    PrinterModel.ZD421, PrinterModel.ZD621 -> {
+                        // ZD421/ZD621: Try secure connection first (supports pairing with PIN/Numeric Comparison)
+                        connectWithZD421Strategy(context, device)
+                    }
+                    PrinterModel.ZQ310_PLUS, PrinterModel.OTHER_ZEBRA -> {
+                        // ZQ310 Plus: Works with insecure connection
+                        connectWithZQ310Strategy(context, device)
+                    }
+                    PrinterModel.GENERIC_ESC_POS -> {
+                        // Generic: Try standard SPP first, then fallbacks
+                        connectWithGenericStrategy(context, device)
+                    }
+                }
+                
+                if (socket != null) {
+                    @Suppress("MissingPermission")
+                    logToFile(context, "INFO", "✅ Connected to ${device.name} using ${printerModel.name} strategy")
+                    Log.d(TAG, "✅ Connected successfully")
+                } else {
+                    logToFile(context, "ERROR", "❌ All connection attempts failed for ${printerModel.name}")
+                    Log.e(TAG, "❌ Connection failed")
+                }
+                
+                socket
+            } catch (e: SecurityException) {
+                logToFile(context, "ERROR", "Security exception - missing Bluetooth permissions: ${e.message}")
+                Log.e(TAG, "Security exception - missing Bluetooth permissions", e)
+                null
+            } catch (e: Exception) {
+                logToFile(context, "ERROR", "Error connecting to printer: ${e.message}")
+                Log.e(TAG, "Error connecting to printer", e)
+                null
+            }
+        }
+        
+        /**
+         * Connection strategy for ZD421/ZD621 printers
+         * These printers may require secure pairing with PIN or Numeric Comparison
+         */
+        private fun connectWithZD421Strategy(context: Context, device: BluetoothDevice): BluetoothSocket? {
+            var socket: BluetoothSocket? = null
+            
+            // Method 1: Try secure (encrypted) RFCOMM connection first
+            try {
+                @Suppress("MissingPermission")
+                socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+                socket.connect()
+                @Suppress("MissingPermission")
+                logToFile(context, "INFO", "ZD421: Connected via secure RFCOMM (${device.name})")
+                Log.d(TAG, "ZD421: Connected via secure RFCOMM")
+                return socket
+            } catch (e: Exception) {
+                socket?.close()
+                logToFile(context, "WARN", "ZD421: Secure RFCOMM failed: ${e.message}")
+                Log.w(TAG, "ZD421: Secure RFCOMM failed, trying insecure", e)
+            }
+            
+            // Method 2: Try insecure RFCOMM connection (fallback)
+            try {
+                @Suppress("MissingPermission")
+                socket = device.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
+                socket.connect()
+                @Suppress("MissingPermission")
+                logToFile(context, "INFO", "ZD421: Connected via insecure RFCOMM (${device.name})")
+                Log.d(TAG, "ZD421: Connected via insecure RFCOMM")
+                return socket
+            } catch (e: Exception) {
+                socket?.close()
+                logToFile(context, "WARN", "ZD421: Insecure RFCOMM failed: ${e.message}")
+                Log.w(TAG, "ZD421: Insecure RFCOMM failed, trying reflection", e)
+            }
+            
+            // Method 3: Reflection-based connection (last resort)
+            try {
+                @Suppress("MissingPermission")
+                val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                socket = method.invoke(device, 1) as BluetoothSocket
+                socket.connect()
+                @Suppress("MissingPermission")
+                logToFile(context, "INFO", "ZD421: Connected via reflection (${device.name})")
+                Log.d(TAG, "ZD421: Connected via reflection")
+                return socket
+            } catch (e: Exception) {
+                socket?.close()
+                logToFile(context, "ERROR", "ZD421: All connection methods failed: ${e.message}")
+                Log.e(TAG, "ZD421: All connection methods failed", e)
+            }
+            
+            return null
+        }
+        
+        /**
+         * Connection strategy for ZQ310 Plus
+         * Works well with insecure connection
+         */
+        private fun connectWithZQ310Strategy(context: Context, device: BluetoothDevice): BluetoothSocket? {
+            var socket: BluetoothSocket? = null
+            
+            // Method 1: Try insecure RFCOMM connection (preferred for ZQ310)
+            try {
+                @Suppress("MissingPermission")
+                socket = device.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
+                socket.connect()
+                @Suppress("MissingPermission")
+                logToFile(context, "INFO", "ZQ310: Connected via insecure RFCOMM (${device.name})")
+                Log.d(TAG, "ZQ310: Connected via insecure RFCOMM")
+                return socket
+            } catch (e: Exception) {
+                socket?.close()
+                logToFile(context, "WARN", "ZQ310: Insecure RFCOMM failed: ${e.message}")
+                Log.w(TAG, "ZQ310: Insecure RFCOMM failed, trying reflection", e)
+            }
+            
+            // Method 2: Reflection-based connection (fallback)
+            try {
+                @Suppress("MissingPermission")
+                val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                socket = method.invoke(device, 1) as BluetoothSocket
+                socket.connect()
+                @Suppress("MissingPermission")
+                logToFile(context, "INFO", "ZQ310: Connected via reflection (${device.name})")
+                Log.d(TAG, "ZQ310: Connected via reflection")
+                return socket
+            } catch (e: Exception) {
+                socket?.close()
+                logToFile(context, "ERROR", "ZQ310: All connection methods failed: ${e.message}")
+                Log.e(TAG, "ZQ310: All connection methods failed", e)
+            }
+            
+            return null
+        }
+        
+        /**
+         * Generic connection strategy for ESC/POS printers
+         * Tries all methods in sequence
+         */
+        private fun connectWithGenericStrategy(context: Context, device: BluetoothDevice): BluetoothSocket? {
+            var socket: BluetoothSocket? = null
+            
+            // Method 1: Standard SPP connection
+            try {
+                @Suppress("MissingPermission")
+                socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+                socket.connect()
+                @Suppress("MissingPermission")
+                logToFile(context, "INFO", "Generic: Connected via SPP (${device.name})")
+                Log.d(TAG, "Generic: Connected via SPP")
+                return socket
+            } catch (e: Exception) {
+                socket?.close()
+                logToFile(context, "WARN", "Generic: SPP failed: ${e.message}")
+                Log.w(TAG, "Generic: SPP failed, trying insecure", e)
+            }
+            
+            // Method 2: Insecure RFCOMM connection
+            try {
+                @Suppress("MissingPermission")
+                socket = device.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
+                socket.connect()
+                @Suppress("MissingPermission")
+                logToFile(context, "INFO", "Generic: Connected via insecure RFCOMM (${device.name})")
+                Log.d(TAG, "Generic: Connected via insecure RFCOMM")
+                return socket
+            } catch (e: Exception) {
+                socket?.close()
+                logToFile(context, "WARN", "Generic: Insecure RFCOMM failed: ${e.message}")
+                Log.w(TAG, "Generic: Insecure RFCOMM failed, trying reflection", e)
+            }
+            
+            // Method 3: Reflection-based connection
+            try {
+                @Suppress("MissingPermission")
+                val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                socket = method.invoke(device, 1) as BluetoothSocket
+                socket.connect()
+                @Suppress("MissingPermission")
+                logToFile(context, "INFO", "Generic: Connected via reflection (${device.name})")
+                Log.d(TAG, "Generic: Connected via reflection")
+                return socket
+            } catch (e: Exception) {
+                socket?.close()
+                logToFile(context, "ERROR", "Generic: All connection methods failed: ${e.message}")
+                Log.e(TAG, "Generic: All connection methods failed", e)
+            }
+            
+            return null
+        }
+        
+        /**
          * Connect to printer by MAC address scanned from QR code
          * Enhanced with fallback mechanisms for Zebra printers (e.g., ZQ310 Plus)
          * Note: BLUETOOTH and BLUETOOTH_ADMIN are normal permissions on API ≤30 (auto-granted at install)
+         * @deprecated Use connectToPrinterWithModel for better compatibility
          */
     suspend fun connectToPrinter(context: Context, macAddress: String): BluetoothSocket? = withContext(Dispatchers.IO) {
             val startTime = System.currentTimeMillis()

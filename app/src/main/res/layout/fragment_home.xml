@@ -123,7 +123,7 @@
                 <TextView
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:text="🧩"
+                    android:text="📡"
                     android:textSize="32sp"
                     android:gravity="center"
                     android:layout_marginEnd="16dp" />
@@ -223,6 +223,66 @@
 
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Inventory Count Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/inventoryCountCard"
+            style="@style/Widget.App.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="16dp"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="📋"
+                    android:textSize="28sp"
+                    android:gravity="center"
+                    android:layout_marginEnd="16dp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Inventory Count"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Verify inventory with scanning sessions"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_secondary" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="→"
+                    android:textSize="24sp"
+                    android:textColor="@color/text_secondary" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Packages Card -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/packagesCard"
@@ -243,7 +303,7 @@
                 <TextView
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:text="📋"
+                    android:text="✉️"
                     android:textSize="32sp"
                     android:gravity="center"
                     android:layout_marginEnd="16dp" />
@@ -423,7 +483,7 @@
                 <TextView
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:text="⬇️⬆️"
+                    android:text="↔️"
                     android:textSize="28sp"
                     android:gravity="center"
                     android:layout_marginEnd="16dp" />
