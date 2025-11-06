@@ -225,6 +225,57 @@ class ImportPreviewFragment : Fragment() {
     }
     
     private fun displayPreview(exportData: ExportData) {
+        // Build summary text
+        val summaryBuilder = StringBuilder()
+        summaryBuilder.appendLine("📊 Data to be imported:")
+        summaryBuilder.appendLine("")
+        
+        if (exportData.contractors.isNotEmpty()) {
+            summaryBuilder.appendLine("👥 Contractors: ${exportData.contractors.size}")
+            exportData.contractors.take(3).forEach { contractor ->
+                summaryBuilder.appendLine("   • ${contractor.name}")
+            }
+            if (exportData.contractors.size > 3) {
+                summaryBuilder.appendLine("   ... and ${exportData.contractors.size - 3} more")
+            }
+            summaryBuilder.appendLine("")
+        }
+        
+        if (exportData.packages.isNotEmpty()) {
+            summaryBuilder.appendLine("📦 Packages: ${exportData.packages.size}")
+            exportData.packages.take(3).forEach { pkg ->
+                val contractorInfo = pkg.contractorId?.let { id ->
+                    exportData.contractors.find { it.id == id }?.name?.let { " (${it})" } ?: ""
+                } ?: ""
+                summaryBuilder.appendLine("   • ${pkg.name}${contractorInfo}")
+            }
+            if (exportData.packages.size > 3) {
+                summaryBuilder.appendLine("   ... and ${exportData.packages.size - 3} more")
+            }
+            summaryBuilder.appendLine("")
+        }
+        
+        if (exportData.boxes.isNotEmpty()) {
+            summaryBuilder.appendLine("📦 Boxes: ${exportData.boxes.size}")
+            exportData.boxes.take(3).forEach { box ->
+                val location = box.location?.let { " @ $it" } ?: ""
+                summaryBuilder.appendLine("   • ${box.name}${location}")
+            }
+            if (exportData.boxes.size > 3) {
+                summaryBuilder.appendLine("   ... and ${exportData.boxes.size - 3} more")
+            }
+            summaryBuilder.appendLine("")
+        }
+        
+        if (exportData.products.isNotEmpty()) {
+            summaryBuilder.appendLine("📱 Products: ${exportData.products.size}")
+            summaryBuilder.appendLine("")
+        }
+        
+        // Show summary
+        binding.summarySection.visibility = View.VISIBLE
+        binding.summaryText.text = summaryBuilder.toString()
+        
         // Show products
         if (exportData.products.isNotEmpty()) {
             binding.productsSection.visibility = View.VISIBLE
@@ -233,7 +284,7 @@ class ImportPreviewFragment : Fragment() {
             binding.productsSection.visibility = View.GONE
         }
         
-        // Show packages
+        // Show packages (detailed view)
         if (exportData.packages.isNotEmpty()) {
             binding.packagesSection.visibility = View.VISIBLE
             packagePreviewAdapter.submitList(exportData.packages)
@@ -385,11 +436,14 @@ class ImportPreviewFragment : Fragment() {
      * Data class for parsing exported JSON from QR codes
      */
     data class ExportData(
+        val version: Int = 3,
+        val exportedAt: Long = System.currentTimeMillis(),
         val products: List<com.example.inventoryapp.data.local.entities.ProductEntity> = emptyList(),
         val packages: List<com.example.inventoryapp.data.local.entities.PackageEntity> = emptyList(),
         val templates: List<com.example.inventoryapp.data.local.entities.ProductTemplateEntity> = emptyList(),
+        val boxes: List<com.example.inventoryapp.data.local.entities.BoxEntity> = emptyList(),
+        val contractors: List<com.example.inventoryapp.data.local.entities.ContractorEntity> = emptyList(),
         val packageProductRelations: List<com.example.inventoryapp.data.local.entities.PackageProductCrossRef> = emptyList(),
-        val exportedAt: Long? = null,
-        val version: Int? = null
+        val boxProductRelations: List<com.example.inventoryapp.data.local.entities.BoxProductCrossRef> = emptyList()
     )
 }

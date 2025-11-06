@@ -1,53 +1,184 @@
-<?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginStart="16dp"
-    android:layout_marginEnd="16dp"
-    android:layout_marginTop="4dp"
-    android:layout_marginBottom="4dp"
-    app:cardElevation="2dp"
-    app:cardCornerRadius="8dp">
+<?xml version="1.0" encoding="utf-8"?><?xml version="1.0" encoding="utf-8"?>
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp">
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
 
-        <!-- Checkbox for selection -->
-        <CheckBox
-            android:id="@+id/itemCheckbox"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
-            android:checked="true" />
+    xmlns:app="http://schemas.android.com/apk/res-auto"    xmlns:app="http://schemas.android.com/apk/res-auto"
 
-        <!-- Icon indicator -->
-        <ImageView
-            android:id="@+id/itemIcon"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center_vertical"
-            android:padding="8dp"
-            android:contentDescription="@string/item_type_icon"
-            tools:src="@android:drawable/ic_input_add" />
+    android:layout_width="match_parent"    android:layout_width="match_parent"
 
-        <!-- Item details -->
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="12dp"
-            android:orientation="vertical">
+    android:layout_height="wrap_content"    android:layout_height="wrap_content"
+
+    android:layout_margin="4dp"    android:layout_margin="4dp"
+
+    app:cardElevation="1dp"    app:cardElevation="1dp"
+
+    app:cardCornerRadius="4dp">    app:cardCornerRadius="4dp">
+
+
+
+    <LinearLayout    <LinearLayout
+
+        android:layout_width="match_parent"        android:layout_width="match_parent"
+
+        android:layout_height="wrap_content"        android:layout_height="wrap_content"
+
+        android:orientation="horizontal"        android:orientation="horizontal"
+
+        android:padding="12dp"        android:padding="12dp"
+
+        android:gravity="center_vertical">        android:gravity="center_vertical">
+
+
+
+        <CheckBox        <CheckBox
+
+            android:id="@+id/checkbox"            android:id="@+id/checkbox"
+
+            android:layout_width="wrap_content"            android:layout_width="wrap_content"
+
+            android:layout_height="wrap_content"            android:layout_height="wrap_content"
+
+            android:layout_marginEnd="12dp" />            android:layout_marginEnd="12dp" />
+
+
+
+        <LinearLayout        <LinearLayout
+
+            android:layout_width="0dp"            android:layout_width="0dp"
+
+            android:layout_height="wrap_content"            android:layout_height="wrap_content"
+
+            android:layout_weight="1"            android:layout_weight="1"
+
+            android:orientation="vertical">            android:orientation="vertical">
+
+
+
+            <TextView            <!-- Type Badge -->
+
+                android:id="@+id/typeBadge"            <TextView
+
+                android:layout_width="wrap_content"                android:id="@+id/typeBadge"
+
+                android:layout_height="wrap_content"                android:layout_width="wrap_content"
+
+                android:text="Product"                android:layout_height="wrap_content"
+
+                android:textSize="10sp"                android:text="Product"
+
+                android:textStyle="bold"                android:textSize="10sp"
+
+                android:textColor="?attr/colorOnPrimary"                android:textStyle="bold"
+
+                android:background="?attr/colorPrimary"                android:textColor="?attr/colorOnPrimary"
+
+                android:paddingStart="6dp"                android:background="?attr/colorPrimary"
+
+                android:paddingEnd="6dp"                android:paddingStart="6dp"
+
+                android:paddingTop="2dp"                android:paddingEnd="6dp"
+
+                android:paddingBottom="2dp"                android:paddingTop="2dp"
+
+                android:layout_marginBottom="4dp" />                android:paddingBottom="2dp"
+
+                android:layout_marginBottom="4dp" />
 
             <TextView
-                android:id="@+id/itemTitle"
+
+                android:id="@+id/title"            <!-- Main Title -->
+
+                android:layout_width="match_parent"            <TextView
+
+                android:layout_height="wrap_content"                android:id="@+id/title"
+
+                android:text="Product Name"                android:layout_width="match_parent"
+
+                android:textAppearance="?attr/textAppearanceSubtitle2"                android:layout_height="wrap_content"
+
+                android:textStyle="bold"                android:text="Product Name"
+
+                android:maxLines="2"                android:textAppearance="?attr/textAppearanceSubtitle2"
+
+                android:ellipsize="end" />                android:textStyle="bold"
+
+                android:maxLines="2"
+
+            <TextView                android:ellipsize="end" />
+
+                android:id="@+id/serialNumber"
+
+                android:layout_width="match_parent"            <!-- Serial Number -->
+
+                android:layout_height="wrap_content"            <TextView
+
+                android:text="SN: XXXX-1234"                android:id="@+id/serialNumber"
+
+                android:textAppearance="?attr/textAppearanceCaption"                android:layout_width="match_parent"
+
+                android:textColor="?android:attr/textColorSecondary"                android:layout_height="wrap_content"
+
+                android:visibility="gone" />                android:text="SN: XXXX-1234"
+
+                android:textAppearance="?attr/textAppearanceCaption"
+
+            <TextView                android:textColor="?android:attr/textColorSecondary"
+
+                android:id="@+id/description"                android:visibility="gone" />
+
                 android:layout_width="match_parent"
+
+                android:layout_height="wrap_content"            <!-- Description -->
+
+                android:text="Description text"            <TextView
+
+                android:textAppearance="?attr/textAppearanceCaption"                android:id="@+id/description"
+
+                android:maxLines="2"                android:layout_width="match_parent"
+
+                android:ellipsize="end"                android:layout_height="wrap_content"
+
+                android:visibility="gone" />                android:text="Description text"
+
+                android:textAppearance="?attr/textAppearanceCaption"
+
+            <TextView                android:maxLines="2"
+
+                android:id="@+id/relations"                android:ellipsize="end"
+
+                android:layout_width="match_parent"                android:visibility="gone" />
+
                 android:layout_height="wrap_content"
-                android:textSize="16sp"
+
+                android:text="Relations"            <!-- Relations Info -->
+
+                android:textAppearance="?attr/textAppearanceCaption"            <TextView
+
+                android:textColor="?attr/colorPrimary"                android:id="@+id/relations"
+
+                android:textStyle="italic"                android:layout_width="match_parent"
+
+                android:layout_marginTop="4dp"                android:layout_height="wrap_content"
+
+                android:visibility="gone" />                android:text="📦 Package: H16 | 📦 Box: box 1"
+
+                android:textAppearance="?attr/textAppearanceCaption"
+
+        </LinearLayout>                android:textColor="?attr/colorPrimary"
+
+                android:textStyle="italic"
+
+    </LinearLayout>                android:layout_marginTop="4dp"
+
+                android:visibility="gone" />
+
+</com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>
                 android:textStyle="bold"
                 android:textColor="?android:attr/textColorPrimary"
                 android:maxLines="1"
