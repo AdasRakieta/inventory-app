@@ -1160,41 +1160,41 @@ class ExportImportFragment : Fragment() {
         val adapter = ImportPreviewAdapter()
         recyclerView.adapter = adapter
         
+        // Store all items to preserve selection state across filters
+        val allItems = mutableListOf<ImportPreviewItem>().apply {
+            addAll(preview.newProducts.map { ImportPreviewItem.ProductItem(it, true) })
+            addAll(preview.updateProducts.map { ImportPreviewItem.ProductItem(it, false) })
+            addAll(preview.newPackages.map { ImportPreviewItem.PackageItem(it, true) })
+            addAll(preview.updatePackages.map { ImportPreviewItem.PackageItem(it, false) })
+            addAll(preview.newTemplates.map { ImportPreviewItem.TemplateItem(it, true) })
+            addAll(preview.newContractors.map { ImportPreviewItem.ContractorItem(it, true) })
+            addAll(preview.updateContractors.map { ImportPreviewItem.ContractorItem(it, false) })
+            addAll(preview.newBoxes.map { ImportPreviewItem.BoxItem(it, true) })
+            addAll(preview.updateBoxes.map { ImportPreviewItem.BoxItem(it, false) })
+        }
+        
         // Function to update selection count
         fun updateSelectionCount() {
-            val count = adapter.getSelectedItems().size
-            selectionCount.text = "$count items selected"
+            val totalSelected = allItems.count { it.isSelected }
+            selectionCount.text = "$totalSelected items selected"
         }
         
         // Function to update displayed items based on filter
         fun updateDisplayedItems(filter: ImportPreviewFilter) {
             val items = when (filter) {
-                is ImportPreviewFilter.All -> {
-                    preview.newProducts.map { ImportPreviewItem.ProductItem(it, true) } +
-                    preview.updateProducts.map { ImportPreviewItem.ProductItem(it, false) } +
-                    preview.newPackages.map { ImportPreviewItem.PackageItem(it, true) } +
-                    preview.updatePackages.map { ImportPreviewItem.PackageItem(it, false) } +
-                    preview.newTemplates.map { ImportPreviewItem.TemplateItem(it, true) }
-                }
-                is ImportPreviewFilter.NewProducts -> {
-                    preview.newProducts.map { ImportPreviewItem.ProductItem(it, true) }
-                }
-                is ImportPreviewFilter.UpdateProducts -> {
-                    preview.updateProducts.map { ImportPreviewItem.ProductItem(it, false) }
-                }
-                is ImportPreviewFilter.NewPackages -> {
-                    preview.newPackages.map { ImportPreviewItem.PackageItem(it, true) }
-                }
-                is ImportPreviewFilter.UpdatePackages -> {
-                    preview.updatePackages.map { ImportPreviewItem.PackageItem(it, false) }
-                }
-                is ImportPreviewFilter.NewTemplates -> {
-                    preview.newTemplates.map { ImportPreviewItem.TemplateItem(it, true) }
-                }
+                is ImportPreviewFilter.All -> allItems
+                is ImportPreviewFilter.NewProducts -> allItems.filterIsInstance<ImportPreviewItem.ProductItem>().filter { it.isNew }
+                is ImportPreviewFilter.UpdateProducts -> allItems.filterIsInstance<ImportPreviewItem.ProductItem>().filter { !it.isNew }
+                is ImportPreviewFilter.NewPackages -> allItems.filterIsInstance<ImportPreviewItem.PackageItem>().filter { it.isNew }
+                is ImportPreviewFilter.UpdatePackages -> allItems.filterIsInstance<ImportPreviewItem.PackageItem>().filter { !it.isNew }
+                is ImportPreviewFilter.NewTemplates -> allItems.filterIsInstance<ImportPreviewItem.TemplateItem>()
+                is ImportPreviewFilter.NewContractors -> allItems.filterIsInstance<ImportPreviewItem.ContractorItem>().filter { it.isNew }
+                is ImportPreviewFilter.UpdateContractors -> allItems.filterIsInstance<ImportPreviewItem.ContractorItem>().filter { !it.isNew }
+                is ImportPreviewFilter.NewBoxes -> allItems.filterIsInstance<ImportPreviewItem.BoxItem>().filter { it.isNew }
+                is ImportPreviewFilter.UpdateBoxes -> allItems.filterIsInstance<ImportPreviewItem.BoxItem>().filter { !it.isNew }
             }
             
             adapter.submitList(items)
-            adapter.selectAll() // Select all by default when filter changes
             updateSelectionCount()
             recyclerView.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
             emptyState.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
@@ -1230,9 +1230,9 @@ class ExportImportFragment : Fragment() {
         
         // Confirm import button
         btnConfirm.setOnClickListener {
-            val selectedIds = adapter.getSelectedItems()
+            val selectedItems = adapter.getSelectedItems()
             
-            if (selectedIds.isEmpty()) {
+            if (selectedItems.isEmpty()) {
                 Toast.makeText(requireContext(), "Please select at least one item to import", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
@@ -1246,28 +1246,65 @@ class ExportImportFragment : Fragment() {
                         gson.fromJson(reader, ExportData::class.java)
                     }
                     
-                    // Filter data by selected IDs
+                    // Collect selected serial numbers and IDs
+                    val selectedProductSNs = selectedItems
+                        .filterIsInstance<ImportPreviewItem.ProductItem>()
+                        .mapNotNull { it.product.serialNumber }
+                        .toSet()
+                    
+                    val selectedPackageIds = selectedItems
+                        .filterIsInstance<ImportPreviewItem.PackageItem>()
+                        .map { it.packageEntity.id }
+                        .toSet()
+                    
+                    val selectedTemplateNames = selectedItems
+                        .filterIsInstance<ImportPreviewItem.TemplateItem>()
+                        .map { it.template.name }
+                        .toSet()
+                    
+                    val selectedContractorIds = selectedItems
+                        .filterIsInstance<ImportPreviewItem.ContractorItem>()
+                        .map { it.contractor.id }
+                        .toSet()
+                    
+                    val selectedBoxIds = selectedItems
+                        .filterIsInstance<ImportPreviewItem.BoxItem>()
+                        .map { it.box.id }
+                        .toSet()
+                    
+                    // Filter data by selected items
                     val filteredData = ExportData(
                         products = originalData.products.filter { 
-                            (it.serialNumber ?: it.id.toString()) in selectedIds 
+                            it.serialNumber in selectedProductSNs
                         },
                         packages = originalData.packages.filter { 
-                            it.id.toString() in selectedIds 
+                            it.id in selectedPackageIds
                         },
                         templates = originalData.templates.filter { 
-                            it.id.toString() in selectedIds 
+                            it.name in selectedTemplateNames
                         },
-                        boxes = originalData.boxes.filter { 
-                            it.id.toString() in selectedIds 
+                        boxes = originalData.boxes.filter {
+                            it.id in selectedBoxIds || 
+                            // Include boxes referenced by selected products
+                            originalData.boxProductRelations.any { rel ->
+                                rel.boxId == it.id && 
+                                originalData.products.find { p -> p.id == rel.productId }?.serialNumber in selectedProductSNs
+                            }
                         },
-                        contractors = originalData.contractors.filter { 
-                            it.id.toString() in selectedIds 
+                        contractors = originalData.contractors.filter {
+                            it.id in selectedContractorIds || 
+                            // Include contractors referenced by selected packages
+                            originalData.packages.any { pkg -> 
+                                pkg.id in selectedPackageIds && pkg.contractorId == it.id 
+                            }
                         },
                         packageProductRelations = originalData.packageProductRelations.filter {
-                            it.packageId.toString() in selectedIds || it.productId.toString() in selectedIds
+                            it.packageId in selectedPackageIds || 
+                            originalData.products.find { p -> p.id == it.productId }?.serialNumber in selectedProductSNs
                         },
                         boxProductRelations = originalData.boxProductRelations.filter {
-                            it.boxId.toString() in selectedIds || it.productId.toString() in selectedIds
+                            it.boxId in selectedBoxIds ||
+                            originalData.products.find { p -> p.id == it.productId }?.serialNumber in selectedProductSNs
                         }
                     )
                     
@@ -1285,7 +1322,7 @@ class ExportImportFragment : Fragment() {
                     if (success) {
                         Toast.makeText(
                             requireContext(), 
-                            "✅ Imported ${selectedIds.size} items successfully!", 
+                            "✅ Imported ${selectedItems.size} items successfully!", 
                             Toast.LENGTH_SHORT
                         ).show()
                     } else {

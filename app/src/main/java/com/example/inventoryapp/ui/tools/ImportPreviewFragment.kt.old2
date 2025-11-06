@@ -273,23 +273,23 @@ class ImportPreviewFragment : Fragment() {
         }
         
         // Show summary
-        binding.summarySection.visibility = View.VISIBLE
-        binding.summaryText.text = summaryBuilder.toString()
+        // binding.summarySection.visibility = View.VISIBLE
+        // binding.summaryText.text = summaryBuilder.toString()
         
         // Show products
         if (exportData.products.isNotEmpty()) {
-            binding.productsSection.visibility = View.VISIBLE
+            // binding.productsSection.visibility = View.VISIBLE
             productPreviewAdapter.submitList(exportData.products)
         } else {
-            binding.productsSection.visibility = View.GONE
+            // binding.productsSection.visibility = View.GONE
         }
         
         // Show packages (detailed view)
         if (exportData.packages.isNotEmpty()) {
-            binding.packagesSection.visibility = View.VISIBLE
+            // binding.packagesSection.visibility = View.VISIBLE
             packagePreviewAdapter.submitList(exportData.packages)
         } else {
-            binding.packagesSection.visibility = View.GONE
+            // binding.packagesSection.visibility = View.GONE
         }
         
         // Enable import button
@@ -417,8 +417,8 @@ class ImportPreviewFragment : Fragment() {
                 currentExportData = null
                 productPreviewAdapter.submitList(emptyList())
                 packagePreviewAdapter.submitList(emptyList())
-                binding.productsSection.visibility = View.GONE
-                binding.packagesSection.visibility = View.GONE
+                // binding.productsSection.visibility = View.GONE
+                // binding.packagesSection.visibility = View.GONE
                 
             } catch (e: Exception) {
                 Toast.makeText(requireContext(), "Import failed: ${e.message}", Toast.LENGTH_LONG).show()

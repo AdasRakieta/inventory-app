@@ -17,6 +17,7 @@ import com.example.inventoryapp.data.local.entities.BoxProductCrossRef
 import com.example.inventoryapp.data.local.entities.ContractorEntity
 import com.example.inventoryapp.data.local.entities.ImportBackupEntity
 import com.example.inventoryapp.data.local.entity.ImportPreview
+import com.example.inventoryapp.data.local.entity.ImportPreviewFilter
 import com.example.inventoryapp.utils.AppLogger
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -634,10 +635,14 @@ class ExportImportViewModel(
             // Get existing data
             val existingProducts = productRepository.getAllProducts().first()
             val existingPackages = packageRepository.getAllPackages().first()
+            val existingContractors = contractorRepository.getAllContractors().first()
+            val existingBoxes = boxRepository.getAllBoxes().first()
             
             // Map existing items by their unique identifiers
             val existingProductSNs = existingProducts.map { it.serialNumber }.toSet()
             val existingPackageIds = existingPackages.map { it.id }.toSet()
+            val existingContractorIds = existingContractors.map { it.id }.toSet()
+            val existingBoxIds = existingBoxes.map { it.id }.toSet()
             
             // Categorize products: new vs update
             val newProducts = mutableListOf<ProductEntity>()
@@ -663,6 +668,30 @@ class ExportImportViewModel(
                 }
             }
             
+            // Categorize contractors: new vs update
+            val newContractors = mutableListOf<ContractorEntity>()
+            val updateContractors = mutableListOf<ContractorEntity>()
+            
+            exportData.contractors.forEach { contractor ->
+                if (existingContractorIds.contains(contractor.id)) {
+                    updateContractors.add(contractor)
+                } else {
+                    newContractors.add(contractor)
+                }
+            }
+            
+            // Categorize boxes: new vs update
+            val newBoxes = mutableListOf<BoxEntity>()
+            val updateBoxes = mutableListOf<BoxEntity>()
+            
+            exportData.boxes.forEach { box ->
+                if (existingBoxIds.contains(box.id)) {
+                    updateBoxes.add(box)
+                } else {
+                    newBoxes.add(box)
+                }
+            }
+            
             // Templates are always new (they use auto-increment IDs)
             val newTemplates = exportData.templates
             
@@ -671,7 +700,11 @@ class ExportImportViewModel(
                 updateProducts = updateProducts,
                 newPackages = newPackages,
                 updatePackages = updatePackages,
-                newTemplates = newTemplates
+                newTemplates = newTemplates,
+                newContractors = newContractors,
+                updateContractors = updateContractors,
+                newBoxes = newBoxes,
+                updateBoxes = updateBoxes
             )
             
             _status.value = "Preview ready: ${preview.totalNewItems} new, ${preview.totalUpdateItems} to update"
