@@ -1133,6 +1133,10 @@ class ExportImportFragment : Fragment() {
         val chipNewPackages: com.google.android.material.chip.Chip = dialogView.findViewById(R.id.chipNewPackages)
         val chipUpdatePackages: com.google.android.material.chip.Chip = dialogView.findViewById(R.id.chipUpdatePackages)
         val chipNewTemplates: com.google.android.material.chip.Chip = dialogView.findViewById(R.id.chipNewTemplates)
+        val chipNewContractors: com.google.android.material.chip.Chip = dialogView.findViewById(R.id.chipNewContractors)
+        val chipUpdateContractors: com.google.android.material.chip.Chip = dialogView.findViewById(R.id.chipUpdateContractors)
+        val chipNewBoxes: com.google.android.material.chip.Chip = dialogView.findViewById(R.id.chipNewBoxes)
+        val chipUpdateBoxes: com.google.android.material.chip.Chip = dialogView.findViewById(R.id.chipUpdateBoxes)
         
         // Set subtitle
         subtitle.text = getString(
@@ -1148,6 +1152,10 @@ class ExportImportFragment : Fragment() {
         chipNewPackages.text = getString(R.string.filter_new_packages, preview.newPackages.size)
         chipUpdatePackages.text = getString(R.string.filter_update_packages, preview.updatePackages.size)
         chipNewTemplates.text = getString(R.string.filter_new_templates, preview.newTemplates.size)
+        chipNewContractors.text = "New Contractors (${preview.newContractors.size})"
+        chipUpdateContractors.text = "Update Contractors (${preview.updateContractors.size})"
+        chipNewBoxes.text = "New Boxes (${preview.newBoxes.size})"
+        chipUpdateBoxes.text = "Update Boxes (${preview.updateBoxes.size})"
         
         // Hide chips with 0 count
         chipNewProducts.visibility = if (preview.newProducts.isEmpty()) View.GONE else View.VISIBLE
@@ -1155,6 +1163,10 @@ class ExportImportFragment : Fragment() {
         chipNewPackages.visibility = if (preview.newPackages.isEmpty()) View.GONE else View.VISIBLE
         chipUpdatePackages.visibility = if (preview.updatePackages.isEmpty()) View.GONE else View.VISIBLE
         chipNewTemplates.visibility = if (preview.newTemplates.isEmpty()) View.GONE else View.VISIBLE
+        chipNewContractors.visibility = if (preview.newContractors.isEmpty()) View.GONE else View.VISIBLE
+        chipUpdateContractors.visibility = if (preview.updateContractors.isEmpty()) View.GONE else View.VISIBLE
+        chipNewBoxes.visibility = if (preview.newBoxes.isEmpty()) View.GONE else View.VISIBLE
+        chipUpdateBoxes.visibility = if (preview.updateBoxes.isEmpty()) View.GONE else View.VISIBLE
         
         // Setup adapter
         val adapter = ImportPreviewAdapter()
@@ -1210,6 +1222,10 @@ class ExportImportFragment : Fragment() {
         chipNewPackages.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.NewPackages) }
         chipUpdatePackages.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.UpdatePackages) }
         chipNewTemplates.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.NewTemplates) }
+        chipNewContractors.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.NewContractors) }
+        chipUpdateContractors.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.UpdateContractors) }
+        chipNewBoxes.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.NewBoxes) }
+        chipUpdateBoxes.setOnClickListener { updateDisplayedItems(ImportPreviewFilter.UpdateBoxes) }
         
         // Selection buttons
         btnSelectAll.setOnClickListener {

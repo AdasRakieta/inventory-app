@@ -93,6 +93,34 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/filter_new_templates" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipNewContractors"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="New Contractors" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipUpdateContractors"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Update Contractors" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipNewBoxes"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="New Boxes" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipUpdateBoxes"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Update Boxes" />
         </com.google.android.material.chip.ChipGroup>
     </HorizontalScrollView>
 

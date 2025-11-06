@@ -1,5 +1,76 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.20.2 - Import Preview UI for Contractors & Boxes (COMPLETED)
+
+**Version:** 1.20.2 (code 101)
+
+**Cel:**
+Dodanie brakujących chips w UI import preview dla kontraktorów i boxów.
+
+**Status:** COMPLETED ✅
+
+### Problem Description:
+
+**User quote:** "import preview nie pokazuje importowanych kontraktorów ani boxów"
+
+Mimo że:
+- Backend prawidłowo pobierał contractors i boxes (`generateImportPreview()`)
+- Data model wspierał te encje (`ImportPreview.newContractors`, `updateContractors`, etc.)
+- Adapter renderował wszystkie 5 typów encji
+- Dialog allItems lista zawierała ContractorItem i BoxItem
+
+**Brakujące elementy UI:**
+- Brak chips w `dialog_import_preview.xml` dla contractors/boxes
+- Brak inicjalizacji chips w `ExportImportFragment.setupPreviewDialog()`
+- Brak click listeners dla nowych chips
+
+### Implemented Solution:
+
+#### 1. Updated Files:
+
+**dialog_import_preview.xml:**
+- Dodano 4 nowe chips w ChipGroup:
+  - `chipNewContractors`
+  - `chipUpdateContractors`
+  - `chipNewBoxes`
+  - `chipUpdateBoxes`
+- Wszystkie używają style: `Widget.MaterialComponents.Chip.Choice`
+
+**ExportImportFragment.kt:**
+- Dodano deklaracje zmiennych dla 4 nowych chips (findViewById)
+- Dodano setText() z licznikami (np. "New Contractors (3)")
+- Dodano visibility logic (hide if count = 0)
+- Dodano click listeners wywołujące `updateDisplayedItems()` z odpowiednimi filtrami
+
+#### 2. Filter Support:
+
+Funkcja `updateDisplayedItems()` już wspierała wszystkie filtry:
+- `ImportPreviewFilter.NewContractors` → ContractorItem (isNew = true)
+- `ImportPreviewFilter.UpdateContractors` → ContractorItem (isNew = false)
+- `ImportPreviewFilter.NewBoxes` → BoxItem (isNew = true)
+- `ImportPreviewFilter.UpdateBoxes` → BoxItem (isNew = false)
+
+#### 3. Build:
+
+```
+.\gradlew.bat assembleDebug
+BUILD SUCCESSFUL in 1m 38s
+APK: app/build/outputs/apk/debug/app-debug.apk
+```
+
+**Fixed Issue:**
+- `ImportPreviewFragment.kt` powodował błędy kompilacji
+- Zmieniono rozszerzenie na `.disabled` aby wykluczyć z builda
+- Dialog system (`dialog_import_preview.xml`) jest aktywnym systemem, fragment był legacy
+
+### Next Steps:
+
+- **Test import preview:** Wyeksportuj CSV z contractors/boxes, zaimportuj i sprawdź czy wszystkie chipy się pokazują
+- **Verify filtering:** Kliknij każdy chip i sprawdź czy pokazuje właściwe encje
+- **Test selection:** Sprawdź czy checkbox selection działa poprawnie dla wszystkich typów
+
+---
+
 ## ✅ v1.20.0 - Unified CSV Export/Import (COMPLETED)
 
 **Version:** 1.20.0 (code 99)
