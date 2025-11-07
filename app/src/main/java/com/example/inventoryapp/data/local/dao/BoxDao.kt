@@ -16,6 +16,9 @@ interface BoxDao {
     @Query("SELECT * FROM boxes WHERE id = :boxId")
     fun getBoxById(boxId: Long): Flow<BoxEntity?>
     
+    @Query("SELECT * FROM boxes WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+    suspend fun getBoxByName(name: String): BoxEntity?
+    
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBox(box: BoxEntity): Long
     

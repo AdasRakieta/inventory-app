@@ -16,6 +16,9 @@ interface PackageDao {
     @Query("SELECT * FROM packages WHERE id = :packageId")
     fun getPackageById(packageId: Long): Flow<PackageEntity?>
 
+    @Query("SELECT * FROM packages WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+    suspend fun getPackageByName(name: String): PackageEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPackage(packageEntity: PackageEntity): Long
 

@@ -13,6 +13,9 @@ interface ContractorDao {
     @Query("SELECT * FROM contractors WHERE id = :contractorId")
     fun getContractorById(contractorId: Long): Flow<ContractorEntity?>
 
+    @Query("SELECT * FROM contractors WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+    suspend fun getContractorByName(name: String): ContractorEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertContractor(contractor: ContractorEntity): Long
 

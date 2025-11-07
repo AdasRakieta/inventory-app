@@ -15,6 +15,9 @@ interface ProductTemplateDao {
     @Query("SELECT * FROM product_templates WHERE categoryId = :categoryId ORDER BY name ASC")
     fun getTemplatesByCategory(categoryId: Long): Flow<List<ProductTemplateEntity>>
 
+    @Query("SELECT * FROM product_templates WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+    suspend fun getTemplateByName(name: String): ProductTemplateEntity?
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertTemplate(template: ProductTemplateEntity): Long
 

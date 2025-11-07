@@ -1,5 +1,332 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.20.4 - Unique Name Validation (COMPLETED)
+
+**Version:** 1.20.4 (code 103)
+
+**Cel:**
+Walidacja unikalności nazw podczas tworzenia nowych encji - zapobieganie duplikatom.
+
+**Status:** COMPLETED ✅
+
+### Problem Description:
+
+**User quote:** "Przy okazji zrób aby tworzenie tych nowych elementów też nie mogła się powtarzać nazwa"
+
+**Oryginalne zachowanie:**
+- Użytkownik mógł stworzyć wielokrotnie: "Box A", "Box A", "Box A"
+- Żadna walidacja przy ręcznym tworzeniu przez UI
+- Duplikaty nazw powodowały zamęt (który "Box A" jest właściwy?)
+- Import używał UPSERT (v1.20.3), ale UI nie miało ochrony
+
+### Implemented Solution:
+
+#### 1. Database Layer (DAO):
+
+**Dodane query do sprawdzania unikalności:**
+
+```kotlin
+// ContractorDao
+@Query("SELECT * FROM contractors WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+suspend fun getContractorByName(name: String): ContractorEntity?
+
+// BoxDao
+@Query("SELECT * FROM boxes WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+suspend fun getBoxByName(name: String): BoxEntity?
+
+// PackageDao
+@Query("SELECT * FROM packages WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+suspend fun getPackageByName(name: String): PackageEntity?
+
+// ProductTemplateDao
+@Query("SELECT * FROM product_templates WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+suspend fun getTemplateByName(name: String): ProductTemplateEntity?
+```
+
+**Cechy:**
+- **Case-insensitive** - "Box A" = "box a" = "BOX A"
+- **Używa LOWER()** - porównanie bez względu na wielkość liter
+- **LIMIT 1** - tylko pierwsza znaleziona encja
+
+#### 2. Repository Layer:
+
+**Walidacja przed INSERT:**
+
+```kotlin
+suspend fun insertBox(box: BoxEntity): Long {
+    // Check if box with same name already exists
+    val existing = boxDao.getBoxByName(box.name)
+    if (existing != null) {
+        throw IllegalArgumentException("Box with name '${box.name}' already exists")
+    }
+    return boxDao.insertBox(box)
+}
+```
+
+**Zmienione repozytoria:**
+- ✅ **ContractorRepository.insertContractor()**
+- ✅ **BoxRepository.insertBox()**
+- ✅ **PackageRepository.insertPackage()**
+- ✅ **ProductTemplateRepository.insertTemplate()**
+
+#### 3. Error Handling:
+
+**Exception:** `IllegalArgumentException` z opisową wiadomością
+**Wynik w UI:** Toast z błędem "Box with name 'Box A' already exists"
+
+#### 4. Import Logic:
+
+**CSV/JSON import** (już używa UPSERT z v1.20.3):
+- Sprawdza czy encja istnieje → UPDATE
+- Jeśli nie istnieje → INSERT (z walidacją nazwy)
+- **Duplikaty w pliku importu:** pierwszy rekord wygrywa, kolejne aktualizują
+
+**Manual creation** (przez UI):
+- Validator sprawdza przed zapisem
+- Użytkownik dostaje błąd, musi zmienić nazwę
+
+#### 5. Modified Files:
+
+**DAO (4 files):**
+- `ContractorDao.kt` - added `getContractorByName()`
+- `BoxDao.kt` - added `getBoxByName()`
+- `PackageDao.kt` - added `getPackageByName()`
+- `ProductTemplateDao.kt` - added `getTemplateByName()`
+
+**Repository (4 files):**
+- `ContractorRepository.kt` - validation in `insertContractor()`
+- `BoxRepository.kt` - validation in `insertBox()`
+- `PackageRepository.kt` - validation in `insertPackage()`
+- `ProductTemplateRepository.kt` - validation in `insertTemplate()`
+
+#### 6. Build:
+
+```
+.\gradlew.bat assembleDebug
+BUILD SUCCESSFUL in 35s
+APK: app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Use Cases:
+
+**Scenario 1: Create New Box**
+```
+Input: Name = "Storage A"
+Check: No box with name "Storage A" exists
+Result: ✅ Box created successfully
+```
+
+**Scenario 2: Try to Create Duplicate**
+```
+Input: Name = "Storage A"
+Check: Box "Storage A" already exists
+Result: ❌ Exception: "Box with name 'Storage A' already exists"
+UI: Toast shows error message
+```
+
+**Scenario 3: Case Insensitive Check**
+```
+Input: Name = "storage a"
+Check: Box "Storage A" already exists (LOWER comparison)
+Result: ❌ Exception: "Box with name 'storage a' already exists"
+```
+
+**Scenario 4: Import with Duplicate Names**
+```
+File contains:
+- Box "Storage A" (new)
+- Box "storage a" (duplicate, different case)
+Result: 
+- First "Storage A" → INSERT
+- Second "storage a" → UPDATE existing "Storage A" (UPSERT logic)
+Final: 1 box, not 2
+```
+
+### Benefits:
+
+✅ **Zapobiega duplikatom** - jedna nazwa = jedna encja
+✅ **Case-insensitive** - różne wielkości liter = ten sam rekord
+✅ **Jasne komunikaty** - użytkownik wie dlaczego nie może zapisać
+✅ **Spójność danych** - brak zamętu "który Box A?"
+✅ **Import bezpieczny** - duplikaty w pliku = aktualizacja, nie błąd
+
+### Testing:
+
+```powershell
+# Zainstaluj
+.\gradlew.bat installDebug
+
+# Test 1: Unique Names
+# 1. Utwórz contractor "TechCorp"
+# 2. Spróbuj utworzyć "TechCorp" ponownie
+# Oczekiwane: Error toast
+
+# Test 2: Case Insensitive
+# 1. Utwórz box "Storage A"
+# 2. Spróbuj utworzyć "storage a"
+# Oczekiwane: Error toast
+
+# Test 3: Import with Duplicates
+# 1. CSV z 2x "Box A" (różne wielkości liter)
+# 2. Importuj
+# 3. Sprawdź listę boxów
+# Oczekiwane: 1 box, nie 2
+
+# Test 4: Update Existing
+# 1. Utwórz package "Electronics"
+# 2. Edytuj opis package
+# 3. Zapisz (to samo ID)
+# Oczekiwane: Update sukces (bo to samo ID)
+```
+
+### Notes:
+
+- **UPDATE nadal działa** - zmiana opisu/innych pól tego samego rekordu OK
+- **Tylko INSERT jest sprawdzany** - walidacja przy nowych rekordach
+- **Import używa UPSERT** - duplikaty w imporcie = aktualizacja
+- **Products nie mają tej walidacji** - używają `serialNumber` jako unique key
+
+### CSV Import Confirmation:
+
+✅ **CSV import używa UPSERT** (przez `importFromJson()`)
+- `importFromUnifiedCsv()` → parsuje CSV → tworzy `ExportData` → zapisuje temp JSON
+- `importFromJson()` → czyta JSON → **UPSERT logic z v1.20.3**
+- Duplikaty w CSV = aktualizacja istniejących rekordów
+
+---
+
+## ✅ v1.20.3 - Import UPSERT Logic (COMPLETED)
+
+**Version:** 1.20.3 (code 102)
+
+**Cel:**
+Zmiana logiki importu z INSERT na UPSERT - aktualizacja istniejących encji zamiast duplikowania.
+
+**Status:** COMPLETED ✅
+
+### Problem Description:
+
+**User quote:** "zrób aby import gdy template lub kontraktorzy lub packages lub boxes to updateowało je a nie dodawało te same zduplikowane"
+
+**Oryginalne zachowanie:**
+- Import zawsze robił `insert` z `id = 0`
+- Każdy import tworzył nowe rekordy, nawet gdy już istniały
+- Duplikaty kontraktorów, boxów, packages, templates z identycznymi nazwami
+
+### Implemented Solution:
+
+#### 1. UPSERT Logic by Unique Identifiers:
+
+**Klucze unikalne:**
+- **Products**: `serialNumber` (case-insensitive)
+- **Packages**: `name` (case-insensitive)
+- **Boxes**: `name` (case-insensitive)
+- **Contractors**: `name` (case-insensitive)
+- **Templates**: `name` (case-insensitive)
+
+**Algorytm dla każdej encji:**
+```kotlin
+// 1. Pobierz wszystkie istniejące encje danego typu
+val existing = repository.getAll().first()
+
+// 2. Sprawdź czy encja o tej nazwie/SN już istnieje
+val match = existing.find { it.name.equals(imported.name, ignoreCase = true) }
+
+// 3. UPDATE lub INSERT
+if (match != null) {
+    repository.update(imported.copy(id = match.id)) // Zachowaj istniejące ID
+} else {
+    repository.insert(imported.copy(id = 0)) // Nowy rekord
+}
+```
+
+#### 2. Modified Function:
+
+**ExportImportViewModel.kt - `importFromJson()`:**
+
+**Step 1 - Contractors (UPSERT):**
+- Sprawdza czy contractor z daną nazwą istnieje
+- Jeśli TAK: `updateContractor()` z istniejącym ID
+- Jeśli NIE: `insertContractor()` z `id = 0`
+
+**Step 2 - Templates (UPSERT):**
+- Sprawdza czy template z daną nazwą istnieje
+- Jeśli TAK: `updateTemplate()` z istniejącym ID
+- Jeśli NIE: `insertTemplate()` z `id = 0`
+
+**Step 3 - Products (UPSERT):**
+- Sprawdza czy product z tym `serialNumber` istnieje
+- Jeśli TAK: `updateProduct()` z istniejącym ID
+- Jeśli NIE: `insertProduct()` z `id = 0`
+
+**Step 4 - Packages (UPSERT):**
+- Sprawdza czy package z daną nazwą istnieje
+- Jeśli TAK: `updatePackage()` z istniejącym ID (zachowuje contractorId)
+- Jeśli NIE: `insertPackage()` z `id = 0`
+
+**Step 5 - Boxes (UPSERT):**
+- Sprawdza czy box z daną nazwą istnieje
+- Jeśli TAK: `updateBox()` z istniejącym ID
+- Jeśli NIE: `insertBox()` z `id = 0`
+
+#### 3. Benefits:
+
+✅ **Brak duplikatów** - ten sam contractor/box/package nie jest dodawany wielokrotnie
+✅ **Aktualizacja danych** - jeśli rekord istnieje, jego dane są aktualizowane
+✅ **Zachowanie relacji** - istniejące ID są zachowywane, więc relacje pozostają nienaruszone
+✅ **Idempotentny import** - wielokrotny import tego samego pliku daje ten sam rezultat
+
+#### 4. Build:
+
+```
+.\gradlew.bat assembleDebug
+BUILD SUCCESSFUL in 55s
+APK: app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Use Cases:
+
+**Scenario 1: First Import**
+- Contractor "TechCorp" NIE istnieje → INSERT
+- Rezultat: 1 nowy contractor
+
+**Scenario 2: Re-import Same Data**
+- Contractor "TechCorp" JUŻ istnieje → UPDATE
+- Rezultat: 0 nowych contractors, 1 zaktualizowany
+
+**Scenario 3: Import with Modified Data**
+- Contractor "TechCorp" z nowym `description` → UPDATE existing
+- Opis jest aktualizowany, bez duplikatu
+
+**Scenario 4: Mixed Import**
+- 3 contractors: "TechCorp" (exists), "NewCorp" (new), "OldCorp" (exists)
+- Rezultat: 1 INSERT, 2 UPDATE
+
+### Testing:
+
+```powershell
+# Zainstaluj nową wersję
+.\gradlew.bat installDebug
+
+# Test workflow:
+# 1. Eksportuj plik (CSV lub JSON) z contractors, boxes, packages
+# 2. Zaimportuj ten plik → wszystko się dodaje
+# 3. Zaimportuj ten SAM plik ponownie
+# 4. Sprawdź w bazie - powinny być te same rekordy, bez duplikatów
+# 5. Zmodyfikuj opis contractor w pliku
+# 6. Zaimportuj ponownie
+# 7. Sprawdź w bazie - opis powinien być zaktualizowany
+```
+
+### Next Steps:
+
+- ✅ Import preview pokazuje contractors/boxes (v1.20.2)
+- ✅ Import używa UPSERT zamiast INSERT (v1.20.3)
+- ⏳ Test na rzeczywistych danych z różnych skanerów
+- ⏳ Verify relationships are preserved after UPSERT
+
+---
+
 ## ✅ v1.20.2 - Import Preview UI for Contractors & Boxes (COMPLETED)
 
 **Version:** 1.20.2 (code 101)

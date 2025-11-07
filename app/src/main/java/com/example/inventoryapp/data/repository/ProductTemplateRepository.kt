@@ -15,8 +15,14 @@ class ProductTemplateRepository(private val productTemplateDao: ProductTemplateD
     fun getTemplatesByCategory(categoryId: Long): Flow<List<ProductTemplateEntity>> =
         productTemplateDao.getTemplatesByCategory(categoryId)
     
-    suspend fun insertTemplate(template: ProductTemplateEntity): Long =
-        productTemplateDao.insertTemplate(template)
+    suspend fun insertTemplate(template: ProductTemplateEntity): Long {
+        // Check if template with same name already exists
+        val existing = productTemplateDao.getTemplateByName(template.name)
+        if (existing != null) {
+            throw IllegalArgumentException("Template with name '${template.name}' already exists")
+        }
+        return productTemplateDao.insertTemplate(template)
+    }
     
     suspend fun updateTemplate(template: ProductTemplateEntity) =
         productTemplateDao.updateTemplate(template)

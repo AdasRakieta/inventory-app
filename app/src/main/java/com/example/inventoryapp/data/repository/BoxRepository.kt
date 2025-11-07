@@ -24,7 +24,14 @@ class BoxRepository(private val boxDao: BoxDao, private val productDao: com.exam
 
     fun getBoxCount(): Flow<Int> = boxDao.getBoxCount()
 
-    suspend fun insertBox(box: BoxEntity): Long = boxDao.insertBox(box)
+    suspend fun insertBox(box: BoxEntity): Long {
+        // Check if box with same name already exists
+        val existing = boxDao.getBoxByName(box.name)
+        if (existing != null) {
+            throw IllegalArgumentException("Box with name '${box.name}' already exists")
+        }
+        return boxDao.insertBox(box)
+    }
 
     suspend fun createBox(name: String, description: String?, warehouseLocation: String?): Long {
         val box = BoxEntity(

@@ -745,12 +745,23 @@ class ExportImportViewModel(
             var importedPackageRelations = 0
             var importedBoxRelations = 0
 
-            // Step 1: Import contractors first (no dependencies)
+            // Step 1: Import contractors first (no dependencies) - UPSERT by name
             val contractorIdMap = mutableMapOf<Long, Long>()
             exportData.contractors.forEach { contractor ->
                 try {
                     val oldId = contractor.id
-                    val newId = contractorRepository.insertContractor(contractor.copy(id = 0))
+                    // Check if contractor with same name exists
+                    val existingContractors = contractorRepository.getAllContractors().first()
+                    val existing = existingContractors.find { it.name.equals(contractor.name, ignoreCase = true) }
+                    
+                    val newId = if (existing != null) {
+                        // Update existing contractor
+                        contractorRepository.updateContractor(contractor.copy(id = existing.id))
+                        existing.id
+                    } else {
+                        // Insert new contractor
+                        contractorRepository.insertContractor(contractor.copy(id = 0))
+                    }
                     contractorIdMap[oldId] = newId
                     importedContractors++
                 } catch (e: Exception) {
@@ -758,22 +769,46 @@ class ExportImportViewModel(
                 }
             }
 
-            // Step 2: Import templates (no dependencies)
+            // Step 2: Import templates (no dependencies) - UPSERT by name
             exportData.templates.forEach { template ->
                 try {
-                    templateRepository.insertTemplate(template.copy(id = 0))
+                    // Check if template with same name exists
+                    val existingTemplates = templateRepository.getAllTemplates().first()
+                    val existing = existingTemplates.find { it.name.equals(template.name, ignoreCase = true) }
+                    
+                    if (existing != null) {
+                        // Update existing template
+                        templateRepository.updateTemplate(template.copy(id = existing.id))
+                    } else {
+                        // Insert new template
+                        templateRepository.insertTemplate(template.copy(id = 0))
+                    }
                     importedTemplates++
                 } catch (e: Exception) {
                     AppLogger.w("Import", "Skipped template: ${template.name}", e)
                 }
             }
 
-            // Step 3: Import products and track ID mapping (old ID -> new ID)
+            // Step 3: Import products and track ID mapping (old ID -> new ID) - UPSERT by serialNumber
             val productIdMap = mutableMapOf<Long, Long>()
             exportData.products.forEach { product ->
                 try {
                     val oldId = product.id
-                    val newId = productRepository.insertProduct(product.copy(id = 0))
+                    // Check if product with same serial number exists
+                    val existingProducts = productRepository.getAllProducts().first()
+                    val existing = existingProducts.find { 
+                        it.serialNumber != null && 
+                        it.serialNumber.equals(product.serialNumber, ignoreCase = true) 
+                    }
+                    
+                    val newId = if (existing != null) {
+                        // Update existing product
+                        productRepository.updateProduct(product.copy(id = existing.id))
+                        existing.id
+                    } else {
+                        // Insert new product
+                        productRepository.insertProduct(product.copy(id = 0))
+                    }
                     productIdMap[oldId] = newId
                     importedProducts++
                 } catch (e: Exception) {
@@ -781,16 +816,26 @@ class ExportImportViewModel(
                 }
             }
 
-            // Step 4: Import packages and track ID mapping (old ID -> new ID)
+            // Step 4: Import packages and track ID mapping (old ID -> new ID) - UPSERT by name
             val packageIdMap = mutableMapOf<Long, Long>()
             exportData.packages.forEach { pkg ->
                 try {
                     val oldId = pkg.id
+                    // Check if package with same name exists
+                    val existingPackages = packageRepository.getAllPackages().first()
+                    val existing = existingPackages.find { it.name.equals(pkg.name, ignoreCase = true) }
+                    
                     // Remap contractor ID if exists
                     val newContractorId = pkg.contractorId?.let { contractorIdMap[it] }
-                    val newId = packageRepository.insertPackage(
-                        pkg.copy(id = 0, contractorId = newContractorId)
-                    )
+                    
+                    val newId = if (existing != null) {
+                        // Update existing package
+                        packageRepository.updatePackage(pkg.copy(id = existing.id, contractorId = newContractorId ?: existing.contractorId))
+                        existing.id
+                    } else {
+                        // Insert new package
+                        packageRepository.insertPackage(pkg.copy(id = 0, contractorId = newContractorId))
+                    }
                     packageIdMap[oldId] = newId
                     importedPackages++
                 } catch (e: Exception) {
@@ -798,12 +843,23 @@ class ExportImportViewModel(
                 }
             }
 
-            // Step 5: Import boxes and track ID mapping
+            // Step 5: Import boxes and track ID mapping - UPSERT by name
             val boxIdMap = mutableMapOf<Long, Long>()
             exportData.boxes.forEach { box ->
                 try {
                     val oldId = box.id
-                    val newId = boxRepository.insertBox(box.copy(id = 0))
+                    // Check if box with same name exists
+                    val existingBoxes = boxRepository.getAllBoxes().first()
+                    val existing = existingBoxes.find { it.name.equals(box.name, ignoreCase = true) }
+                    
+                    val newId = if (existing != null) {
+                        // Update existing box
+                        boxRepository.updateBox(box.copy(id = existing.id))
+                        existing.id
+                    } else {
+                        // Insert new box
+                        boxRepository.insertBox(box.copy(id = 0))
+                    }
                     boxIdMap[oldId] = newId
                     importedBoxes++
                 } catch (e: Exception) {
