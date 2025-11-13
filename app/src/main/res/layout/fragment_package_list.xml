@@ -209,6 +209,14 @@
             android:textAllCaps="false" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/archiveSelectedButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Archive"
+            android:textAllCaps="false" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/deleteSelectedButton"
             style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="wrap_content"

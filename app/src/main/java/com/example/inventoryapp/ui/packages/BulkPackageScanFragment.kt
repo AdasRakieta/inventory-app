@@ -47,7 +47,7 @@ class BulkPackageScanFragment : Fragment() {
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         val database = AppDatabase.getDatabase(requireContext())
-        packageRepository = PackageRepository(database.packageDao(), database.productDao())
+        packageRepository = PackageRepository(database.packageDao(), database.productDao(), database.boxDao())
         productRepository = ProductRepository(database.productDao())
     }
 

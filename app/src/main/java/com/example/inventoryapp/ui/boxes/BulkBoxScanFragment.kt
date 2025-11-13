@@ -47,7 +47,7 @@ class BulkBoxScanFragment : Fragment() {
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         val database = AppDatabase.getDatabase(requireContext())
-        boxRepository = BoxRepository(database.boxDao(), database.productDao())
+        boxRepository = BoxRepository(database.boxDao(), database.productDao(), database.packageDao())
         productRepository = ProductRepository(database.productDao())
     }
 

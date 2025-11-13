@@ -13,6 +13,7 @@ import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.inventoryapp.databinding.FragmentProductSelectionBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
+import com.example.inventoryapp.data.models.AddProductResult
 import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductRepository
 import kotlinx.coroutines.flow.collect
@@ -32,7 +33,7 @@ class ProductSelectionFragment : Fragment() {
         
         val database = AppDatabase.getDatabase(requireContext())
         val productRepository = ProductRepository(database.productDao())
-        val packageRepository = PackageRepository(database.packageDao(), database.productDao())
+        val packageRepository = PackageRepository(database.packageDao(), database.productDao(), database.boxDao())
         val factory = ProductSelectionViewModelFactory(
             productRepository,
             packageRepository,
@@ -135,12 +136,39 @@ class ProductSelectionFragment : Fragment() {
             }
             
             viewLifecycleOwner.lifecycleScope.launch {
-                viewModel.addProductsToPackage(selectedIds)
-                Toast.makeText(
-                    requireContext(),
-                    "${selectedIds.size} product(s) added to package",
-                    Toast.LENGTH_SHORT
-                ).show()
+                val results = viewModel.addProductsToPackage(selectedIds)
+                
+                // Count successful additions
+                val successCount = results.count { it is AddProductResult.Success || it is AddProductResult.TransferredFromBox }
+                val errorMessages = results.filterIsInstance<AddProductResult.Error>().map { it.message }
+                
+                // Show success message
+                if (successCount > 0) {
+                    Toast.makeText(
+                        requireContext(),
+                        "$successCount product(s) added to package",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                
+                // Show transfer messages
+                results.filterIsInstance<AddProductResult.TransferredFromBox>().forEach { result ->
+                    Toast.makeText(
+                        requireContext(),
+                        "Product transferred from box: ${result.boxName}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                
+                // Show error messages
+                errorMessages.forEach { message ->
+                    Toast.makeText(
+                        requireContext(),
+                        message,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                
                 findNavController().navigateUp()
             }
         }

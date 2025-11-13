@@ -10,13 +10,16 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PackageDao {
-    @Query("SELECT * FROM packages ORDER BY createdAt DESC")
+    @Query("SELECT * FROM packages WHERE archived = 0 ORDER BY createdAt DESC")
     fun getAllPackages(): Flow<List<PackageEntity>>
+
+    @Query("SELECT * FROM packages WHERE archived = 1 ORDER BY createdAt DESC")
+    fun getArchivedPackages(): Flow<List<PackageEntity>>
 
     @Query("SELECT * FROM packages WHERE id = :packageId")
     fun getPackageById(packageId: Long): Flow<PackageEntity?>
 
-    @Query("SELECT * FROM packages WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+    @Query("SELECT * FROM packages WHERE LOWER(name) = LOWER(:name) AND status != 'RETURNED' LIMIT 1")
     suspend fun getPackageByName(name: String): PackageEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -60,10 +63,21 @@ interface PackageDao {
         SELECT packages.*, COUNT(package_product_cross_ref.productId) as productCount
         FROM packages
         LEFT JOIN package_product_cross_ref ON packages.id = package_product_cross_ref.packageId
+        WHERE packages.archived = 0
         GROUP BY packages.id
         ORDER BY packages.createdAt DESC
     """)
     fun getAllPackagesWithCount(): Flow<List<PackageWithCount>>
+    
+    @Query("""
+        SELECT packages.*, COUNT(package_product_cross_ref.productId) as productCount
+        FROM packages
+        LEFT JOIN package_product_cross_ref ON packages.id = package_product_cross_ref.packageId
+        WHERE packages.archived = 1
+        GROUP BY packages.id
+        ORDER BY packages.createdAt DESC
+    """)
+    fun getArchivedPackagesWithCount(): Flow<List<PackageWithCount>>
 }
 
 data class PackageWithCount(

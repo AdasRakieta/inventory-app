@@ -173,12 +173,12 @@ class ExportImportFragment : Fragment() {
     private fun setupViewModel() {
         val database = AppDatabase.getDatabase(requireContext())
         productRepository = ProductRepository(database.productDao())
-        packageRepository = PackageRepository(database.packageDao(), database.productDao())
+        packageRepository = PackageRepository(database.packageDao(), database.productDao(), database.boxDao())
         templateRepository = ProductTemplateRepository(database.productTemplateDao())
-        boxRepository = com.example.inventoryapp.data.repository.BoxRepository(database.boxDao(), database.productDao())
+        boxRepository = com.example.inventoryapp.data.repository.BoxRepository(database.boxDao(), database.productDao(), database.packageDao())
         contractorRepository = com.example.inventoryapp.data.repository.ContractorRepository(database.contractorDao())
         val backupRepository = com.example.inventoryapp.data.repository.ImportBackupRepository(database.importBackupDao())
-        val boxRepository = com.example.inventoryapp.data.repository.BoxRepository(database.boxDao(), database.productDao())
+        val boxRepository = com.example.inventoryapp.data.repository.BoxRepository(database.boxDao(), database.productDao(), database.packageDao())
         val contractorRepository = com.example.inventoryapp.data.repository.ContractorRepository(database.contractorDao())
         
         // Initialize Zebra printer manager

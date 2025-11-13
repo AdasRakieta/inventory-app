@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.inventoryapp.data.local.entities.ContractorEntity
 import com.example.inventoryapp.data.local.entities.PackageEntity
 import com.example.inventoryapp.data.local.entities.ProductEntity
+import com.example.inventoryapp.data.models.AddProductResult
 import com.example.inventoryapp.data.repository.ContractorRepository
 import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductRepository
@@ -30,6 +31,13 @@ class PackageDetailsViewModel(
 
     private val _contractor = MutableStateFlow<ContractorEntity?>(null)
     val contractor: StateFlow<ContractorEntity?> = _contractor.asStateFlow()
+
+    private val _addProductResult = MutableStateFlow<AddProductResult?>(null)
+    val addProductResult: StateFlow<AddProductResult?> = _addProductResult.asStateFlow()
+
+    fun resetAddProductResult() {
+        _addProductResult.value = null
+    }
 
     init {
         loadPackage()
@@ -104,7 +112,10 @@ class PackageDetailsViewModel(
                 }
                 
                 // Add product to package
-                packageRepository.addProductToPackage(packageId, productToAdd.id)
+                val result = packageRepository.addProductToPackage(packageId, productToAdd.id)
+                
+                // Return result for fragment to handle
+                _addProductResult.value = result
                 
             } catch (e: Exception) {
                 // Error will be handled in the fragment
@@ -124,15 +135,8 @@ class PackageDetailsViewModel(
         }
     }
     
-    fun addProductToPackage(productId: Long) {
-        viewModelScope.launch {
-            try {
-                packageRepository.addProductToPackage(packageId, productId)
-            } catch (e: Exception) {
-                // Error will be handled in the fragment
-                throw e
-            }
-        }
+    suspend fun addProductToPackage(productId: Long): AddProductResult {
+        return packageRepository.addProductToPackage(packageId, productId)
     }
 
     fun updatePackageStatus(newStatus: String) {
@@ -148,6 +152,10 @@ class PackageDetailsViewModel(
                         status = newStatus,
                         deliveredAt = System.currentTimeMillis()
                     )
+                    "RETURNED" -> currentPackage.copy(
+                        status = newStatus,
+                        deliveredAt = System.currentTimeMillis() // Use deliveredAt for returned timestamp
+                    )
                     else -> currentPackage.copy(status = newStatus)
                 }
                 packageRepository.updatePackage(updatedPackage)
@@ -155,6 +163,12 @@ class PackageDetailsViewModel(
                 // Error will be handled in the fragment
                 throw e
             }
+        }
+    }
+
+    fun archivePackage() {
+        viewModelScope.launch {
+            packageRepository.archivePackage(packageId)
         }
     }
 

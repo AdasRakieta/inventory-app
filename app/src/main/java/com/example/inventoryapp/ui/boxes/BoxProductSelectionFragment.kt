@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.inventoryapp.data.models.AddProductResult
 import com.example.inventoryapp.databinding.FragmentBoxProductSelectionBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.BoxRepository
@@ -36,7 +37,7 @@ class BoxProductSelectionFragment : Fragment() {
         
         val database = AppDatabase.getDatabase(requireContext())
         val productRepository = ProductRepository(database.productDao())
-        val boxRepository = BoxRepository(database.boxDao(), database.productDao())
+        val boxRepository = BoxRepository(database.boxDao(), database.productDao(), database.packageDao())
         val factory = BoxProductSelectionViewModelFactory(
             productRepository,
             boxRepository,
@@ -137,12 +138,50 @@ class BoxProductSelectionFragment : Fragment() {
             }
             
             viewLifecycleOwner.lifecycleScope.launch {
-                viewModel.addProductsToBox(selectedIds)
-                Toast.makeText(
-                    requireContext(),
-                    "${selectedIds.size} product(s) added to box",
-                    Toast.LENGTH_SHORT
-                ).show()
+                val results = viewModel.addProductsToBox(selectedIds)
+                
+                // Count successful additions
+                val successCount = results.count { it is AddProductResult.Success || it is AddProductResult.TransferredFromPackage }
+                val errorMessages = results.filterIsInstance<AddProductResult.Error>().map { it.message }
+                val blockedMessages = results.filterIsInstance<AddProductResult.AlreadyInActivePackage>()
+                    .map { "This device is in package: ${it.packageName} with status: ${it.status}" }
+                
+                // Show success message
+                if (successCount > 0) {
+                    Toast.makeText(
+                        requireContext(),
+                        "$successCount product(s) added to box",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                
+                // Show transfer messages
+                results.filterIsInstance<AddProductResult.TransferredFromPackage>().forEach { result ->
+                    Toast.makeText(
+                        requireContext(),
+                        "Product transferred from package: ${result.packageName}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                
+                // Show blocking messages
+                blockedMessages.forEach { message ->
+                    Toast.makeText(
+                        requireContext(),
+                        message,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                
+                // Show error messages
+                errorMessages.forEach { message ->
+                    Toast.makeText(
+                        requireContext(),
+                        message,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                
                 findNavController().navigateUp()
             }
         }

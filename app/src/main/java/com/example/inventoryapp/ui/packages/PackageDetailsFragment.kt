@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.inventoryapp.databinding.FragmentPackageDetailsBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.local.entities.CategoryEntity
+import com.example.inventoryapp.data.models.AddProductResult
 import com.example.inventoryapp.data.repository.ContractorRepository
 import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductRepository
@@ -43,7 +44,7 @@ class PackageDetailsFragment : Fragment() {
         super.onCreate(savedInstanceState)
         
         val database = AppDatabase.getDatabase(requireContext())
-        val packageRepository = PackageRepository(database.packageDao(), database.productDao())
+        val packageRepository = PackageRepository(database.packageDao(), database.productDao(), database.boxDao())
         val productRepository = ProductRepository(database.productDao())
         val contractorRepository = ContractorRepository(database.contractorDao())
         val factory = PackageDetailsViewModelFactory(packageRepository, productRepository, contractorRepository, args.packageId)
@@ -68,6 +69,7 @@ class PackageDetailsFragment : Fragment() {
         observePackage()
         observeProducts()
         observeContractor()
+        observeAddProductResult()
     }
 
     private fun setupRecyclerView() {
@@ -108,6 +110,10 @@ class PackageDetailsFragment : Fragment() {
         
         binding.changeStatusButton.setOnClickListener {
             showChangeStatusDialog()
+        }
+        
+        binding.archivePackageButton.setOnClickListener {
+            showArchiveConfirmationDialog()
         }
         
         binding.deletePackageButton.setOnClickListener {
@@ -163,6 +169,28 @@ class PackageDetailsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.contractor.collect { contractor ->
                 binding.packageContractorText.text = contractor?.name ?: "No contractor assigned"
+            }
+        }
+    }
+
+    private fun observeAddProductResult() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.addProductResult.collect { result ->
+                result?.let {
+                    when (it) {
+                        is AddProductResult.Success -> {
+                            Toast.makeText(requireContext(), "Product added to package", Toast.LENGTH_SHORT).show()
+                        }
+                        is AddProductResult.TransferredFromBox -> {
+                            Toast.makeText(requireContext(), "Product transferred from box: ${it.boxName}", Toast.LENGTH_SHORT).show()
+                        }
+                        is AddProductResult.Error -> {
+                            Toast.makeText(requireContext(), it.message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    // Reset result
+                    viewModel.resetAddProductResult()
+                }
             }
         }
     }
@@ -239,6 +267,31 @@ class PackageDetailsFragment : Fragment() {
             .show()
     }
 
+    private fun showArchiveConfirmationDialog() {
+        val currentPackage = viewModel.packageEntity.value ?: return
+        
+        // Only allow archiving RETURNED packages
+        if (currentPackage.status != "RETURNED") {
+            Toast.makeText(
+                requireContext(),
+                "Only returned packages can be archived",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        
+        AlertDialog.Builder(requireContext())
+            .setTitle("Archive Package")
+            .setMessage("Archive \"${currentPackage.name}\"? Archived packages will be moved to the Archive tab.")
+            .setPositiveButton("Archive") { _, _ ->
+                viewModel.archivePackage()
+                Toast.makeText(requireContext(), "Package archived", Toast.LENGTH_SHORT).show()
+                findNavController().navigateUp()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun showDeleteConfirmationDialog() {
         val currentPackage = viewModel.packageEntity.value ?: return
         
@@ -265,7 +318,7 @@ class PackageDetailsFragment : Fragment() {
     private fun showChangeStatusDialog() {
         val currentPackage = viewModel.packageEntity.value ?: return
         
-        val statuses = arrayOf("PREPARATION", "READY", "SHIPPED", "DELIVERED")
+        val statuses = CategoryHelper.PackageStatus.PACKAGE_STATUSES
         val currentStatusIndex = statuses.indexOf(currentPackage.status)
         
         AlertDialog.Builder(requireContext())

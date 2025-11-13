@@ -99,6 +99,15 @@
     </fragment>
 
     <fragment
+        android:id="@+id/archiveFragment"
+        android:name="com.example.inventoryapp.ui.archive.ArchiveFragment"
+        android:label="Archive">
+        <action
+            android:id="@+id/action_archive_to_package_details"
+            app:destination="@id/packageDetailsFragment" />
+    </fragment>
+
+    <fragment
         android:id="@+id/packageDetailsFragment"
         android:name="com.example.inventoryapp.ui.packages.PackageDetailsFragment"
         android:label="@string/package_details">

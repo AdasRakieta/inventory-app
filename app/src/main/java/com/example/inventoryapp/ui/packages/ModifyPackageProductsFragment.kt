@@ -32,7 +32,7 @@ class ModifyPackageProductsFragment : Fragment() {
         
         val database = AppDatabase.getDatabase(requireContext())
         val productRepository = ProductRepository(database.productDao())
-        val packageRepository = PackageRepository(database.packageDao(), database.productDao())
+        val packageRepository = PackageRepository(database.packageDao(), database.productDao(), database.boxDao())
         val factory = ModifyPackageProductsViewModelFactory(
             productRepository,
             packageRepository,

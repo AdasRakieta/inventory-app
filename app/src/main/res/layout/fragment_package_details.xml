@@ -270,6 +270,15 @@
             android:layout_marginBottom="8dp" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/archivePackageButton"
+            style="@style/Widget.App.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Archive Package"
+            android:textAllCaps="false"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/deletePackageButton"
             style="@style/Widget.App.Button.Outlined"
             android:layout_width="match_parent"

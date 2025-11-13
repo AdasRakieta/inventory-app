@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.inventoryapp.data.local.entities.ProductEntity
+import com.example.inventoryapp.data.models.AddProductResult
 import com.example.inventoryapp.data.repository.BoxRepository
 import com.example.inventoryapp.data.repository.ProductRepository
 import kotlinx.coroutines.flow.collect
@@ -76,8 +77,8 @@ class BoxProductSelectionViewModel(
         _availableProducts.value = filtered
     }
 
-    suspend fun addProductsToBox(productIds: Set<Long>) {
-        productIds.forEach { productId ->
+    suspend fun addProductsToBox(productIds: Set<Long>): List<AddProductResult> {
+        return productIds.map { productId: Long ->
             boxRepository.addProductToBox(boxId, productId)
         }
     }

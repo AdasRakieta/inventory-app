@@ -18,6 +18,7 @@ import com.example.inventoryapp.databinding.FragmentPackageListBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.ContractorRepository
 import com.example.inventoryapp.data.repository.PackageRepository
+import com.example.inventoryapp.utils.CategoryHelper
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -34,7 +35,7 @@ class PackageListFragment : Fragment() {
         super.onCreate(savedInstanceState)
         
         val database = AppDatabase.getDatabase(requireContext())
-        val repository = PackageRepository(database.packageDao(), database.productDao())
+        val repository = PackageRepository(database.packageDao(), database.productDao(), database.boxDao())
         val contractorRepository = ContractorRepository(database.contractorDao())
         val factory = PackagesViewModelFactory(repository, contractorRepository)
         val vm: PackagesViewModel by viewModels { factory }
@@ -113,6 +114,12 @@ class PackageListFragment : Fragment() {
             }
         }
 
+        binding.archiveSelectedButton.setOnClickListener {
+            if (adapter.getSelectedCount() > 0) {
+                showArchiveConfirmationDialog()
+            }
+        }
+
         binding.bulkEditButton.setOnClickListener {
             if (adapter.getSelectedCount() > 0) {
                 showBulkEditDialog()
@@ -152,6 +159,52 @@ class PackageListFragment : Fragment() {
                 .translationY(0f)
                 .setDuration(200)
                 .start()
+        }
+    }
+
+    private fun showArchiveConfirmationDialog() {
+        val count = adapter.getSelectedCount()
+        val selectedIds = adapter.getSelectedPackages()
+        
+        // Check if all selected packages are RETURNED
+        viewLifecycleOwner.lifecycleScope.launch {
+            val packages = selectedIds.mapNotNull { id ->
+                viewModel.getPackageById(id)
+            }
+            
+            val nonReturnedCount = packages.count { it.status != "RETURNED" }
+            
+            if (nonReturnedCount > 0) {
+                Toast.makeText(
+                    requireContext(),
+                    "Only returned packages can be archived. $nonReturnedCount package(s) are not returned.",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@launch
+            }
+            
+            // All selected packages are RETURNED, proceed
+            AlertDialog.Builder(requireContext())
+                .setTitle("Archive Packages")
+                .setMessage("Archive $count selected package(s)? They will be moved to the Archive tab.")
+                .setPositiveButton("Archive") { _, _ ->
+                    archiveSelectedPackages()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+    }
+
+    private fun archiveSelectedPackages() {
+        val selectedIds = adapter.getSelectedPackages()
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.archivePackages(selectedIds)
+            Toast.makeText(
+                requireContext(),
+                "Archived ${selectedIds.size} package(s)",
+                Toast.LENGTH_SHORT
+            ).show()
+            exitSelectionMode()
         }
     }
 
@@ -214,7 +267,7 @@ class PackageListFragment : Fragment() {
     }
 
     private fun showStatusFilterDialog() {
-        val statuses = listOf("PREPARATION", "READY", "SHIPPED", "DELIVERED")
+        val statuses = CategoryHelper.PackageStatus.PACKAGE_STATUSES.toList()
         val checkedItems = BooleanArray(statuses.size)
         
         // Initialize checked states based on current filters
@@ -413,11 +466,11 @@ class PackageListFragment : Fragment() {
     }
 
     private fun showBulkStatusChangeDialog() {
-        val statuses = arrayOf("PREPARATION", "READY", "SHIPPED", "DELIVERED")
+        val statuses = CategoryHelper.PackageStatus.PACKAGE_STATUSES
         
         AlertDialog.Builder(requireContext())
             .setTitle("Change Status")
-            .setItems(statuses) { _, which ->
+            .setItems(statuses as Array<CharSequence>) { _, which ->
                 val newStatus = statuses[which]
                 val selectedIds = adapter.getSelectedPackages()
                 

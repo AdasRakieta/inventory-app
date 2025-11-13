@@ -88,7 +88,7 @@ class HomeFragment : Fragment() {
     private fun loadStatistics() {
         val database = AppDatabase.getDatabase(requireContext())
         val productRepository = ProductRepository(database.productDao())
-        val packageRepository = PackageRepository(database.packageDao(), database.productDao())
+        val packageRepository = PackageRepository(database.packageDao(), database.productDao(), database.boxDao())
         val categoryDao = database.categoryDao()
 
         // Initialize default categories if none exist

@@ -9,8 +9,10 @@ data class PackageEntity(
     val id: Long = 0,
     val name: String,
     val contractorId: Long? = null, // Optional contractor assignment
-    val status: String = "PREPARATION", // PREPARATION, READY, SHIPPED, DELIVERED
+    val status: String = "PREPARATION", // PREPARATION, READY, SHIPPED, DELIVERED, RETURNED
     val createdAt: Long = System.currentTimeMillis(),
     val shippedAt: Long? = null,
-    val deliveredAt: Long? = null
+    val deliveredAt: Long? = null,
+    val returnedAt: Long? = null, // Date when package was returned
+    val archived: Boolean = false // Whether package is archived (only RETURNED packages can be archived)
 )

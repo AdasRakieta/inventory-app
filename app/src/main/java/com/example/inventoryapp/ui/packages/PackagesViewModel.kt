@@ -146,6 +146,22 @@ class PackagesViewModel(
     }
     
     /**
+     * Archive packages (only RETURNED packages can be archived)
+     */
+    fun archivePackages(packageIds: List<Long>) {
+        viewModelScope.launch {
+            packageRepository.archivePackages(packageIds)
+        }
+    }
+    
+    /**
+     * Get package by ID for validation
+     */
+    suspend fun getPackageById(packageId: Long): PackageEntity? {
+        return packageRepository.getPackageById(packageId).first()
+    }
+    
+    /**
      * Bulk update status for multiple packages
      */
     fun bulkUpdateStatus(packageIds: Set<Long>, newStatus: String) {

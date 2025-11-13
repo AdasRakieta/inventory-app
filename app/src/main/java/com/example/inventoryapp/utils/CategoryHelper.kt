@@ -108,4 +108,30 @@ object CategoryHelper {
         
         return "Serial number must start with '$requiredPrefix' (e.g., ${requiredPrefix}001, ${requiredPrefix}12345)"
     }
+
+    // Package status constants
+    object PackageStatus {
+        const val PREPARATION = "PREPARATION"
+        const val READY = "READY"
+        const val SHIPPED = "SHIPPED"
+        const val DELIVERED = "DELIVERED"
+        const val RETURNED = "RETURNED"
+        const val UNASSIGNED = "UNASSIGNED"
+
+        val ALL_STATUSES = arrayOf(PREPARATION, READY, SHIPPED, DELIVERED, RETURNED)
+        val PACKAGE_STATUSES = arrayOf(PREPARATION, READY, SHIPPED, DELIVERED, RETURNED)
+        val FILTER_STATUSES = arrayOf(PREPARATION, READY, SHIPPED, DELIVERED, RETURNED, UNASSIGNED)
+
+        fun getDisplayName(status: String): String {
+            return when (status) {
+                PREPARATION -> "📦 Preparation"
+                READY -> "✅ Ready"
+                SHIPPED -> "🚚 Shipped"
+                DELIVERED -> "📬 Delivered"
+                RETURNED -> "↩️ Returned"
+                UNASSIGNED -> "❓ Unassigned"
+                else -> status
+            }
+        }
+    }
 }

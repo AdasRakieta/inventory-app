@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.inventoryapp.data.local.entities.BoxEntity
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.local.entities.ProductWithCategory
+import com.example.inventoryapp.data.models.AddProductResult
 import com.example.inventoryapp.data.repository.BoxRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,12 +40,8 @@ class BoxDetailsViewModel(
     /**
      * Add a product to the box by productId
      */
-    suspend fun addProductToBox(boxId: Long, productId: Long) {
-        try {
-            boxRepository.addProductToBox(boxId, productId)
-        } catch (e: Exception) {
-            errorMessage.value = "Nie udało się dodać produktu: ${e.message}"
-        }
+    suspend fun addProductToBox(boxId: Long, productId: Long): AddProductResult {
+        return boxRepository.addProductToBox(boxId, productId)
     }
 
     init {

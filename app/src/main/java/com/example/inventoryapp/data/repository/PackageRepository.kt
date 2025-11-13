@@ -1,11 +1,14 @@
 package com.example.inventoryapp.data.repository
 
 import com.example.inventoryapp.data.local.dao.PackageDao
+import com.example.inventoryapp.data.local.dao.BoxDao
 import com.example.inventoryapp.data.local.dao.ProductDao
 import com.example.inventoryapp.data.local.dao.PackageWithCount
 import com.example.inventoryapp.data.local.entities.PackageEntity
-import com.example.inventoryapp.data.local.entities.PackageProductCrossRef
 import com.example.inventoryapp.data.local.entities.ProductEntity
+import com.example.inventoryapp.data.local.entities.PackageProductCrossRef
+import com.example.inventoryapp.data.local.entities.BoxProductCrossRef
+import com.example.inventoryapp.data.models.AddProductResult
 import com.example.inventoryapp.data.models.PackageExportData
 import com.example.inventoryapp.data.models.PackageImportResult
 import kotlinx.coroutines.flow.Flow
@@ -13,12 +16,17 @@ import kotlinx.coroutines.flow.first
 
 class PackageRepository(
     private val packageDao: PackageDao,
-    private val productDao: ProductDao
+    private val productDao: ProductDao,
+    private val boxDao: BoxDao
 ) {
     
     fun getAllPackages(): Flow<List<PackageEntity>> = packageDao.getAllPackages()
     
     fun getAllPackagesWithCount(): Flow<List<PackageWithCount>> = packageDao.getAllPackagesWithCount()
+    
+    fun getArchivedPackages(): Flow<List<PackageEntity>> = packageDao.getArchivedPackages()
+    
+    fun getArchivedPackagesWithCount(): Flow<List<PackageWithCount>> = packageDao.getArchivedPackagesWithCount()
     
     fun getPackageById(packageId: Long): Flow<PackageEntity?> = 
         packageDao.getPackageById(packageId)
@@ -41,8 +49,23 @@ class PackageRepository(
     suspend fun deletePackageById(packageId: Long) =
         packageDao.deletePackageById(packageId)
     
-    suspend fun addProductToPackage(packageId: Long, productId: Long) =
-        packageDao.addProductToPackage(PackageProductCrossRef(packageId, productId))
+    suspend fun addProductToPackage(packageId: Long, productId: Long): AddProductResult {
+        return try {
+            // Check if product is already in a box, remove it if so
+            val existingBox = boxDao.getBoxForProduct(productId).first()
+            if (existingBox != null) {
+                boxDao.removeProductFromBoxById(existingBox.id, productId)
+                packageDao.addProductToPackage(PackageProductCrossRef(packageId, productId))
+                return AddProductResult.TransferredFromBox(existingBox.name)
+            }
+
+            // Product not in any box, just add it
+            packageDao.addProductToPackage(PackageProductCrossRef(packageId, productId))
+            AddProductResult.Success
+        } catch (e: Exception) {
+            AddProductResult.Error("Failed to add product to package: ${e.message}")
+        }
+    }
     
     suspend fun removeProductFromPackage(packageId: Long, productId: Long) =
         packageDao.removeProductFromPackage(PackageProductCrossRef(packageId, productId))
@@ -58,6 +81,35 @@ class PackageRepository(
     
     suspend fun removeAllProductsFromPackage(packageId: Long) =
         packageDao.removeAllProductsFromPackage(packageId)
+    
+    /**
+     * Archive a package (only RETURNED packages can be archived)
+     */
+    suspend fun archivePackage(packageId: Long) {
+        val pkg = getPackageById(packageId).first() ?: return
+        if (pkg.status == "RETURNED") {
+            val archivedPackage = pkg.copy(archived = true)
+            updatePackage(archivedPackage)
+        }
+    }
+    
+    /**
+     * Unarchive a package (restore to active packages list)
+     */
+    suspend fun unarchivePackage(packageId: Long) {
+        val pkg = getPackageById(packageId).first() ?: return
+        val unarchivedPackage = pkg.copy(archived = false)
+        updatePackage(unarchivedPackage)
+    }
+    
+    /**
+     * Archive multiple packages at once
+     */
+    suspend fun archivePackages(packageIds: List<Long>) {
+        packageIds.forEach { packageId ->
+            archivePackage(packageId)
+        }
+    }
     
     /**
      * Export package data for QR code sharing
@@ -102,16 +154,16 @@ class PackageRepository(
                         null
                     }
                     
-                    val productId = if (existingProduct != null) {
+                    val productId = existingProduct?.let { product ->
                         // Product with matching SN exists - update it
                         val updatedProduct = importedProduct.copy(
-                            id = existingProduct.id,
+                            id = product.id,
                             updatedAt = System.currentTimeMillis()
                         )
                         productDao.updateProduct(updatedProduct)
                         productsUpdated++
-                        existingProduct.id
-                    } else {
+                        product.id
+                    } ?: run {
                         // New product - insert it
                         val newProduct = importedProduct.copy(
                             id = 0, // Let database assign new ID
@@ -159,7 +211,22 @@ class PackageRepository(
      */
     suspend fun updatePackageStatus(packageId: Long, newStatus: String) {
         val packageEntity = getPackageById(packageId).first() ?: return
-        val updatedPackage = packageEntity.copy(status = newStatus)
+        
+        val updatedPackage = when (newStatus) {
+            "SHIPPED" -> packageEntity.copy(
+                status = newStatus,
+                shippedAt = System.currentTimeMillis()
+            )
+            "DELIVERED" -> packageEntity.copy(
+                status = newStatus,
+                deliveredAt = System.currentTimeMillis()
+            )
+            "RETURNED" -> packageEntity.copy(
+                status = newStatus,
+                returnedAt = System.currentTimeMillis()
+            )
+            else -> packageEntity.copy(status = newStatus)
+        }
         updatePackage(updatedPackage)
     }
     

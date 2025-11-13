@@ -35,7 +35,7 @@ class ProductsListFragment : Fragment() {
         
         val database = AppDatabase.getDatabase(requireContext())
         val productRepository = ProductRepository(database.productDao())
-        val packageRepository = PackageRepository(database.packageDao(), database.productDao())
+        val packageRepository = PackageRepository(database.packageDao(), database.productDao(), database.boxDao())
         val factory = ProductsViewModelFactory(productRepository, packageRepository)
         val vm: ProductsViewModel by viewModels { factory }
         viewModel = vm
@@ -240,16 +240,9 @@ class ProductsListFragment : Fragment() {
     }
     
     private fun showPackageStatusFilterDialog() {
-        val statuses = listOf("PREPARATION", "READY", "SHIPPED", "DELIVERED", "UNASSIGNED")
+        val statuses = CategoryHelper.PackageStatus.FILTER_STATUSES.toList()
         val statusNames = statuses.map { status ->
-            when (status) {
-                "PREPARATION" -> "📦 Preparation"
-                "READY" -> "✅ Ready"
-                "SHIPPED" -> "🚚 Shipped"
-                "DELIVERED" -> "📬 Delivered"
-                "UNASSIGNED" -> "❓ Unassigned"
-                else -> status
-            }
+            CategoryHelper.PackageStatus.getDisplayName(status)
         }.toTypedArray()
         
         val selectedStatuses = viewModel.selectedPackageStatuses.value.toMutableSet()

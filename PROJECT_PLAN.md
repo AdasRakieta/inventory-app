@@ -446,6 +446,319 @@ fun getSerialNumberValidationError(serialNumber: String?, categoryId: Long?): St
 
 ---
 
+## ✅ v1.20.7 - Package Status: RETURNED (COMPLETED)
+
+**Version:** 1.20.7 (code 106)
+
+**Cel:**
+Dodanie nowego statusu "RETURNED" dla pakietów - obsługa zwrotów.
+
+**Status:** COMPLETED ✅
+
+### Problem Description:
+
+**User quote:** "Okej potrzebuję Nowy status dla packages. Returned."
+
+**Oryginalne zachowanie:**
+- Dostępne statusy pakietów: PREPARATION, READY, SHIPPED, DELIVERED
+- Brak możliwości oznaczenia pakietu jako zwróconego
+
+### Implemented Solution:
+
+#### 1. Package Status Constants (CategoryHelper):
+
+**Dodane constants dla statusów pakietów:**
+
+```kotlin
+object PackageStatus {
+    const val PREPARATION = "PREPARATION"
+    const val READY = "READY"
+    const val SHIPPED = "SHIPPED"
+    const val DELIVERED = "DELIVERED"
+    const val RETURNED = "RETURNED"
+    const val UNASSIGNED = "UNASSIGNED"
+
+    val ALL_STATUSES = arrayOf(PREPARATION, READY, SHIPPED, DELIVERED, RETURNED)
+    val PACKAGE_STATUSES = arrayOf(PREPARATION, READY, SHIPPED, DELIVERED, RETURNED)
+    val FILTER_STATUSES = arrayOf(PREPARATION, READY, SHIPPED, DELIVERED, RETURNED, UNASSIGNED)
+
+    fun getDisplayName(status: String): String {
+        return when (status) {
+            PREPARATION -> "📦 Preparation"
+            READY -> "✅ Ready"
+            SHIPPED -> "🚚 Shipped"
+            DELIVERED -> "📬 Delivered"
+            RETURNED -> "↩️ Returned"
+            UNASSIGNED -> "❓ Unassigned"
+            else -> status
+        }
+    }
+}
+```
+
+#### 2. UI Updates:
+
+**PackageDetailsFragment:**
+- Dialog zmiany statusu pojedynczego pakietu: dodany "RETURNED"
+- Używa `CategoryHelper.PackageStatus.PACKAGE_STATUSES`
+
+**PackageListFragment:**
+- Filtr statusów: dodany "RETURNED" 
+- Masowa zmiana statusu: dodany "RETURNED"
+- Używa `CategoryHelper.PackageStatus.PACKAGE_STATUSES`
+
+**ProductsListFragment:**
+- Filtr produktów po statusie pakietów: dodany "RETURNED" z ikoną ↩️
+- Używa `CategoryHelper.PackageStatus.getDisplayName()`
+
+#### 3. Business Logic Updates:
+
+**PackageDetailsViewModel:**
+- Dodana logika timestamp dla statusu "RETURNED"
+- Używa `deliveredAt` jako timestamp dla zwrotów
+
+**PackageEntity:**
+- Zaktualizowany komentarz: `// PREPARATION, READY, SHIPPED, DELIVERED, RETURNED`
+
+### Status Flow:
+
+```
+PREPARATION → READY → SHIPPED → DELIVERED
+                     ↘
+                      RETURNED (można zmienić w dowolnym momencie)
+```
+
+### Testing Results:
+
+**✅ Build:** SUCCESSFUL
+- Kompilacja bez błędów
+- Wszystkie ostrzeżenia są niekrytyczne
+
+**✅ Status Integration:**
+- ✅ RETURNED dostępny we wszystkich dialogach zmiany statusu
+- ✅ Ikona ↩️ dla statusu RETURNED w filtrach
+- ✅ Timestamp ustawiany przy zmianie na RETURNED
+- ✅ Wszystkie istniejące statusy nadal działają
+
+**✅ UI Consistency:**
+- ✅ Pojedyncza zmiana statusu pakietu
+- ✅ Masowa zmiana statusu pakietów
+- ✅ Filtrowanie produktów po statusie pakietów
+- ✅ Filtrowanie pakietów po statusie
+
+### Files Modified:
+
+1. **CategoryHelper.kt** - dodane PackageStatus constants i getDisplayName()
+2. **PackageDetailsFragment.kt** - używa PACKAGE_STATUSES
+3. **PackageListFragment.kt** - używa PACKAGE_STATUSES w filtrach i masowej zmianie
+4. **ProductsListFragment.kt** - używa getDisplayName() dla ikon statusów
+5. **PackageDetailsViewModel.kt** - dodana logika timestamp dla RETURNED
+6. **PackageEntity.kt** - zaktualizowany komentarz
+7. **build.gradle.kts** - wersja 1.20.7 (code 106)
+
+### Business Impact:
+
+**Nowe możliwości:**
+- ✅ Oznaczanie pakietów jako zwróconych
+- ✅ Śledzenie zwrotów z timestamp
+- ✅ Filtrowanie po statusie "Returned"
+- ✅ Raportowanie zwrotów
+
+**Backward Compatibility:**
+- ✅ Wszystkie istniejące pakiety bez zmian
+- ✅ Import/eksport obsługuje nowy status
+- ✅ Stare aplikacje mogą nadal działać (status zostanie rozpoznany)
+
+---
+
+## ✅ v1.21.0 - Product Exclusivity: Box OR Package (COMPLETED)
+
+**Version:** 1.21.0 (code 109)
+
+**Cel:**
+Implementacja reguły wyłączności - produkt może być tylko w jednej paczce LUB jednej skrzyni, nigdy w obu jednocześnie.
+
+**Status:** COMPLETED ✅
+
+### Problem Description:
+
+**User Requirements:**
+- Produkty nie mogą być jednocześnie w paczce i skrzyni
+- Przy dodawaniu produktu do paczki: jeśli już jest w skrzyni → automatycznie usuń ze skrzyni
+- Przy dodawaniu produktu do skrzyni: jeśli już jest w paczce → automatycznie usuń z paczki
+- Nazwy skrzyń i paczek nie mogą się powtarzać (wyjątek: zwrócone paczki mogą używać nazw ponownie)
+- Dodanie pól śledzenia wysyłki: shippedAt, deliveredAt, returnedAt dla paczek
+
+### Implemented Solution:
+
+#### 1. Database Schema Changes:
+
+**New PackageEntity fields:**
+```kotlin
+data class PackageEntity(
+    // ... existing fields ...
+    val shippedAt: Long? = null,    // Timestamp when package was shipped
+    val deliveredAt: Long? = null,  // Timestamp when package was delivered  
+    val returnedAt: Long? = null    // Timestamp when package was returned
+)
+```
+
+**Migration MIGRATION_17_18:**
+```sql
+ALTER TABLE packages ADD COLUMN returnedAt INTEGER
+```
+
+#### 2. Business Logic - Product Transfer:
+
+**BoxRepository.addProductToBox():**
+- Sprawdza czy produkt już jest w paczce
+- Jeśli tak → automatycznie usuwa z paczki z komunikatem
+- Następnie dodaje do skrzyni
+
+**PackageRepository.addProductToPackage():**
+- Sprawdza czy produkt już jest w skrzyni  
+- Jeśli tak → automatycznie usuwa ze skrzyni z komunikatem
+- Następnie dodaje do paczki
+
+#### 3. Duplicate Name Prevention:
+
+**PackageDao.getPackageByName():**
+```sql
+@Query("SELECT * FROM packages WHERE LOWER(name) = LOWER(:name) AND status != 'RETURNED' LIMIT 1")
+suspend fun getPackageByName(name: String): PackageEntity?
+```
+- Wyklucza paczki ze statusem RETURNED (mogą używać nazw ponownie)
+- Aktywne paczki muszą mieć unikalne nazwy
+
+**BoxDao.getBoxByName():**
+- Bez zmian - skrzynie zawsze muszą mieć unikalne nazwy
+
+#### 4. Package Status Timestamps:
+
+**PackageRepository.updatePackageStatus():**
+- `SHIPPED` → ustawia `shippedAt = System.currentTimeMillis()`
+- `DELIVERED` → ustawia `deliveredAt = System.currentTimeMillis()`
+- `RETURNED` → ustawia `returnedAt = System.currentTimeMillis()`
+
+#### 5. Import Logic Update:
+
+**PackageRepository.importPackage():**
+- Obsługuje nowe pola timestamp podczas importu
+- Zachowuje logikę transferu produktów między kontenerami
+
+### Testing Results:
+
+**Build:** ✅ PASS
+- Wszystkie błędy kompilacji naprawione
+- Dodane brakujące importy dla cross-repository dependencies
+- Naprawione problemy ze smart cast w Flow collections
+
+**Database Migration:** ✅ VERIFIED
+- Migration 17→18 dodaje pole returnedAt
+- Backward compatibility zachowana
+
+**Business Logic:** ✅ IMPLEMENTED
+- Produkty automatycznie przenoszone między skrzyniami/paczkami
+- Duplicate name validation działa poprawnie
+- Package status timestamps aktualizowane
+
+### Backward Compatibility:
+- ✅ Istniejące produkty bez zmian
+- ✅ Paczki bez nowych pól timestamp traktowane jako null
+- ✅ Import/eksport obsługuje nowe pola
+
+---
+
+## ✅ v1.21.2 - Product Transfer Notifications & Validation (COMPLETED)
+
+**Version:** 1.21.2 (code 111)
+
+**Cel:**
+Dodanie powiadomień użytkownika o automatycznych transferach produktów oraz walidacja zapobiegająca dodawaniu produktów do skrzyń gdy są w aktywnych paczkach.
+
+**Status:** COMPLETED ✅
+
+### Problem Description:
+
+**User Requirements:**
+- Dodanie powiadomień gdy produkty są automatycznie przenoszone między skrzyniami/paczkami
+- Zapobieganie dodawaniu produktów do skrzyń jeśli są w paczkach ze statusem innym niż "Returned"
+- Wyświetlanie komunikatu błędu "This device is in package: {name} with status: {status}" gdy zablokowane
+- Pokazywanie transferów jako "Product transferred from box: {name}" lub "Product transferred from package: {name}"
+
+### Implemented Solution:
+
+#### 1. AddProductResult Sealed Class:
+
+**Nowa klasa wyników operacji:**
+```kotlin
+sealed class AddProductResult {
+    object Success : AddProductResult()
+    data class TransferredFromBox(val boxName: String) : AddProductResult()
+    data class TransferredFromPackage(val packageName: String) : AddProductResult()
+    data class AlreadyInActivePackage(val packageName: String, val status: String) : AddProductResult()
+    data class Error(val message: String) : AddProductResult()
+}
+```
+
+#### 2. Repository Layer Updates:
+
+**BoxRepository.addProductToBox():**
+- Sprawdza status paczki przed dodaniem
+- Zwraca `AlreadyInActivePackage` jeśli produkt w aktywnej paczce
+- Zwraca `TransferredFromPackage` przy automatycznym transferze
+
+**PackageRepository.addProductToPackage():**
+- Zwraca `TransferredFromBox` przy automatycznym transferze z skrzyni
+
+#### 3. ViewModel Layer Updates:
+
+**BoxDetailsViewModel:**
+- Metoda `addProductToBox()` zwraca `AddProductResult`
+
+**PackageDetailsViewModel:**
+- Dodany `StateFlow<AddProductResult?>` dla wyników dodawania
+- Metoda `resetAddProductResult()` do czyszczenia wyników
+
+**Product Selection ViewModels:**
+- Metody `addProductsToBox/Package()` zwracają `List<AddProductResult>`
+
+#### 4. UI Layer Notifications:
+
+**BoxProductSelectionFragment:**
+- Wyświetla komunikaty transferu i blokady przez Toast
+- Filtruje wyniki na `TransferredFromPackage` i `AlreadyInActivePackage`
+
+**ProductSelectionFragment:**
+- Wyświetla komunikaty transferu z skrzyń przez Toast
+
+**PackageDetailsFragment:**
+- `observeAddProductResult()` pokazuje powiadomienia transferów
+
+### Testing Results:
+
+**Build:** ✅ PASS
+- Wszystkie błędy kompilacji naprawione
+- Dodane brakujące importy (Flow, first, entity classes)
+- Naprawione problemy z inferencją typów w lambdach
+
+**Validation Logic:** ✅ VERIFIED
+- Produkty w aktywnych paczkach nie mogą być dodane do skrzyń
+- Komunikat błędu pokazuje nazwę paczki i status
+- Transfery automatyczne działają z powiadomieniami
+
+**UI Feedback:** ✅ IMPLEMENTED
+- Toast messages dla wszystkich typów transferów
+- Blokada dodawania z odpowiednim komunikatem błędu
+- User experience poprawione przez natychmiastowe informacje
+
+### Backward Compatibility:
+- ✅ Istniejące funkcjonalności bez zmian
+- ✅ Result-based API kompatybilne z istniejącymi wywołaniami
+- ✅ Toast notifications nie wpływają na inne UI elementy
+
+---
+
 ## ✅ v1.20.3 - Import UPSERT Logic (COMPLETED)
 
 **Version:** 1.20.3 (code 102)
