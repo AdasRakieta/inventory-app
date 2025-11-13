@@ -162,41 +162,58 @@ class ExportImportViewModel(
     // Use exportToUnifiedCsv() and importFromUnifiedCsv() instead
 
     /**
-     * Parse CSV line handling quoted fields with commas
+     * Parse CSV line handling quoted fields with a chosen delimiter (comma by default).
+     * Supports Excel-generated CSVs that may use ';' or tabs as delimiters.
      */
-    private fun parseCsvLine(line: String): List<String> {
+    private fun parseCsvLine(line: String, delimiter: Char = ','): List<String> {
         val result = mutableListOf<String>()
         var current = StringBuilder()
         var inQuotes = false
-        
+
         var i = 0
         while (i < line.length) {
-            val char = line[i]
-            
+            val ch = line[i]
             when {
-                char == '"' && (i + 1 < line.length && line[i + 1] == '"') -> {
+                ch == '"' && (i + 1 < line.length && line[i + 1] == '"') -> {
                     // Escaped quote
                     current.append('"')
                     i++ // Skip next quote
                 }
-                char == '"' -> {
+                ch == '"' -> {
                     inQuotes = !inQuotes
                 }
-                char == ',' && !inQuotes -> {
+                ch == delimiter && !inQuotes -> {
                     result.add(current.toString().trim())
                     current = StringBuilder()
                 }
                 else -> {
-                    current.append(char)
+                    current.append(ch)
                 }
             }
             i++
         }
-        
+
         // Add last field
         result.add(current.toString().trim())
-        
+
         return result
+    }
+
+    /** Count occurrences of a delimiter outside quotes in a line */
+    private fun countDelimiter(line: String, delimiter: Char): Int {
+        var count = 0
+        var inQuotes = false
+        var i = 0
+        while (i < line.length) {
+            val ch = line[i]
+            when {
+                ch == '"' && (i + 1 < line.length && line[i + 1] == '"') -> { i++ }
+                ch == '"' -> inQuotes = !inQuotes
+                ch == delimiter && !inQuotes -> count++
+            }
+            i++
+        }
+        return count
     }
 
     /**
@@ -783,10 +800,22 @@ class ExportImportViewModel(
                     return null
                 }
                 
+                // Detect delimiter (supports ',', ';', and tab) using header and first data row
+                val header = lines.first()
+                val firstData = lines.drop(1).firstOrNull { it.isNotBlank() } ?: ""
+                val commaScore = countDelimiter(header, ',') + countDelimiter(firstData, ',')
+                val semicolonScore = countDelimiter(header, ';') + countDelimiter(firstData, ';')
+                val tabScore = countDelimiter(header, '\t') + countDelimiter(firstData, '\t')
+                val delimiter = when {
+                    semicolonScore > commaScore && semicolonScore >= tabScore -> ';'
+                    tabScore > commaScore && tabScore > semicolonScore -> '\t'
+                    else -> ','
+                }
+
                 // Skip header (line 0)
                 lines.drop(1).forEach { line ->
                     if (line.isNotBlank()) {
-                        val fields = parseCsvLine(line)
+                        val fields = parseCsvLine(line, delimiter)
                         val row = com.example.inventoryapp.data.local.entity.CsvRow.fromCsvFields(fields)
                         if (row != null && row.isValid()) {
                             csvRows.add(row)
