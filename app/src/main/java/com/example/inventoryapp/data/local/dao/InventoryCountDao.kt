@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface InventoryCountDao {
+        @Query("SELECT * FROM inventory_count_items WHERE sessionId = :sessionId")
+        suspend fun getItemsForSession(sessionId: Long): List<InventoryCountItemEntity>
     
     // ===== SESSION OPERATIONS =====
     

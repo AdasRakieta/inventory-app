@@ -180,6 +180,7 @@ class ExportImportFragment : Fragment() {
         val backupRepository = com.example.inventoryapp.data.repository.ImportBackupRepository(database.importBackupDao())
         val boxRepository = com.example.inventoryapp.data.repository.BoxRepository(database.boxDao(), database.productDao(), database.packageDao())
         val contractorRepository = com.example.inventoryapp.data.repository.ContractorRepository(database.contractorDao())
+            val inventoryCountRepository = com.example.inventoryapp.data.repository.InventoryCountRepository(database.inventoryCountDao(), database.productDao())
         
         // Initialize Zebra printer manager
         zebraPrinterManager = ZebraPrinterManager(requireContext())
@@ -190,7 +191,8 @@ class ExportImportFragment : Fragment() {
             templateRepository,
             backupRepository,
             boxRepository,
-            contractorRepository
+            contractorRepository,
+            inventoryCountRepository
         )
     }
 

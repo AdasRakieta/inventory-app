@@ -29,11 +29,14 @@ import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
 
+import com.example.inventoryapp.data.local.entities.InventoryCountSessionEntity
+import com.example.inventoryapp.data.local.entities.InventoryCountItemEntity
+
 /**
  * Enhanced export data structure with relationships
  */
 data class ExportData(
-    val version: Int = 3, // Incremented version for boxes, contractors and all relations
+    val version: Int = 4, // Incremented version for full backup (added inventory count)
     val exportedAt: Long = System.currentTimeMillis(),
     val products: List<ProductEntity>,
     val packages: List<PackageEntity>,
@@ -41,7 +44,9 @@ data class ExportData(
     val boxes: List<BoxEntity>,
     val contractors: List<ContractorEntity>,
     val packageProductRelations: List<PackageProductCrossRef> = emptyList(), // Product-Package relations
-    val boxProductRelations: List<BoxProductCrossRef> = emptyList() // Product-Box relations
+    val boxProductRelations: List<BoxProductCrossRef> = emptyList(), // Product-Box relations
+    val inventoryCountSessions: List<InventoryCountSessionEntity> = emptyList(),
+    val inventoryCountItems: List<InventoryCountItemEntity> = emptyList()
 )
 
 class ExportImportViewModel(
@@ -50,7 +55,8 @@ class ExportImportViewModel(
     private val templateRepository: ProductTemplateRepository,
     private val backupRepository: ImportBackupRepository,
     private val boxRepository: BoxRepository,
-    private val contractorRepository: ContractorRepository
+    private val contractorRepository: ContractorRepository,
+    private val inventoryCountRepository: com.example.inventoryapp.data.repository.InventoryCountRepository
 ) : ViewModel() {
 
     private val _status = MutableStateFlow("")
@@ -84,7 +90,7 @@ class ExportImportViewModel(
             val templates = templateRepository.getAllTemplates().first()
             val boxes = boxRepository.getAllBoxes().first()
             val contractors = contractorRepository.getAllContractors().first()
-            
+
             // Collect all package-product relationships
             val packageProductRelations = mutableListOf<PackageProductCrossRef>()
             packages.forEach { pkg ->
@@ -98,7 +104,7 @@ class ExportImportViewModel(
                     )
                 }
             }
-            
+
             // Collect all box-product relationships
             val boxProductRelations = mutableListOf<BoxProductCrossRef>()
             boxes.forEach { box ->
@@ -113,6 +119,14 @@ class ExportImportViewModel(
                 }
             }
 
+            // Inventory Count Sessions & Items
+            val inventoryCountSessions = inventoryCountRepository.getAllSessions().first()
+            val inventoryCountItems = mutableListOf<InventoryCountItemEntity>()
+            for (session in inventoryCountSessions) {
+                val items = inventoryCountRepository.getItemsForSession(session.id)
+                inventoryCountItems.addAll(items)
+            }
+
             val exportData = ExportData(
                 products = products,
                 packages = packages,
@@ -120,7 +134,9 @@ class ExportImportViewModel(
                 boxes = boxes,
                 contractors = contractors,
                 packageProductRelations = packageProductRelations,
-                boxProductRelations = boxProductRelations
+                boxProductRelations = boxProductRelations,
+                inventoryCountSessions = inventoryCountSessions,
+                inventoryCountItems = inventoryCountItems
             )
 
             // Ensure parent directory exists
@@ -744,6 +760,43 @@ class ExportImportViewModel(
             var importedContractors = 0
             var importedPackageRelations = 0
             var importedBoxRelations = 0
+            var importedInventorySessions = 0
+            var importedInventoryItems = 0
+            val productIdMap = mutableMapOf<Long, Long>()
+            // Step 8: Import Inventory Count Sessions (UPSERT by name)
+            val sessionIdMap = mutableMapOf<Long, Long>()
+            exportData.inventoryCountSessions.forEach { session ->
+                try {
+                    val oldId = session.id
+                    val existingSessions = inventoryCountRepository.getAllSessions().first()
+                    val existing = existingSessions.find { it.name.equals(session.name, ignoreCase = true) }
+                    val newId = if (existing != null) {
+                        inventoryCountRepository.updateSession(session.copy(id = existing.id))
+                        existing.id
+                    } else {
+                        inventoryCountRepository.createSession(session.name, session.notes)
+                    }
+                    sessionIdMap[oldId] = newId
+                    importedInventorySessions++
+                } catch (e: Exception) {
+                    AppLogger.w("Import", "Skipped inventory session: ${session.name}", e)
+                }
+            }
+
+            // Step 9: Import Inventory Count Items (map sessionId and productId)
+            exportData.inventoryCountItems.forEach { item ->
+                try {
+                    val newSessionId = sessionIdMap[item.sessionId]
+                    val newProductId = productIdMap[item.productId]
+                    if (newSessionId != null && newProductId != null) {
+                        val newItem = item.copy(id = 0, sessionId = newSessionId, productId = newProductId)
+                        inventoryCountRepository.inventoryCountDao.insertItem(newItem)
+                        importedInventoryItems++
+                    }
+                } catch (e: Exception) {
+                    AppLogger.w("Import", "Skipped inventory item: session ${item.sessionId} product ${item.productId}", e)
+                }
+            }
 
             // Step 1: Import contractors first (no dependencies) - UPSERT by name
             val contractorIdMap = mutableMapOf<Long, Long>()
@@ -789,8 +842,8 @@ class ExportImportViewModel(
                 }
             }
 
+            // productIdMap already declared above
             // Step 3: Import products and track ID mapping (old ID -> new ID) - UPSERT by serialNumber
-            val productIdMap = mutableMapOf<Long, Long>()
             exportData.products.forEach { product ->
                 try {
                     val oldId = product.id
@@ -902,8 +955,9 @@ class ExportImportViewModel(
             }
 
             val message = "Import successful: $importedProducts products, $importedPackages packages, $importedBoxes boxes, $importedContractors contractors, $importedTemplates templates, $importedPackageRelations pkg-relations, $importedBoxRelations box-relations"
-            _status.value = message
-            AppLogger.logAction("Import Completed", message)
+            val messageFull = "Import successful: $importedProducts products, $importedPackages packages, $importedBoxes boxes, $importedContractors contractors, $importedTemplates templates, $importedPackageRelations pkg-relations, $importedBoxRelations box-relations, $importedInventorySessions inventory sessions, $importedInventoryItems inventory items"
+            _status.value = messageFull
+            AppLogger.logAction("Import Completed", messageFull)
             checkForRecentBackup() // Update backup status
             true
         } catch (e: Exception) {

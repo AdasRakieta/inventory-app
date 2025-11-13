@@ -13,9 +13,11 @@ import kotlinx.coroutines.flow.Flow
  * Handles session management, product scanning, and statistics.
  */
 class InventoryCountRepository(
-    private val inventoryCountDao: InventoryCountDao,
+    val inventoryCountDao: InventoryCountDao,
     private val productDao: ProductDao
 ) {
+    suspend fun getItemsForSession(sessionId: Long): List<InventoryCountItemEntity> =
+        inventoryCountDao.getItemsForSession(sessionId)
     
     // ===== SESSION OPERATIONS =====
     
