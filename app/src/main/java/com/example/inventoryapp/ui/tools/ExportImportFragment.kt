@@ -49,6 +49,7 @@ import com.example.inventoryapp.utils.DeviceInfo
 import com.example.inventoryapp.utils.DeviceType
 import com.example.inventoryapp.utils.ConnectionType
 import com.google.gson.GsonBuilder
+import com.example.inventoryapp.data.local.entity.CsvRow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -198,7 +199,7 @@ class ExportImportFragment : Fragment() {
 
     private fun setupButtons() {
         binding.exportButton.setOnClickListener {
-            showExportOptions()
+            exportDataAsJson()
         }
 
         binding.importButton.setOnClickListener {
@@ -259,20 +260,6 @@ class ExportImportFragment : Fragment() {
         }
     }
 
-    private fun showExportOptions() {
-        AlertDialog.Builder(requireContext())
-            .setTitle("Export Format")
-            .setMessage("Choose export format")
-            .setPositiveButton("JSON") { _, _ ->
-                exportDataAsJson()
-            }
-            .setNegativeButton("CSV") { _, _ ->
-                exportDataAsCsv()
-            }
-            .setNeutralButton("Cancel", null)
-            .show()
-    }
-
     private fun exportDataAsJson() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
@@ -290,32 +277,6 @@ class ExportImportFragment : Fragment() {
                 }
             } catch (e: Exception) {
                 AppLogger.logError("Export JSON", e)
-                Toast.makeText(
-                    requireContext(),
-                    "Export failed: ${e.message}",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        }
-    }
-
-    private fun exportDataAsCsv() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                AppLogger.logAction("Export CSV Initiated")
-                val exportsDir = FileHelper.getExportsDirectory()
-                val file = File(exportsDir, getExportFileName("csv"))
-                
-                val success = viewModel.exportToCsv(file)
-                if (success) {
-                    Toast.makeText(
-                        requireContext(),
-                        "Exported 5 CSV files to: Documents/inventory/exports/",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            } catch (e: Exception) {
-                AppLogger.logError("Export CSV", e)
                 Toast.makeText(
                     requireContext(),
                     "Export failed: ${e.message}",
@@ -1413,12 +1374,125 @@ class ExportImportFragment : Fragment() {
                 val exportsDir = FileHelper.getExportsDirectory()
                 val templateFile = File(exportsDir, "inventory_template.csv")
                 
-                // Copy template from assets to Documents/inventory/exports
-                val assetManager = requireContext().assets
-                assetManager.open("inventory_template.csv").use { input ->
-                    templateFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
+                // Generate unified CSV template with example rows for each type
+                FileWriter(templateFile).use { writer ->
+                    // Header
+                    writer.append(CsvRow.CSV_HEADERS.joinToString(","))
+                    writer.append("\n")
+
+                    // Example: Contractor
+                    val contractorRow = CsvRow(
+                        type = CsvRow.TYPE_CONTRACTOR,
+                        serialNumber = null,
+                        name = "ACME Logistics",
+                        description = "Preferred logistics partner",
+                        category = null,
+                        quantity = null,
+                        packageName = null,
+                        boxName = null,
+                        contractorName = null,
+                        location = null,
+                        status = null,
+                        createdDate = "",
+                        shippedDate = null,
+                        deliveredDate = null
+                    )
+                    writer.append(CsvRow.toCsvLine(contractorRow)).append("\n")
+
+                    // Example: Package (referencing contractor)
+                    val packageRow = CsvRow(
+                        type = CsvRow.TYPE_PACKAGE,
+                        serialNumber = null,
+                        name = "PKG-1001",
+                        description = "Sample shipment",
+                        category = null,
+                        quantity = null,
+                        packageName = null,
+                        boxName = null,
+                        contractorName = "ACME Logistics",
+                        location = null,
+                        status = CategoryHelper.PackageStatus.SHIPPED,
+                        createdDate = "",
+                        shippedDate = "1704067200000", // 2024-01-01 UTC in millis
+                        deliveredDate = ""
+                    )
+                    writer.append(CsvRow.toCsvLine(packageRow)).append("\n")
+
+                    // Example: Box
+                    val boxRow = CsvRow(
+                        type = CsvRow.TYPE_BOX,
+                        serialNumber = null,
+                        name = "Box A",
+                        description = "Main warehouse box",
+                        category = null,
+                        quantity = null,
+                        packageName = null,
+                        boxName = null,
+                        contractorName = null,
+                        location = "Aisle 5 - Shelf B",
+                        status = null,
+                        createdDate = "",
+                        shippedDate = null,
+                        deliveredDate = null
+                    )
+                    writer.append(CsvRow.toCsvLine(boxRow)).append("\n")
+
+                    // Example: Product in Scanner category with SN, linked to package and box
+                    val productScanner = CsvRow(
+                        type = CsvRow.TYPE_PRODUCT,
+                        serialNumber = "S00123",
+                        name = "Scanner ZX-1",
+                        description = "Handheld scanner",
+                        category = "Scanner",
+                        quantity = 1,
+                        packageName = "PKG-1001",
+                        boxName = "Box A",
+                        contractorName = null,
+                        location = null,
+                        status = null,
+                        createdDate = "",
+                        shippedDate = null,
+                        deliveredDate = null
+                    )
+                    writer.append(CsvRow.toCsvLine(productScanner)).append("\n")
+
+                    // Example: Product in Printer category with SN linked to package only
+                    val productPrinter = CsvRow(
+                        type = CsvRow.TYPE_PRODUCT,
+                        serialNumber = "X00987",
+                        name = "Printer XP-2",
+                        description = "Thermal label printer",
+                        category = "Printer",
+                        quantity = 1,
+                        packageName = "PKG-1001",
+                        boxName = "",
+                        contractorName = null,
+                        location = null,
+                        status = null,
+                        createdDate = "",
+                        shippedDate = null,
+                        deliveredDate = null
+                    )
+                    writer.append(CsvRow.toCsvLine(productPrinter)).append("\n")
+
+                    // Example: Product in Other category without serial number
+                    val productOther = CsvRow(
+                        type = CsvRow.TYPE_PRODUCT,
+                        serialNumber = "",
+                        name = "Cable pack",
+                        description = "Assorted cables",
+                        category = "Other",
+                        quantity = 5,
+                        packageName = "",
+                        boxName = "Box A",
+                        contractorName = null,
+                        location = null,
+                        status = null,
+                        createdDate = "",
+                        shippedDate = null,
+                        deliveredDate = null
+                    )
+                    writer.append(CsvRow.toCsvLine(productOther)).append("\n")
                 }
                 
                 Toast.makeText(

@@ -89,6 +89,17 @@ class PackageDetailsViewModel(
             packageRepository.updatePackage(updatedPackage)
         }
     }
+    
+    fun updatePackageDates(shippedAt: Long?, returnedAt: Long?) {
+        viewModelScope.launch {
+            val currentPackage = _packageEntity.value ?: return@launch
+            val updatedPackage = currentPackage.copy(
+                shippedAt = shippedAt,
+                returnedAt = returnedAt
+            )
+            packageRepository.updatePackage(updatedPackage)
+        }
+    }
 
     fun addNewProductToPackage(serialNumber: String, categoryId: Long, productName: String? = null) {
         viewModelScope.launch {

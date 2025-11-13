@@ -1,6 +1,7 @@
 package com.example.inventoryapp.ui.packages
 
 import android.app.AlertDialog
+import android.app.DatePickerDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -138,6 +139,13 @@ class PackageDetailsFragment : Fragment() {
                     } else {
                         binding.shippedAtLayout.visibility = View.GONE
                     }
+                    
+                    if (it.returnedAt != null) {
+                        binding.returnedAtLayout.visibility = View.VISIBLE
+                        binding.returnedAtText.text = dateFormat.format(Date(it.returnedAt))
+                    } else {
+                        binding.returnedAtLayout.visibility = View.GONE
+                    }
                 }
             }
         }
@@ -201,9 +209,74 @@ class PackageDetailsFragment : Fragment() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_edit_package, null)
         val packageNameEdit = dialogView.findViewById<EditText>(R.id.packageNameEdit)
         val contractorSpinner = dialogView.findViewById<Spinner>(R.id.contractorSpinner)
+        val shippedDateEdit = dialogView.findViewById<EditText>(R.id.shippedDateEdit)
+        val returnDateEdit = dialogView.findViewById<EditText>(R.id.returnDateEdit)
 
         // Set current package name
         packageNameEdit.setText(currentPackage.name)
+        
+        // Variables to store selected dates
+        var selectedShippedDate: Long? = currentPackage.shippedAt
+        var selectedReturnDate: Long? = currentPackage.returnedAt
+        
+        // Format and display current dates
+        val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+        if (selectedShippedDate != null) {
+            shippedDateEdit.setText(dateFormat.format(Date(selectedShippedDate!!)))
+        }
+        if (selectedReturnDate != null) {
+            returnDateEdit.setText(dateFormat.format(Date(selectedReturnDate!!)))
+        }
+        
+        // Setup date picker for shipped date
+        shippedDateEdit.setOnClickListener {
+            val calendar = java.util.Calendar.getInstance()
+            if (selectedShippedDate != null) {
+                calendar.timeInMillis = selectedShippedDate!!
+            }
+            
+            val picker = DatePickerDialog(
+                requireContext(),
+                { _, year, month, day ->
+                    calendar.set(year, month, day)
+                    selectedShippedDate = calendar.timeInMillis
+                    shippedDateEdit.setText(dateFormat.format(Date(selectedShippedDate!!)))
+                },
+                calendar.get(java.util.Calendar.YEAR),
+                calendar.get(java.util.Calendar.MONTH),
+                calendar.get(java.util.Calendar.DAY_OF_MONTH)
+            )
+            picker.setButton(DatePickerDialog.BUTTON_NEUTRAL, "Clear") { _, _ ->
+                selectedShippedDate = null
+                shippedDateEdit.setText("")
+            }
+            picker.show()
+        }
+        
+        // Setup date picker for return date
+        returnDateEdit.setOnClickListener {
+            val calendar = java.util.Calendar.getInstance()
+            if (selectedReturnDate != null) {
+                calendar.timeInMillis = selectedReturnDate!!
+            }
+            
+            val picker = DatePickerDialog(
+                requireContext(),
+                { _, year, month, day ->
+                    calendar.set(year, month, day)
+                    selectedReturnDate = calendar.timeInMillis
+                    returnDateEdit.setText(dateFormat.format(Date(selectedReturnDate!!)))
+                },
+                calendar.get(java.util.Calendar.YEAR),
+                calendar.get(java.util.Calendar.MONTH),
+                calendar.get(java.util.Calendar.DAY_OF_MONTH)
+            )
+            picker.setButton(DatePickerDialog.BUTTON_NEUTRAL, "Clear") { _, _ ->
+                selectedReturnDate = null
+                returnDateEdit.setText("")
+            }
+            picker.show()
+        }
 
         // Load contractors for spinner
         val database = AppDatabase.getDatabase(requireContext())
@@ -242,6 +315,7 @@ class PackageDetailsFragment : Fragment() {
                         if (newName.isNotEmpty()) {
                             viewModel.updatePackageName(newName)
                             viewModel.updatePackageContractor(selectedContractor?.id)
+                            viewModel.updatePackageDates(selectedShippedDate, selectedReturnDate)
                             Toast.makeText(requireContext(), "Package updated", Toast.LENGTH_SHORT).show()
                         } else {
                             Toast.makeText(requireContext(), "Package name cannot be empty", Toast.LENGTH_SHORT).show()

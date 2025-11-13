@@ -1,5 +1,90 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.3.2 - CSV Template with Examples + Package Dates (COMPLETED)
+
+**Version:** 1.3.2 (code 6)
+
+**Cel:**
+- Dodać pola daty wysyłki i zwrotu w szczegółach paczki oraz w oknie edycji.
+- Zmienić „Download CSV Template” tak, aby generował jeden plik unified CSV z przykładowo uzupełnionymi wierszami dla każdej kategorii (Contractor, Package, Box, Product).
+
+**Status:** COMPLETED ✅
+
+### Changes:
+- `ExportImportFragment.downloadCsvTemplate()` teraz programowo generuje plik `inventory_template.csv` w `Documents/inventory/exports/` z nagłówkiem `CsvRow.CSV_HEADERS` i przykładowymi wierszami dla:
+  - Contractor: „ACME Logistics”
+  - Package: „PKG-1001” z przypisanym Contractor i przykładową datą wysyłki (millis)
+  - Box: „Box A” z przykładową lokalizacją
+  - Product: 3 przykłady (Scanner z SN i boxem + paczką, Printer z SN i paczką, Other bez SN z boxem)
+- Dodane nowe pola dat: shipped/returned w UI paczek (fragment + dialog), z obsługą DatePickerów i zapisu przez ViewModel.
+
+### Testing:
+- Build: ✅ PASS (`.\\gradlew.bat assembleDebug --stacktrace`)
+- Wygenerowany template można edytować w Excelu i importować przez unified CSV import.
+
+### Notes:
+- Unified CSV nadal używa kolumn zdefiniowanych w `CsvRow.CSV_HEADERS` (Shipped/Delivered Date w milisekundach; Return Date nie jest częścią CSV na tę chwilę).
+- Backup/Restore JSON bez zmian.
+
+---
+
+## ✅ v1.3.1 - Unified CSV Export/Import & Full Backup (COMPLETED)
+
+**Version:** 1.3.1 (code 5)
+
+**Cel:**
+Refaktoryzacja systemu eksportu/importu - usunięcie starego wieloplikowego CSV, pozostawienie tylko unified CSV (jeden plik dla wszystkich encji) oraz Database Backup/Restore (JSON).
+
+**Status:** COMPLETED ✅
+
+### Changes:
+
+#### 1. Removed deprecated multi-file CSV export/import
+- **Usunięte funkcje:** `exportToCsv()`, `importFromCsv()`, `exportProductsToCsv()`, `exportPackagesToCsv()`, `exportBoxesToCsv()`, `exportPackageProductRelations()`, `exportBoxProductRelations()`, `importProductsFromCsv()`, `importPackagesFromCsv()`, `importBoxesFromCsv()`, `importPackageProductRelations()`, `importBoxProductRelations()`
+- **Powód:** Zastąpione przez unified CSV - jeden plik zamiast 5-7 osobnych plików CSV
+
+#### 2. Unified CSV Export/Import (CsvRow format)
+- **Format:** Jeden plik CSV zawierający wszystkie encje i relacje
+- **Funkcje:** `exportToUnifiedCsv()`, `importFromUnifiedCsv()`, `parseUnifiedCsvToExportData()`
+- **Template:** Dostępny do pobrania w aplikacji (`downloadCsvTemplate()`)
+- **Update-on-import logic:** UPSERT na podstawie serial number (produkty) lub ID (inne encje)
+
+#### 3. Database Backup/Restore (JSON only)
+- **Przycisk Export:** Teraz eksportuje tylko JSON (pełny backup z wszystkimi relacjami)
+- **Przycisk Import:** Import JSON z preview i selekcją elementów
+- **Undo Last Import:** Przywracanie poprzedniego stanu z backupu
+
+#### 4. UI Updates (ExportImportFragment)
+- **Sekcja "Database Backup/Restore":** Export/Import/Undo - tylko JSON
+- **Sekcja "CSV Import/Export":** Dedykowane przyciski dla unified CSV + template download
+- **Usunięto:** Dialog wyboru formatu (JSON vs CSV) - każda sekcja ma własne przyciski
+
+#### 5. Modified Files:
+- `ExportImportViewModel.kt` - usunięto ~440 linii deprecated code (multi-file CSV functions)
+- `ExportImportFragment.kt` - usunięto stary dialog i funkcję `exportDataAsCsv()`, `exportButton` teraz wywołuje tylko `exportDataAsJson()`
+- `build.gradle.kts` - version 1.3 (code 4) → 1.3.1 (code 5)
+
+### Testing:
+- **Build:** ✅ PASS (`.\gradlew.bat assembleDebug`)
+- **Unified CSV:** Funkcje `exportToUnifiedCsv()` i `importFromUnifiedCsv()` remain intact
+- **Database Backup:** Export/Import JSON działa bez zmian
+- **UI:** Przyciski Export (JSON), Import (JSON), Undo oraz CSV Export/Import/Download Template
+
+### Build Results:
+```
+BUILD SUCCESSFUL in 2s
+APK: app\build\outputs\apk\debug\app-debug.apk
+Warnings: 8 (unused variables, safe calls - non-critical)
+```
+
+### Notes:
+- Tylko 2 metody CSV pozostają: `exportToUnifiedCsv()` + `importFromUnifiedCsv()`
+- Database Backup/Restore bez zmian (JSON only)
+- Unified CSV wspiera wszystkie encje w jednym pliku
+- Update-on-import logic: UPSERT by serial number (products) or ID (other entities)
+
+---
+
 ## ✅ v1.22.1 - Archive UI Enhancement (COMPLETED)
 
 **Version:** 1.22.1 (code 113)

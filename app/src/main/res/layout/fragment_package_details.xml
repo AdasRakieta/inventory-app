@@ -226,6 +226,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
+                    android:layout_marginBottom="12dp"
                     android:visibility="gone">
 
                     <TextView
@@ -238,6 +239,32 @@
 
                     <TextView
                         android:id="@+id/shippedAtText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Jan 1, 2024"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_primary" />
+
+                </LinearLayout>
+
+                <!-- Returned At -->
+                <LinearLayout
+                    android:id="@+id/returnedAtLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Returned:"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_secondary" />
+
+                    <TextView
+                        android:id="@+id/returnedAtText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Jan 1, 2024"
