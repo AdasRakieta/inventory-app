@@ -79,6 +79,11 @@ class HomeFragment : Fragment() {
             findNavController().navigate(R.id.action_home_to_boxes)
         }
         
+        // Archive card - navigate to archived packages
+        binding.archiveCard.setOnClickListener {
+            findNavController().navigate(R.id.action_home_to_archive)
+        }
+        
         // Inventory Count card - navigate to inventory count sessions
         binding.inventoryCountCard.setOnClickListener {
             findNavController().navigate(R.id.action_home_to_inventory_count)

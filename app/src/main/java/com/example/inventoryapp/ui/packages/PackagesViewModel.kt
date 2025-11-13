@@ -8,6 +8,7 @@ import com.example.inventoryapp.data.local.entities.PackageEntity
 import com.example.inventoryapp.data.repository.ContractorRepository
 import com.example.inventoryapp.data.repository.PackageRepository
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class PackagesViewModel(

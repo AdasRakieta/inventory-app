@@ -196,7 +196,7 @@ class PackageListFragment : Fragment() {
     }
 
     private fun archiveSelectedPackages() {
-        val selectedIds = adapter.getSelectedPackages()
+        val selectedIds = adapter.getSelectedPackages().toList()
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.archivePackages(selectedIds)
             Toast.makeText(

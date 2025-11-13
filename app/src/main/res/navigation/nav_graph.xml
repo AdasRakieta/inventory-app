@@ -30,6 +30,9 @@
             android:id="@+id/action_home_to_boxes"
             app:destination="@id/boxListFragment" />
         <action
+            android:id="@+id/action_home_to_archive"
+            app:destination="@id/archiveFragment" />
+        <action
             android:id="@+id/action_home_to_printer_settings"
             app:destination="@id/printerSettingsFragment" />
         <action

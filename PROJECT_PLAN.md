@@ -1,5 +1,451 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.22.0 - Archive System for Returned Packages (COMPLETED)
+
+**Version:** 1.22.0 (code 112)
+
+**Cel:**
+System archiwizacji zwróconych paczek z osobną zakładką Archive, ukrywanie zarchiwizowanych paczek z głównej listy Packages, blokowanie transferów produktów z zarchiwizowanych paczek, pojedyncze i masowe archiwizowanie.
+
+**Status:** COMPLETED ✅
+
+### Problem Description:
+
+**User quote:** "zrób zakładkę Archiwum w której będą zapisane zwrócone paczki. Jeśli paczka zostanie zarchiwizowana to wtedy dodanie produktów z tej paczki do boxa niech nie wpływa na jej zawartość i niech ta paczka nie pokazuje się w zakładce Packages. Ale przenoszenie ma się odbywać za pomocą przycisku lub masowo za pomocą zaznaczania tak jak przy usuwaniu w zakładce Edit dodaj opcję do archiwizowania."
+
+**Wymagania:**
+- Zakładka Archive do przeglądania zarchiwizowanych paczek
+- Archiwizować można tylko paczki ze statusem RETURNED
+- Zarchiwizowane paczki znikają z głównej listy Packages
+- Transfer produktów z zarchiwizowanych paczek nie modyfikuje ich zawartości
+- Pojedyncze archiwizowanie przez przycisk w PackageDetails
+- Masowe archiwizowanie przez zaznaczanie w PackageList
+- Możliwość przywrócenia (unarchive) z zakładki Archive
+
+### Implemented Solution:
+
+#### 1. Database Schema Changes:
+
+**Added field to PackageEntity:**
+
+```kotlin
+@ColumnInfo(name = "archived")
+val archived: Boolean = false // Whether package is archived (only RETURNED packages can be archived)
+```
+
+**Migration 18 → 19:**
+
+```kotlin
+val MIGRATION_18_19 = object : Migration(18, 19) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE packages ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
+    }
+}
+```
+
+**Modified files:**
+- `PackageEntity.kt` - added `archived` field
+- `AppDatabase.kt` - incremented version to 19, added MIGRATION_18_19
+
+#### 2. Business Logic - Transfer Blocking:
+
+**BoxRepository.addProductToBox():**
+
+```kotlin
+// Check if product is in an existing package
+val existingPackage = packageDao.getPackageByProductId(productId)
+if (existingPackage != null && !existingPackage.archived) {
+    // Only check non-archived packages
+    return TransferResult.AlreadyInActivePackage(existingPackage.name)
+}
+```
+
+**Zmiana:**
+- Transfer sprawdza tylko NIE-zarchiwizowane paczki
+- Zarchiwizowane paczki są ignorowane podczas transferu
+- Produkty z archived packages mogą być swobodnie przenoszone
+
+**Modified file:**
+- `BoxRepository.kt` - updated transfer logic
+
+#### 3. Repository Layer - Archive Operations:
+
+**PackageRepository methods:**
+
+```kotlin
+/**
+ * Archive a package (only RETURNED packages can be archived)
+ */
+suspend fun archivePackage(packageId: Long) {
+    packageDao.updatePackageArchived(packageId, true)
+}
+
+/**
+ * Unarchive a package (restore to active packages)
+ */
+suspend fun unarchivePackage(packageId: Long) {
+    packageDao.updatePackageArchived(packageId, false)
+}
+
+/**
+ * Archive multiple packages
+ */
+suspend fun archivePackages(packageIds: List<Long>) {
+    packageIds.forEach { packageId ->
+        packageDao.updatePackageArchived(packageId, true)
+    }
+}
+
+/**
+ * Get all archived packages
+ */
+fun getArchivedPackages(): Flow<List<PackageEntity>> {
+    return packageDao.getArchivedPackages()
+}
+
+/**
+ * Get archived packages with product count
+ */
+fun getArchivedPackagesWithCount(): Flow<List<PackageWithCount>> {
+    return packageDao.getArchivedPackagesWithCount()
+}
+```
+
+**Modified file:**
+- `PackageRepository.kt` - added archive/unarchive methods
+
+#### 4. DAO Layer - Filtering:
+
+**PackageDao queries:**
+
+```kotlin
+// Main package list - exclude archived
+@Query("SELECT * FROM packages WHERE archived = 0 ORDER BY createdAt DESC")
+fun getAllPackages(): Flow<List<PackageEntity>>
+
+// Archived packages only
+@Query("SELECT * FROM packages WHERE archived = 1 ORDER BY createdAt DESC")
+fun getArchivedPackages(): Flow<List<PackageEntity>>
+
+// Package count - exclude archived
+@Query("""
+    SELECT packages.*, COUNT(products.id) as productCount
+    FROM packages
+    LEFT JOIN products ON products.packageId = packages.id
+    WHERE packages.archived = 0
+    GROUP BY packages.id
+    ORDER BY packages.createdAt DESC
+""")
+fun getAllPackagesWithCount(): Flow<List<PackageWithCount>>
+
+// Archived package count
+@Query("""
+    SELECT packages.*, COUNT(products.id) as productCount
+    FROM packages
+    LEFT JOIN products ON products.packageId = packages.id
+    WHERE packages.archived = 1
+    GROUP BY packages.id
+    ORDER BY packages.createdAt DESC
+""")
+fun getArchivedPackagesWithCount(): Flow<List<PackageWithCount>>
+
+// Update archive status
+@Query("UPDATE packages SET archived = :archived WHERE id = :packageId")
+suspend fun updatePackageArchived(packageId: Long, archived: Boolean)
+```
+
+**Modified file:**
+- `PackageDao.kt` - added filtering and archive queries
+
+#### 5. ArchiveFragment + ViewModel:
+
+**ArchiveViewModel:**
+- Pobiera archived packages z contractor info
+- Search filtering po nazwie paczki
+- Unarchive operation (przywrócenie)
+
+```kotlin
+val filteredPackages: StateFlow<List<PackageWithCountAndContractor>> = combine(
+    allArchivedPackages,
+    _searchQuery
+) { packages, query ->
+    val filtered = if (query.isBlank()) {
+        packages
+    } else {
+        packages.filter { pkgWithCount ->
+            pkgWithCount.packageEntity.name.contains(query, ignoreCase = true)
+        }
+    }
+    
+    // Map to include contractor info
+    filtered.map { pkgWithCount ->
+        val contractor = pkgWithCount.packageEntity.contractorId?.let { contractorId ->
+            contractorRepository.getContractorById(contractorId).first()
+        }
+        PackageWithCountAndContractor(pkgWithCount, contractor)
+    }
+}.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+```
+
+**ArchiveFragment:**
+- RecyclerView z archived packages
+- Search bar
+- Selection mode z Restore button
+- Navigation do PackageDetails
+- Empty state gdy brak archived packages
+
+**New files:**
+- `ArchiveFragment.kt` - UI for archived packages
+- `ArchiveViewModel.kt` + `ArchiveViewModelFactory` - logic
+- `fragment_archive.xml` - layout
+
+#### 6. Single Archive - PackageDetails:
+
+**PackageDetailsFragment changes:**
+
+```kotlin
+private fun showArchiveConfirmationDialog() {
+    // Validate: only RETURNED packages can be archived
+    val currentPackage = viewModel.packageDetails.value.packageEntity
+    if (currentPackage?.status != "RETURNED") {
+        Toast.makeText(
+            requireContext(),
+            "Only RETURNED packages can be archived",
+            Toast.LENGTH_SHORT
+        ).show()
+        return
+    }
+
+    AlertDialog.Builder(requireContext())
+        .setTitle("Archive Package")
+        .setMessage("Move this package to archive? It will no longer appear in the Packages list.")
+        .setPositiveButton("Archive") { _, _ ->
+            viewModel.archivePackage()
+            Toast.makeText(
+                requireContext(),
+                "Package archived successfully",
+                Toast.LENGTH_SHORT
+            ).show()
+            findNavController().navigateUp()
+        }
+        .setNegativeButton("Cancel", null)
+        .show()
+}
+```
+
+**PackageDetailsViewModel:**
+
+```kotlin
+fun archivePackage() {
+    viewModelScope.launch {
+        packageDetails.value.packageEntity?.id?.let { packageId ->
+            packageRepository.archivePackage(packageId)
+        }
+    }
+}
+```
+
+**Modified files:**
+- `PackageDetailsFragment.kt` - added archive button + dialog
+- `PackageDetailsViewModel.kt` - added archivePackage()
+- `fragment_package_details.xml` - added archivePackageButton
+
+#### 7. Bulk Archive - PackageList:
+
+**PackageListFragment changes:**
+
+```kotlin
+private fun showArchiveConfirmationDialog() {
+    val selectedIds = adapter.getSelectedPackages().toList()
+    
+    // Validate: check if all selected packages are RETURNED
+    viewLifecycleOwner.lifecycleScope.launch {
+        val invalidPackages = selectedIds.filter { packageId ->
+            val pkg = viewModel.getPackageById(packageId).first()
+            pkg?.status != "RETURNED"
+        }
+        
+        if (invalidPackages.isNotEmpty()) {
+            Toast.makeText(
+                requireContext(),
+                "Only RETURNED packages can be archived. ${invalidPackages.size} package(s) skipped.",
+                Toast.LENGTH_LONG
+            ).show()
+            return@launch
+        }
+        
+        // All valid, show confirmation
+        AlertDialog.Builder(requireContext())
+            .setTitle("Archive Packages")
+            .setMessage("Archive ${selectedIds.size} package(s)?")
+            .setPositiveButton("Archive") { _, _ ->
+                archiveSelectedPackages()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+}
+
+private fun archiveSelectedPackages() {
+    val selectedIds = adapter.getSelectedPackages().toList()
+    viewLifecycleOwner.lifecycleScope.launch {
+        viewModel.archivePackages(selectedIds)
+        Toast.makeText(
+            requireContext(),
+            "Archived ${selectedIds.size} package(s)",
+            Toast.LENGTH_SHORT
+        ).show()
+        exitSelectionMode()
+    }
+}
+```
+
+**PackagesViewModel:**
+
+```kotlin
+fun archivePackages(packageIds: List<Long>) {
+    viewModelScope.launch {
+        packageRepository.archivePackages(packageIds)
+    }
+}
+
+suspend fun getPackageById(packageId: Long): Flow<PackageEntity?> {
+    return packageRepository.getPackageById(packageId)
+}
+```
+
+**Modified files:**
+- `PackageListFragment.kt` - added bulk archive with validation
+- `PackagesViewModel.kt` - added archivePackages(), getPackageById()
+- `fragment_package_list.xml` - added archiveSelectedButton to selection panel
+
+#### 8. Navigation Updates:
+
+**nav_graph.xml:**
+
+```xml
+<!-- Archive Fragment -->
+<fragment
+    android:id="@+id/archiveFragment"
+    android:name="com.example.inventoryapp.ui.archive.ArchiveFragment"
+    android:label="Archive"
+    tools:layout="@layout/fragment_archive">
+    
+    <action
+        android:id="@+id/action_archive_to_package_details"
+        app:destination="@id/packageDetailsFragment" />
+</fragment>
+
+<!-- Home to Archive -->
+<action
+    android:id="@+id/action_home_to_archive"
+    app:destination="@id/archiveFragment" />
+```
+
+**Modified file:**
+- `nav_graph.xml` - added archiveFragment + actions
+
+#### 9. Home Screen Integration:
+
+**HomeFragment:**
+
+```kotlin
+binding.archiveCard.setOnClickListener {
+    findNavController().navigate(R.id.action_home_to_archive)
+}
+```
+
+**fragment_home.xml:**
+
+```xml
+<com.google.android.material.card.MaterialCardView
+    android:id="@+id/archiveCard"
+    style="@style/Widget.MaterialComponents.CardView"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardElevation="4dp"
+    app:cardCornerRadius="8dp"
+    app:layout_constraintTop_toBottomOf="@id/packagesCard"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🗄️ Archive"
+        android:textSize="18sp"
+        android:padding="16dp" />
+</com.google.android.material.card.MaterialCardView>
+```
+
+**Modified files:**
+- `HomeFragment.kt` - added archiveCard click listener
+- `fragment_home.xml` - added Archive card
+
+### Testing:
+
+```powershell
+# Build & Install
+.\gradlew.bat assembleDebug
+.\gradlew.bat installDebug
+
+# Test 1: Single Archive
+# 1. Utwórz package ze statusem RETURNED
+# 2. Otwórz PackageDetails
+# 3. Kliknij Archive button
+# Oczekiwane: Package znika z Packages, pojawia się w Archive
+
+# Test 2: Archive Validation
+# 1. Utwórz package ze statusem ACTIVE/SHIPPED
+# 2. Otwórz PackageDetails
+# 3. Kliknij Archive button
+# Oczekiwane: Error toast "Only RETURNED packages can be archived"
+
+# Test 3: Bulk Archive
+# 1. Utwórz 3 packages RETURNED
+# 2. Zaznacz wszystkie w PackageList
+# 3. Kliknij Archive button
+# Oczekiwane: 3 packages przechodzą do Archive
+
+# Test 4: Transfer Blocking
+# 1. Utwórz package z produktami, archiwizuj
+# 2. Spróbuj przenieść produkty do boxa
+# Oczekiwane: Transfer działa (archived package ignorowany)
+
+# Test 5: Unarchive
+# 1. Otwórz Archive tab
+# 2. Zaznacz zarchiwizowane packages
+# 3. Kliknij Restore
+# Oczekiwane: Packages wracają do głównej listy Packages
+
+# Test 6: Search in Archive
+# 1. Zarchiwizuj 5+ packages
+# 2. Wpisz nazwę w search bar Archive
+# Oczekiwane: Filtrowanie działa
+
+# Test 7: Empty Archive
+# 1. Przejdź do Archive bez archived packages
+# Oczekiwane: Empty state "No archived packages"
+```
+
+### Build Results:
+
+✅ **BUILD SUCCESSFUL** - v1.22.0 (code 112)
+✅ **APK Location:** `app\build\outputs\apk\debug\app-debug.apk`
+✅ **Compilation Warnings:** Only deprecation warnings (expected)
+
+### Notes:
+
+- **Archived packages nie blokują transferów** - produkty można swobodnie przenosić
+- **Tylko RETURNED status** - inne statusy nie mogą być archiwizowane
+- **Database migration działa** - kolumna `archived` dodana z default 0
+- **UI spójny** - używa tego samego PackagesAdapter z contractor info
+- **Selection mode** - działa identycznie jak w Edit/Delete
+- **Navigation** - Archive accessible z Home screen
+
+---
+
 ## ✅ v1.20.4 - Unique Name Validation (COMPLETED)
 
 **Version:** 1.20.4 (code 103)
