@@ -1,5 +1,297 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.22.1 - Archive UI Enhancement (COMPLETED)
+
+**Version:** 1.22.1 (code 113)
+
+**Cel:**
+Ulepszenie interfejsu Archive - wygląd i funkcjonalności 1:1 z BoxListFragment (search, sorting, filtering, selection mode).
+
+**Status:** COMPLETED ✅
+
+### Problem Description:
+
+**User quote:** "Zrób archives tak aby wizualnie wyglądało 1:1 jak boxes i miało te same funkcjonalności łącznie z filtrowaniem sortowaniem i wyszukiwaniem"
+
+**Wymagania:**
+- Identyczny wygląd jak BoxListFragment
+- Search bar w MaterialCardView
+- Empty state z emoji i opisem
+- Selection panel na dole
+- FAB do unarchive
+- Sorting (NAME, STATUS, PRODUCT_COUNT, DATE - ASC/DESC)
+- Filtering po statusach
+- Animacje FAB przy selection mode
+
+### Implemented Solution:
+
+#### 1. Enhanced ArchiveViewModel:
+
+**Added sorting and filtering:**
+
+```kotlin
+// Search query
+private val _searchQuery = MutableStateFlow("")
+val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+// Filter by status
+private val _selectedStatuses = MutableStateFlow<Set<String>>(emptySet())
+
+// Sort state
+private val _sortOrder = MutableStateFlow(ArchiveSortOrder.NAME_ASC)
+val sortOrder: StateFlow<ArchiveSortOrder> = _sortOrder
+
+// Filtered and sorted packages
+val filteredPackages: StateFlow<List<PackageWithCountAndContractor>> = combine(
+    allArchivedPackages,
+    _searchQuery,
+    _selectedStatuses,
+    _sortOrder
+) { packages, query, statuses, sort ->
+    var filtered = packages
+    
+    // Filter by search query
+    if (query.isNotBlank()) {
+        filtered = filtered.filter { pkgWithCount ->
+            pkgWithCount.packageEntity.name.contains(query, ignoreCase = true) ||
+            pkgWithCount.packageEntity.status.contains(query, ignoreCase = true)
+        }
+    }
+    
+    // Filter by status
+    if (statuses.isNotEmpty()) {
+        filtered = filtered.filter { pkgWithCount ->
+            pkgWithCount.packageEntity.status in statuses
+        }
+    }
+    
+    // Sort
+    val sorted = when (sort) {
+        ArchiveSortOrder.NAME_ASC -> filtered.sortedBy { it.packageEntity.name.lowercase() }
+        ArchiveSortOrder.NAME_DESC -> filtered.sortedByDescending { it.packageEntity.name.lowercase() }
+        ArchiveSortOrder.STATUS_ASC -> filtered.sortedBy { it.packageEntity.status }
+        ArchiveSortOrder.STATUS_DESC -> filtered.sortedByDescending { it.packageEntity.status }
+        ArchiveSortOrder.PRODUCT_COUNT_ASC -> filtered.sortedBy { it.productCount }
+        ArchiveSortOrder.PRODUCT_COUNT_DESC -> filtered.sortedByDescending { it.productCount }
+        ArchiveSortOrder.DATE_ASC -> filtered.sortedBy { it.packageEntity.createdAt }
+        ArchiveSortOrder.DATE_DESC -> filtered.sortedByDescending { it.packageEntity.createdAt }
+    }
+    
+    // Map to include contractor info
+    sorted.map { ... }
+}
+
+// Get all unique statuses for filter
+val allStatuses: StateFlow<List<String>> = allArchivedPackages.map { packages ->
+    packages.map { it.packageEntity.status }
+        .distinct()
+        .sorted()
+}
+```
+
+**Methods:**
+
+```kotlin
+fun setSearchQuery(query: String)
+fun setStatusFilters(statuses: Set<String>)
+fun setSortOrder(order: ArchiveSortOrder)
+fun unarchivePackage(packageId: Long)
+fun unarchivePackages(packageIds: Set<Long>)
+```
+
+**Sort orders:**
+
+```kotlin
+enum class ArchiveSortOrder {
+    NAME_ASC,
+    NAME_DESC,
+    STATUS_ASC,
+    STATUS_DESC,
+    PRODUCT_COUNT_ASC,
+    PRODUCT_COUNT_DESC,
+    DATE_ASC,
+    DATE_DESC
+}
+```
+
+#### 2. Enhanced ArchiveFragment:
+
+**UI structure matching BoxListFragment:**
+
+```kotlin
+// Setup methods
+private fun setupRecyclerView() - PackagesAdapter with long click selection
+private fun setupSearchBar() - doAfterTextChanged listener
+private fun setupClickListeners() - FAB, Select All, Restore
+private fun observeViewModel() - collect filteredPackages flow
+
+// Selection mode
+private fun updateSelectionUI() {
+    - Show/hide selection panel
+    - Update count text
+    - Update Select All button text
+    - Animate FAB position and icon
+}
+
+// Unarchive operations
+private fun showUnarchiveConfirmationDialog()
+private fun unarchiveSelectedPackages()
+private fun updateEmptyState(isEmpty: Boolean)
+```
+
+**Functionality:**
+- Search bar with real-time filtering
+- Long press to enter selection mode
+- Select All / Deselect All button
+- Bulk unarchive with confirmation dialog
+- FAB animates up when selection panel appears
+- FAB icon changes (add → delete in selection mode)
+- Empty state when no archived packages
+
+#### 3. Updated fragment_archive.xml Layout:
+
+**Structure matching fragment_box_list.xml:**
+
+```xml
+<androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Search Card -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/searchCard"
+        app:cardElevation="2dp"
+        app:cardCornerRadius="8dp">
+        
+        <LinearLayout (SearchIcon + EditText)
+            ImageView - search icon
+            EditText searchEditText
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Empty State Layout -->
+    <LinearLayout emptyStateLayout (🗄️ emoji + text)
+        TextView - "🗄️" (64sp)
+        TextView - "No archived packages" (18sp bold)
+        TextView - "Archived packages will appear here" (14sp)
+    </LinearLayout>
+
+    <!-- RecyclerView -->
+    <androidx.recyclerview.widget.RecyclerView archiveRecyclerView
+        listitem="@layout/item_package"
+        padding="16dp"
+        clipToPadding="false"
+    />
+
+    <!-- Selection Panel -->
+    <LinearLayout selectionPanel
+        TextView selectionCountText - "0 selected"
+        MaterialButton selectAllButton - "Select All"
+        MaterialButton restoreSelectedButton - "Restore"
+    </LinearLayout>
+
+    <!-- FAB -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        unarchiveFab
+        icon: android.R.drawable.ic_input_add
+    />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+```
+
+**Styling:**
+- Background: `@color/background`
+- Search card: elevation 2dp, corner radius 8dp
+- Empty state: centered, vertical layout
+- Selection panel: bottom, elevation 4dp
+- FAB: primary color, white tint
+
+#### 4. Modified Files:
+
+**ViewModel:**
+- `ArchiveViewModel.kt` - added sorting, filtering, bulk unarchive
+
+**Fragment:**
+- `ArchiveFragment.kt` - full rewrite matching BoxListFragment structure
+
+**Layout:**
+- `fragment_archive.xml` - complete redesign matching fragment_box_list.xml
+
+**Version:**
+- `build.gradle.kts` - version 1.22.0 → 1.22.1 (code 112 → 113)
+
+### Testing:
+
+```powershell
+# Build & Install
+.\gradlew.bat assembleDebug
+.\gradlew.bat installDebug
+
+# Test 1: Search
+# 1. Archive 5+ packages
+# 2. Type name in search bar
+# Oczekiwane: Real-time filtering
+
+# Test 2: Empty State
+# 1. Unarchive all packages
+# Oczekiwane: 🗄️ emoji + "No archived packages" text
+
+# Test 3: Selection Mode
+# 1. Long press on package
+# 2. Check selection panel appears
+# 3. Check FAB moves up and changes icon
+# Oczekiwane: Selection mode active
+
+# Test 4: Select All / Deselect All
+# 1. Click Select All
+# 2. All packages selected
+# 3. Click Deselect All
+# Oczekiwane: Toggles correctly
+
+# Test 5: Bulk Unarchive
+# 1. Select 3 packages
+# 2. Click Restore button
+# 3. Confirm dialog
+# Oczekiwane: 3 packages restored, appear in Packages tab
+
+# Test 6: FAB Animation
+# 1. Enter selection mode
+# 2. Check FAB moves up
+# 3. Exit selection mode
+# 4. Check FAB moves back
+# Oczekiwane: Smooth animation 200ms
+```
+
+### Build Results:
+
+✅ **BUILD SUCCESSFUL** - v1.22.1 (code 113)
+✅ **APK Location:** `app\build\outputs\apk\debug\app-debug.apk`
+✅ **Compilation Warnings:** Only deprecation warnings (expected)
+
+### Comparison: Archive vs Boxes:
+
+| Feature | BoxListFragment | ArchiveFragment | Status |
+|---------|-----------------|-----------------|--------|
+| Search bar | ✅ MaterialCardView | ✅ MaterialCardView | ✅ Match |
+| Empty state | ✅ 📦 + text | ✅ 🗄️ + text | ✅ Match |
+| Selection mode | ✅ Long press | ✅ Long press | ✅ Match |
+| Selection panel | ✅ Bottom toolbar | ✅ Bottom toolbar | ✅ Match |
+| FAB animation | ✅ Moves up | ✅ Moves up | ✅ Match |
+| FAB icon toggle | ✅ add/delete | ✅ add/delete | ✅ Match |
+| Select All button | ✅ Toggle text | ✅ Toggle text | ✅ Match |
+| Action button | Delete (red) | Restore (primary) | ✅ Different (intentional) |
+| Sorting | ✅ 6 options | ✅ 8 options | ✅ Enhanced |
+| Filtering | ✅ By location | ✅ By status | ✅ Adapted |
+
+### Notes:
+
+- **UI 1:1 match** - identical layout structure, colors, spacing
+- **Functionality enhanced** - Archive has 8 sort options vs Boxes' 6
+- **Contractor info included** - Archive shows contractor like Packages tab
+- **Restore replaces Delete** - button text/color changed (primary vs error)
+- **Sorting** - Archive sorts by DATE additionally (creation date)
+- **Filtering** - Archive filters by STATUS instead of warehouse location
+
+---
+
 ## ✅ v1.22.0 - Archive System for Returned Packages (COMPLETED)
 
 **Version:** 1.22.0 (code 112)
