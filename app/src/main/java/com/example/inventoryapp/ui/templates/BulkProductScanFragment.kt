@@ -327,6 +327,18 @@ class BulkProductScanFragment : Fragment() {
         // For categories requiring SN, validate as before
         if (serialNumber.isEmpty()) return
 
+        // Validate SN format based on category
+        if (!CategoryHelper.isValidSerialNumber(serialNumber, categoryId)) {
+            val requiredPrefix = when (categoryId) {
+                1L, 3L -> "S" // Scanner, Scanner Docking Station
+                2L, 4L -> "X" // Printer, Printer Docking Station
+                else -> "S" // Fallback
+            }
+            showStatus("❌ Invalid SN format: $serialNumber (must start with '$requiredPrefix')")
+            currentInputField?.setText("")
+            return
+        }
+
         // Check if already in pending list
         if (scannedSerials.contains(serialNumber)) {
             showStatus("⚠️ Already in list: $serialNumber")

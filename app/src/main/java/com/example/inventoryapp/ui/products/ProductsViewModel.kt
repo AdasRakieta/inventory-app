@@ -143,6 +143,16 @@ class ProductsViewModel(
         description: String? = null
     ) {
         viewModelScope.launch {
+            // Check for duplicate SN if provided
+            if (serialNumber != null) {
+                val existingProduct = productRepository.getProductBySerialNumber(serialNumber)
+                if (existingProduct != null) {
+                    // TODO: Handle duplicate SN error - this should be handled in UI
+                    AppLogger.logAction("Duplicate SN Attempted", "SN: $serialNumber")
+                    return@launch
+                }
+            }
+
             // Check if this is "Other" category and we should aggregate by name
             if (categoryId != null && !CategoryHelper.requiresSerialNumber(categoryId) && serialNumber == null) {
                 // Try to find existing product with same name and category

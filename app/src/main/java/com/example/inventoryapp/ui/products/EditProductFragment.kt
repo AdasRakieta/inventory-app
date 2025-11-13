@@ -112,6 +112,13 @@ class EditProductFragment : Fragment() {
         val description = binding.descriptionInput.text.toString().trim().takeIf { it.isNotEmpty() }
         val categoryName = binding.categoryInput.text.toString().trim()
 
+        // Map category name to ID early for validation
+        val categoryId = if (categoryName.isNotEmpty()) {
+            CategoryHelper.getCategoryIdByName(categoryName)
+        } else {
+            null
+        }
+
         when {
             name.isEmpty() -> {
                 binding.productNameLayout.error = "Product name is required"
@@ -121,16 +128,13 @@ class EditProductFragment : Fragment() {
                 binding.serialNumberLayout.error = "Serial number is required for this category"
                 return
             }
+            !CategoryHelper.isValidSerialNumber(serialNumber, categoryId) -> {
+                binding.serialNumberLayout.error = CategoryHelper.getSerialNumberValidationError(serialNumber, categoryId)
+                return
+            }
             else -> {
                 binding.productNameLayout.error = null
                 binding.serialNumberLayout.error = null
-
-                // Map category name to ID
-                val categoryId = if (categoryName.isNotEmpty()) {
-                    CategoryHelper.getCategoryIdByName(categoryName)
-                } else {
-                    null
-                }
 
                 // Use null for serial number if category doesn't require it
                 val finalSerialNumber = if (serialNumber.isEmpty()) null else serialNumber

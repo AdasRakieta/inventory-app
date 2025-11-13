@@ -65,4 +65,47 @@ object CategoryHelper {
         val categoryId = getCategoryIdByName(categoryName)
         return requiresSerialNumber(categoryId)
     }
+    
+    /**
+     * Validate serial number format based on category
+     * - Scanners & Scanner Docking Stations: must start with 'S'
+     * - Printers & Printer Docking Stations: must start with 'X'
+     * - Other: no format restrictions
+     * @param serialNumber Serial number to validate
+     * @param categoryId Category ID to determine validation rules
+     * @return true if valid or empty, false if invalid format
+     */
+    fun isValidSerialNumber(serialNumber: String?, categoryId: Long?): Boolean {
+        if (serialNumber.isNullOrBlank()) return true // Empty is allowed
+        
+        // If category doesn't require SN, no format validation
+        if (!requiresSerialNumber(categoryId)) return true
+        
+        // Determine required prefix based on category
+        val requiredPrefix = when (categoryId) {
+            1L, 3L -> "S" // Scanner, Scanner Docking Station
+            2L, 4L -> "X" // Printer, Printer Docking Station
+            else -> return true // Other categories or unknown - no restrictions
+        }
+        
+        return serialNumber.startsWith(requiredPrefix, ignoreCase = true)
+    }
+    
+    /**
+     * Get validation error message for invalid serial number
+     * @param serialNumber Serial number that failed validation
+     * @param categoryId Category ID to determine validation rules
+     * @return Error message or null if valid
+     */
+    fun getSerialNumberValidationError(serialNumber: String?, categoryId: Long?): String? {
+        if (isValidSerialNumber(serialNumber, categoryId)) return null
+        
+        val requiredPrefix = when (categoryId) {
+            1L, 3L -> "S" // Scanner, Scanner Docking Station
+            2L, 4L -> "X" // Printer, Printer Docking Station
+            else -> return null // Other categories - no restrictions
+        }
+        
+        return "Serial number must start with '$requiredPrefix' (e.g., ${requiredPrefix}001, ${requiredPrefix}12345)"
+    }
 }

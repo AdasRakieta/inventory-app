@@ -15,6 +15,7 @@ import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductRepository
 import com.example.inventoryapp.databinding.FragmentAddProductBinding
 import com.example.inventoryapp.utils.CategoryHelper
+import kotlinx.coroutines.runBlocking
 
 class AddProductFragment : Fragment() {
 
@@ -83,6 +84,13 @@ class AddProductFragment : Fragment() {
         val description = binding.descriptionInput.text.toString().trim().takeIf { it.isNotEmpty() }
         val categoryName = binding.categoryInput.text.toString().trim()
 
+        // Map category name to ID early for validation
+        val categoryId = if (categoryName.isNotEmpty()) {
+            CategoryHelper.getCategoryIdByName(categoryName)
+        } else {
+            null
+        }
+
         when {
             name.isEmpty() -> {
                 binding.productNameLayout.error = "Product name is required"
@@ -92,19 +100,28 @@ class AddProductFragment : Fragment() {
                 binding.serialNumberLayout.error = "Serial number is required for this category"
                 return
             }
+            !CategoryHelper.isValidSerialNumber(serialNumber, categoryId) -> {
+                binding.serialNumberLayout.error = CategoryHelper.getSerialNumberValidationError(serialNumber, categoryId)
+                return
+            }
             else -> {
                 binding.productNameLayout.error = null
                 binding.serialNumberLayout.error = null
 
-                // Map category name to ID
-                val categoryId = if (categoryName.isNotEmpty()) {
-                    CategoryHelper.getCategoryIdByName(categoryName)
-                } else {
-                    null
-                }
+                // Use the already calculated categoryId
 
                 // Use null for serial number if category doesn't require it
                 val finalSerialNumber = if (serialNumber.isEmpty()) null else serialNumber
+
+                // Check for duplicate SN if provided
+                if (finalSerialNumber != null) {
+                    val repository = ProductRepository(AppDatabase.getDatabase(requireContext()).productDao())
+                    val existingProduct = runBlocking { repository.getProductBySerialNumber(finalSerialNumber) }
+                    if (existingProduct != null) {
+                        binding.serialNumberLayout.error = "This Serial Number is already in use"
+                        return
+                    }
+                }
 
                 viewModel.addProduct(
                     name = name,

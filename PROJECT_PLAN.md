@@ -195,6 +195,257 @@ Final: 1 box, not 2
 
 ---
 
+## ✅ v1.20.5 - SN Format Validation (COMPLETED)
+
+**Version:** 1.20.5 (code 104)
+
+**Cel:**
+Walidacja formatu numerów seryjnych - muszą zaczynać się na 'S' dla kategorii wymagających SN.
+
+**Status:** COMPLETED ✅
+
+### Problem Description:
+
+**User quote:** "Podczas dodawania urządzeń (produktów) zrób walidację i podczas zwykłego dodawania i podczas dodawania według template bulk walidację SN tak by akceptowało pole SN tylko gdy zaczyna się na S... w innych niech działa cały czas tak samo"
+
+**Oryginalne zachowanie:**
+- Brak walidacji formatu SN
+- Można było wprowadzić dowolny format SN
+- Brak spójności w formatowaniu SN
+
+### Implemented Solution:
+
+#### 1. Centralized Validation Logic (CategoryHelper):
+
+**Dodane funkcje walidacji:**
+
+```kotlin
+/**
+ * Validate serial number format - must start with 'S'
+ * @param serialNumber Serial number to validate
+ * @return true if valid or empty, false if invalid format
+ */
+fun isValidSerialNumber(serialNumber: String?): Boolean {
+    if (serialNumber.isNullOrBlank()) return true // Empty is allowed
+    return serialNumber.startsWith("S", ignoreCase = true)
+}
+
+/**
+ * Get validation error message for invalid serial number
+ * @param serialNumber Serial number that failed validation
+ * @return Error message or null if valid
+ */
+fun getSerialNumberValidationError(serialNumber: String?): String? {
+    if (isValidSerialNumber(serialNumber)) return null
+    return "Serial number must start with 'S' (e.g., S001, S12345)"
+}
+```
+
+**Cechy:**
+- **Case-insensitive** - akceptuje 'S', 's', 'S123', 's123'
+- **Tylko dla kategorii wymagających SN** - Scanner, Printer, etc.
+- **"Other" category bez restrykcji** - dowolny format lub brak SN
+
+#### 2. UI Validation Points:
+
+**AddProductFragment:**
+- Walidacja formatu przed zapisaniem
+- Błąd: "Serial number must start with 'S' (e.g., S001, S12345)"
+- Sprawdzenie duplikatu SN przed zapisaniem
+
+**EditProductFragment:**
+- Walidacja formatu przed aktualizacją
+- Sprawdzenie duplikatu SN (oprócz aktualnie edytowanego produktu)
+
+**BulkProductScanFragment:**
+- Walidacja formatu podczas wprowadzania SN
+- Status: "❌ Invalid SN format: must start with 'S'"
+- Sprawdzenie duplikatu w bazie danych
+
+#### 3. Database Layer Protection:
+
+**ProductsViewModel.addProduct():**
+- Sprawdzenie duplikatu SN przed zapisaniem
+- Zapobiega duplikatom na poziomie ViewModel
+
+### Affected Categories:
+
+| Category | Requires SN | Format Validation |
+|----------|-------------|-------------------|
+| Scanner | ✅ | Must start with 'S' |
+| Printer | ✅ | Must start with 'S' |
+| Scanner Docking Station | ✅ | Must start with 'S' |
+| Printer Docking Station | ✅ | Must start with 'S' |
+| **Other** | ❌ | **No restrictions** |
+
+### Testing Results:
+
+**✅ Build:** SUCCESSFUL
+- Kompilacja bez błędów
+- Wszystkie ostrzeżenia są niekrytyczne
+
+**✅ Validation Logic:**
+- ✅ SN zaczynające się na 'S' - akceptowane
+- ✅ SN zaczynające się na 's' - akceptowane (case-insensitive)
+- ✅ SN zaczynające się na inne litery - odrzucane
+- ✅ Puste SN - akceptowane dla wszystkich kategorii
+- ✅ "Other" category - bez restrykcji formatu
+
+**✅ UI Integration:**
+- ✅ Add Product: walidacja formatu + duplikat
+- ✅ Edit Product: walidacja formatu + duplikat
+- ✅ Bulk Scan: walidacja formatu + duplikat w DB
+
+### Files Modified:
+
+1. **CategoryHelper.kt** - dodane funkcje walidacji
+2. **AddProductFragment.kt** - walidacja formatu + duplikat SN
+3. **EditProductFragment.kt** - walidacja formatu + duplikat SN
+4. **BulkProductScanFragment.kt** - walidacja formatu podczas wprowadzania
+5. **ProductsViewModel.kt** - sprawdzenie duplikatu SN
+6. **build.gradle.kts** - wersja 1.20.5 (code 104)
+
+### Backward Compatibility:
+
+- ✅ Istniejące produkty bez zmian
+- ✅ Import/eksport bez zmian
+- ✅ "Other" category bez restrykcji
+- ✅ Tylko nowe produkty podlegają walidacji
+
+---
+
+## ✅ v1.20.6 - SN Format Validation by Category (COMPLETED)
+
+**Version:** 1.20.6 (code 105)
+
+**Cel:**
+Rozszerzona walidacja formatu numerów seryjnych - różne prefixy dla różnych kategorii urządzeń.
+
+**Status:** COMPLETED ✅
+
+### Problem Description:
+
+**User quote:** "okej zmień teraz by ta walidacja była tylko dla skanerów i stacji dokujących dla skanerów. Dla drukarek i stacji dokujących dla drukarek ma się zaczynać od X."
+
+**Oryginalne zachowanie:**
+- Wszystkie kategorie wymagające SN używały prefixu 'S'
+- Brak zróżnicowania między typami urządzeń
+
+### Implemented Solution:
+
+#### 1. Category-Specific SN Prefixes:
+
+**Nowe reguły walidacji:**
+
+| Category ID | Category Name | SN Prefix | Przykład |
+|-------------|---------------|-----------|----------|
+| 1 | Scanner | 'S' | S001, S12345 |
+| 2 | Printer | 'X' | X001, X12345 |
+| 3 | Scanner Docking Station | 'S' | S001, S12345 |
+| 4 | Printer Docking Station | 'X' | X001, X12345 |
+| 5 | Other | Brak restrykcji | Dowolny format |
+
+#### 2. Updated Validation Logic (CategoryHelper):
+
+**Zmodyfikowane funkcje:**
+
+```kotlin
+/**
+ * Validate serial number format based on category
+ * - Scanners & Scanner Docking Stations: must start with 'S'
+ * - Printers & Printer Docking Stations: must start with 'X'
+ * - Other: no format restrictions
+ */
+fun isValidSerialNumber(serialNumber: String?, categoryId: Long?): Boolean {
+    if (serialNumber.isNullOrBlank()) return true // Empty is allowed
+    
+    // If category doesn't require SN, no format validation
+    if (!requiresSerialNumber(categoryId)) return true
+    
+    // Determine required prefix based on category
+    val requiredPrefix = when (categoryId) {
+        1L, 3L -> "S" // Scanner, Scanner Docking Station
+        2L, 4L -> "X" // Printer, Printer Docking Station
+        else -> return true // Other categories or unknown - no restrictions
+    }
+    
+    return serialNumber.startsWith(requiredPrefix, ignoreCase = true)
+}
+
+/**
+ * Get validation error message for invalid serial number
+ */
+fun getSerialNumberValidationError(serialNumber: String?, categoryId: Long?): String? {
+    if (isValidSerialNumber(serialNumber, categoryId)) return null
+    
+    val requiredPrefix = when (categoryId) {
+        1L, 3L -> "S" // Scanner, Scanner Docking Station
+        2L, 4L -> "X" // Printer, Printer Docking Station
+        else -> return null // Other categories - no restrictions
+    }
+    
+    return "Serial number must start with '$requiredPrefix' (e.g., ${requiredPrefix}001, ${requiredPrefix}12345)"
+}
+```
+
+**Cechy:**
+- **Category-aware** - różne prefixy dla różnych kategorii
+- **Case-insensitive** - 'S', 's', 'X', 'x' wszystkie akceptowane
+- **Backward compatible** - istniejące SN bez zmian
+- **"Other" unrestricted** - dowolny format lub brak SN
+
+#### 3. Updated UI Messages:
+
+**AddProductFragment & EditProductFragment:**
+- Dynamiczne komunikaty błędów: "Serial number must start with 'S'" lub "Serial number must start with 'X'"
+
+**BulkProductScanFragment:**
+- Dynamiczne statusy: "❌ Invalid SN format: S123 (must start with 'S')" lub "...must start with 'X'"
+
+### Testing Results:
+
+**✅ Build:** SUCCESSFUL
+- Kompilacja bez błędów
+- Wszystkie ostrzeżenia są niekrytyczne
+
+**✅ Validation Logic:**
+- ✅ Scanners: SN zaczynające się na 'S' - akceptowane
+- ✅ Printers: SN zaczynające się na 'X' - akceptowane  
+- ✅ Scanners: SN zaczynające się na 'X' - odrzucane
+- ✅ Printers: SN zaczynające się na 'S' - odrzucane
+- ✅ "Other" category: dowolny format - akceptowany
+- ✅ Puste SN: akceptowane dla wszystkich kategorii
+
+**✅ UI Integration:**
+- ✅ Add Product: walidacja z odpowiednim prefixem
+- ✅ Edit Product: walidacja z odpowiednim prefixem
+- ✅ Bulk Scan: walidacja z odpowiednim prefixem + komunikaty
+
+### Files Modified:
+
+1. **CategoryHelper.kt** - zaktualizowana logika walidacji z categoryId
+2. **AddProductFragment.kt** - wczesne obliczenie categoryId + przekazanie do walidacji
+3. **EditProductFragment.kt** - wczesne obliczenie categoryId + przekazanie do walidacji
+4. **BulkProductScanFragment.kt** - dynamiczne komunikaty błędów z odpowiednim prefixem
+5. **build.gradle.kts** - wersja 1.20.6 (code 105)
+
+### Business Logic:
+
+**Dlaczego takie prefixy:**
+- **'S' dla skanerów** - Scanner = S
+- **'X' dla drukarek** - Printer = eXternal device, lub X jako w "eksport"
+- **Łatwe do rozróżnienia** - wizualnie oczywiste czy to skaner czy drukarka
+- **Skalowalne** - łatwo dodać nowe prefixy dla nowych kategorii
+
+### Backward Compatibility:
+
+- ✅ Istniejące produkty bez zmian (nie walidujemy istniejących SN)
+- ✅ Import/eksport bez zmian
+- ✅ Tylko nowe produkty i edycje podlegają walidacji
+- ✅ "Other" category bez restrykcji
+
+---
+
 ## ✅ v1.20.3 - Import UPSERT Logic (COMPLETED)
 
 **Version:** 1.20.3 (code 102)
