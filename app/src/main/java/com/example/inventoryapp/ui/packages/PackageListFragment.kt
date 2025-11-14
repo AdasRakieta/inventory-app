@@ -14,6 +14,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentPackageListBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.ContractorRepository
@@ -30,6 +31,7 @@ class PackageListFragment : Fragment() {
     
     private lateinit var viewModel: PackagesViewModel
     private lateinit var adapter: PackagesAdapter
+    private val fabOffset by lazy { resources.getDimension(R.dimen.selection_panel_fab_spacing) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -114,12 +116,6 @@ class PackageListFragment : Fragment() {
             }
         }
 
-        binding.archiveSelectedButton.setOnClickListener {
-            if (adapter.getSelectedCount() > 0) {
-                showArchiveConfirmationDialog()
-            }
-        }
-
         binding.bulkEditButton.setOnClickListener {
             if (adapter.getSelectedCount() > 0) {
                 showBulkEditDialog()
@@ -144,7 +140,7 @@ class PackageListFragment : Fragment() {
             
             // Move FAB up to avoid overlapping with selection panel
             binding.addPackageFab.animate()
-                .translationY(-binding.selectionPanel.height.toFloat() - 75f)
+                .translationY(-binding.selectionPanel.height.toFloat() - fabOffset)
                 .setDuration(200)
                 .start()
         } else {
@@ -451,7 +447,7 @@ class PackageListFragment : Fragment() {
 
     private fun showBulkEditDialog() {
         val selectedCount = adapter.getSelectedCount()
-        val options = arrayOf("Change Status", "Assign Contractor")
+        val options = arrayOf("Change Status", "Assign Contractor", "Archive Returned")
         
         AlertDialog.Builder(requireContext())
             .setTitle("Bulk Edit ($selectedCount packages)")
@@ -459,6 +455,7 @@ class PackageListFragment : Fragment() {
                 when (which) {
                     0 -> showBulkStatusChangeDialog()
                     1 -> showBulkContractorChangeDialog()
+                    2 -> showArchiveConfirmationDialog()
                 }
             }
             .setNegativeButton("Cancel", null)

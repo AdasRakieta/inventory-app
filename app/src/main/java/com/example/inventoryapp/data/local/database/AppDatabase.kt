@@ -25,8 +25,10 @@ import com.example.inventoryapp.data.local.entities.*
         PrinterEntity::class,
         InventoryCountSessionEntity::class,
         InventoryCountItemEntity::class
+        ,
+        DeviceMovementEntity::class
     ],
-    version = 19,
+    version = 20,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -41,6 +43,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun importBackupDao(): ImportBackupDao
     abstract fun printerDao(): PrinterDao
     abstract fun inventoryCountDao(): InventoryCountDao
+    abstract fun deviceMovementDao(): DeviceMovementDao
 
     companion object {
         @Volatile
@@ -382,6 +385,42 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Migration 19 -> 20: Add device_movements table and backfill from existing cross-ref tables
+        private val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `device_movements` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `productId` INTEGER NOT NULL,
+                        `action` TEXT NOT NULL,
+                        `fromContainerType` TEXT,
+                        `fromContainerId` INTEGER,
+                        `toContainerType` TEXT,
+                        `toContainerId` INTEGER,
+                        `timestamp` INTEGER NOT NULL,
+                        `packageStatus` TEXT,
+                        `note` TEXT
+                    )
+                """.trimIndent())
+
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_device_movements_product_timestamp` ON device_movements(productId, timestamp DESC)")
+
+                // Backfill: box assignments (use addedAt)
+                database.execSQL("""
+                    INSERT INTO device_movements (productId, action, toContainerType, toContainerId, timestamp, note)
+                    SELECT productId, 'ASSIGN', 'BOX', boxId, addedAt, 'backfill' FROM box_product_cross_ref
+                """.trimIndent())
+
+                // Backfill: package assignments (use packages.shippedAt or packages.createdAt)
+                database.execSQL("""
+                    INSERT INTO device_movements (productId, action, toContainerType, toContainerId, timestamp, note)
+                    SELECT ppc.productId, 'ASSIGN', 'PACKAGE', ppc.packageId, COALESCE(pkg.shippedAt, pkg.createdAt), 'backfill'
+                    FROM package_product_cross_ref ppc
+                    LEFT JOIN packages pkg ON ppc.packageId = pkg.id
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -394,7 +433,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, 
                         MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, 
                         MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
-                        MIGRATION_17_18, MIGRATION_18_19
+                        MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20
                     )
                     .fallbackToDestructiveMigration()
                     .build()

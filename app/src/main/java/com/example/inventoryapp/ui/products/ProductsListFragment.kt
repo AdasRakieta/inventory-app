@@ -29,6 +29,7 @@ class ProductsListFragment : Fragment() {
     
     private lateinit var viewModel: ProductsViewModel
     private lateinit var adapter: ProductsAdapter
+    private val fabOffset by lazy { resources.getDimension(R.dimen.selection_panel_fab_spacing) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -134,7 +135,7 @@ class ProductsListFragment : Fragment() {
             
             // Move FAB up to avoid overlapping with selection panel
             binding.addProductFab.animate()
-                .translationY(-binding.selectionPanel.height.toFloat() - 75f)
+                .translationY(-binding.selectionPanel.height.toFloat() - fabOffset)
                 .setDuration(200)
                 .start()
         } else {

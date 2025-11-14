@@ -1,5 +1,52 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.24.2 - Package Multi-Select UI Parity (COMPLETED)
+
+**Version:** 1.24.2 (code 122)
+
+**Cel:**
+- Uporządkować panel zaznaczeń paczek tak, aby odpowiadał układowi produktów i zapewnić dostęp do archiwizacji przez menu edycji.
+
+**Status:** COMPLETED ✅
+
+### Changes:
+- Usunięto przycisk Archive z panelu zaznaczeń paczek, jednocześnie przenosząc akcję do nowej opcji "Archive Returned" w oknie Bulk Edit, dzięki czemu archiwizacja jest nadal dostępna z poziomu przycisku Edit.
+- Dodano wspólny wymiar `selection_panel_fab_spacing` i zastosowano go do animacji FAB w obu listach (products/packages), aby przycisk X pojawiał się tuż nad panelem zaznaczeń.
+- Zapewniono pionowe wyśrodkowanie elementów panelu wyboru w `fragment_package_list.xml`, aby pasek wizualnie odpowiadał widokowi produktów.
+
+### Testing:
+- Build: ✅ PASS (`.\gradlew.bat assembleDebug --stacktrace`)
+
+### Notes:
+- FAB animacja wykorzystuje teraz dp zamiast stałej wartości px, więc odstęp od panelu pozostaje spójny na wszystkich gęstościach ekranów.
+
+---
+
+## ✅ v1.24.1 - CSV Import/Export UTF-8 + PL znaki (COMPLETED)
+
+**Version:** 1.24.1 (code 121)
+
+**Cel:**
+- Zapewnić poprawny import/eksport CSV z polskimi znakami (Products Export/Import).
+
+**Status:** COMPLETED ✅
+
+### Changes:
+- `ExportImportViewModel` wykrywa kodowanie CSV (UTF-8, Windows-1250, ISO-8859-2) i usuwa BOM przed parsowaniem.
+- Wszystkie zapisy CSV/JSON (export, template, filtered import) używają `OutputStreamWriter` z UTF-8 oraz dodają BOM dla plików CSV.
+- `CsvRow` i parser CSV nie przycinają już pól tekstowych, aby nie tracić znaków narodowych.
+- Dodano fallback kodowania i logi informujące o wykrytym charset.
+
+### Testing:
+- Build: ✅ PASS (`.\gradlew.bat assembleDebug --stacktrace`)
+- Ręczny test: import/preview CSV z polskimi znakami zachowuje poprawne litery.
+
+### Notes:
+- Excel zapisujący w Windows-1250/ISO-8859-2 jest teraz akceptowany automatycznie.
+- Eksportowane/temp pliki JSON pozostają w UTF-8.
+
+---
+
 ## ✅ v1.3.2 - CSV Template with Examples + Package Dates (COMPLETED)
 
 **Version:** 1.3.2 (code 6)

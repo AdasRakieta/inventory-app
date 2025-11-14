@@ -172,6 +172,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="8dp"
+        android:gravity="center_vertical"
         android:background="@color/surface"
         android:elevation="4dp"
         android:visibility="gone"
@@ -206,14 +207,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Edit"
-            android:textAllCaps="false" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/archiveSelectedButton"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Archive"
             android:textAllCaps="false" />
 
         <com.google.android.material.button.MaterialButton

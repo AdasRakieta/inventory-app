@@ -65,20 +65,20 @@ data class CsvRow(
         
         private fun parseFields(fields: List<String>): CsvRow {
             return CsvRow(
-                type = fields[0].trim(),
-                serialNumber = fields.getOrNull(1)?.trim()?.takeIf { it.isNotEmpty() },
-                name = fields.getOrNull(2)?.trim() ?: "",
-                description = fields.getOrNull(3)?.trim()?.takeIf { it.isNotEmpty() },
-                category = fields.getOrNull(4)?.trim()?.takeIf { it.isNotEmpty() },
-                quantity = fields.getOrNull(5)?.trim()?.toIntOrNull(),
-                packageName = fields.getOrNull(6)?.trim()?.takeIf { it.isNotEmpty() },
-                boxName = fields.getOrNull(7)?.trim()?.takeIf { it.isNotEmpty() },
-                contractorName = fields.getOrNull(8)?.trim()?.takeIf { it.isNotEmpty() },
-                location = fields.getOrNull(9)?.trim()?.takeIf { it.isNotEmpty() },
-                status = fields.getOrNull(10)?.trim()?.takeIf { it.isNotEmpty() },
-                createdDate = fields.getOrNull(11)?.trim()?.takeIf { it.isNotEmpty() },
-                shippedDate = fields.getOrNull(12)?.trim()?.takeIf { it.isNotEmpty() },
-                deliveredDate = fields.getOrNull(13)?.trim()?.takeIf { it.isNotEmpty() }
+                type = fields[0],
+                serialNumber = fields.getOrNull(1)?.takeIf { it.isNotEmpty() },
+                name = fields.getOrNull(2) ?: "",
+                description = fields.getOrNull(3)?.takeIf { it.isNotEmpty() },
+                category = fields.getOrNull(4)?.takeIf { it.isNotEmpty() },
+                quantity = fields.getOrNull(5)?.toIntOrNull(),
+                packageName = fields.getOrNull(6)?.takeIf { it.isNotEmpty() },
+                boxName = fields.getOrNull(7)?.takeIf { it.isNotEmpty() },
+                contractorName = fields.getOrNull(8)?.takeIf { it.isNotEmpty() },
+                location = fields.getOrNull(9)?.takeIf { it.isNotEmpty() },
+                status = fields.getOrNull(10)?.takeIf { it.isNotEmpty() },
+                createdDate = fields.getOrNull(11)?.takeIf { it.isNotEmpty() },
+                shippedDate = fields.getOrNull(12)?.takeIf { it.isNotEmpty() },
+                deliveredDate = fields.getOrNull(13)?.takeIf { it.isNotEmpty() }
             )
         }
         

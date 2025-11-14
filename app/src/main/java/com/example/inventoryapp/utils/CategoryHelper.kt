@@ -111,23 +111,23 @@ object CategoryHelper {
 
     // Package status constants
     object PackageStatus {
+        const val WAREHOUSE = "WAREHOUSE"
         const val PREPARATION = "PREPARATION"
         const val READY = "READY"
-        const val SHIPPED = "SHIPPED"
-        const val DELIVERED = "DELIVERED"
+        const val ISSUED = "ISSUED"
         const val RETURNED = "RETURNED"
         const val UNASSIGNED = "UNASSIGNED"
 
-        val ALL_STATUSES = arrayOf(PREPARATION, READY, SHIPPED, DELIVERED, RETURNED)
-        val PACKAGE_STATUSES = arrayOf(PREPARATION, READY, SHIPPED, DELIVERED, RETURNED)
-        val FILTER_STATUSES = arrayOf(PREPARATION, READY, SHIPPED, DELIVERED, RETURNED, UNASSIGNED)
+        val ALL_STATUSES = arrayOf(WAREHOUSE, PREPARATION, READY, ISSUED, RETURNED)
+        val PACKAGE_STATUSES = arrayOf(WAREHOUSE, PREPARATION, READY, ISSUED, RETURNED)
+        val FILTER_STATUSES = arrayOf(WAREHOUSE, PREPARATION, READY, ISSUED, RETURNED, UNASSIGNED)
 
         fun getDisplayName(status: String): String {
             return when (status) {
-                PREPARATION -> "📦 Preparation"
+                WAREHOUSE -> "🏢 Warehouse"
+                PREPARATION -> "🛠️ Preparation"
                 READY -> "✅ Ready"
-                SHIPPED -> "🚚 Shipped"
-                DELIVERED -> "📬 Delivered"
+                ISSUED -> "📤 Issued"
                 RETURNED -> "↩️ Returned"
                 UNASSIGNED -> "❓ Unassigned"
                 else -> status

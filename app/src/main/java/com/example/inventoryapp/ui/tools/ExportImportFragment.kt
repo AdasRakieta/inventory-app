@@ -55,7 +55,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileReader
-import java.io.FileWriter
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
 import java.text.SimpleDateFormat
 import java.util.*
 import java.net.NetworkInterface
@@ -1289,7 +1290,7 @@ class ExportImportFragment : Fragment() {
                     
                     // Create temporary file with filtered data
                     val tempFile = File(requireContext().cacheDir, "filtered_import_${System.currentTimeMillis()}.json")
-                    FileWriter(tempFile).use { writer ->
+                    OutputStreamWriter(FileOutputStream(tempFile), Charsets.UTF_8).use { writer ->
                         gson.toJson(filteredData, writer)
                     }
                     
@@ -1375,7 +1376,8 @@ class ExportImportFragment : Fragment() {
                 val templateFile = File(exportsDir, "inventory_template.csv")
                 
                 // Generate unified CSV template with example rows for each type
-                FileWriter(templateFile).use { writer ->
+                OutputStreamWriter(FileOutputStream(templateFile), Charsets.UTF_8).use { writer ->
+                    writer.write("\uFEFF")
                     // Header
                     writer.append(CsvRow.CSV_HEADERS.joinToString(","))
                     writer.append("\n")
@@ -1400,23 +1402,95 @@ class ExportImportFragment : Fragment() {
                     writer.append(CsvRow.toCsvLine(contractorRow)).append("\n")
 
                     // Example: Package (referencing contractor)
-                    val packageRow = CsvRow(
+                    val packageRowWarehouse = CsvRow(
                         type = CsvRow.TYPE_PACKAGE,
                         serialNumber = null,
                         name = "PKG-1001",
-                        description = "Sample shipment",
+                        description = "Sample shipment in warehouse",
                         category = null,
                         quantity = null,
                         packageName = null,
                         boxName = null,
                         contractorName = "ACME Logistics",
                         location = null,
-                        status = CategoryHelper.PackageStatus.SHIPPED,
+                        status = CategoryHelper.PackageStatus.WAREHOUSE,
+                        createdDate = "",
+                        shippedDate = null,
+                        deliveredDate = null
+                    )
+                    writer.append(CsvRow.toCsvLine(packageRowWarehouse)).append("\n")
+
+                    val packageRowPreparation = CsvRow(
+                        type = CsvRow.TYPE_PACKAGE,
+                        serialNumber = null,
+                        name = "PKG-1002",
+                        description = "Sample shipment in preparation",
+                        category = null,
+                        quantity = null,
+                        packageName = null,
+                        boxName = null,
+                        contractorName = "ACME Logistics",
+                        location = null,
+                        status = CategoryHelper.PackageStatus.PREPARATION,
+                        createdDate = "",
+                        shippedDate = null,
+                        deliveredDate = null
+                    )
+                    writer.append(CsvRow.toCsvLine(packageRowPreparation)).append("\n")
+
+                    val packageRowReady = CsvRow(
+                        type = CsvRow.TYPE_PACKAGE,
+                        serialNumber = null,
+                        name = "PKG-1003",
+                        description = "Sample shipment ready",
+                        category = null,
+                        quantity = null,
+                        packageName = null,
+                        boxName = null,
+                        contractorName = "ACME Logistics",
+                        location = null,
+                        status = CategoryHelper.PackageStatus.READY,
+                        createdDate = "",
+                        shippedDate = null,
+                        deliveredDate = null
+                    )
+                    writer.append(CsvRow.toCsvLine(packageRowReady)).append("\n")
+
+                    val packageRowIssued = CsvRow(
+                        type = CsvRow.TYPE_PACKAGE,
+                        serialNumber = null,
+                        name = "PKG-1004",
+                        description = "Sample shipment issued",
+                        category = null,
+                        quantity = null,
+                        packageName = null,
+                        boxName = null,
+                        contractorName = "ACME Logistics",
+                        location = null,
+                        status = CategoryHelper.PackageStatus.ISSUED,
                         createdDate = "",
                         shippedDate = "1704067200000", // 2024-01-01 UTC in millis
                         deliveredDate = ""
                     )
-                    writer.append(CsvRow.toCsvLine(packageRow)).append("\n")
+                    writer.append(CsvRow.toCsvLine(packageRowIssued)).append("\n")
+
+                    val packageRowReturned = CsvRow(
+                        type = CsvRow.TYPE_PACKAGE,
+                        serialNumber = null,
+                        name = "PKG-1005",
+                        description = "Sample shipment returned",
+                        category = null,
+                        quantity = null,
+                        packageName = null,
+                        boxName = null,
+                        contractorName = "ACME Logistics",
+                        location = null,
+                        status = CategoryHelper.PackageStatus.RETURNED,
+                        createdDate = "",
+                        shippedDate = null,
+                        deliveredDate = null
+                    )
+                    writer.append(CsvRow.toCsvLine(packageRowReturned)).append("\n")
 
                     // Example: Box
                     val boxRow = CsvRow(
@@ -1541,7 +1615,7 @@ class ExportImportFragment : Fragment() {
                 // Convert ExportData to temp JSON file for preview
                 val gson = com.google.gson.GsonBuilder().create()
                 val jsonFile = File(requireContext().cacheDir, "temp_csv_preview_${System.currentTimeMillis()}.json")
-                com.google.gson.stream.JsonWriter(FileWriter(jsonFile)).use { writer ->
+                com.google.gson.stream.JsonWriter(OutputStreamWriter(FileOutputStream(jsonFile), Charsets.UTF_8)).use { writer ->
                     gson.toJson(exportData, ExportData::class.java, writer)
                 }
                 

@@ -26,8 +26,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
-import java.io.FileReader
-import java.io.FileWriter
+import java.io.FileOutputStream
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.nio.ByteBuffer
+import java.nio.charset.Charset
+import java.nio.charset.CharsetDecoder
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
 
 import com.example.inventoryapp.data.local.entities.InventoryCountSessionEntity
 import com.example.inventoryapp.data.local.entities.InventoryCountItemEntity
@@ -142,7 +149,7 @@ class ExportImportViewModel(
             // Ensure parent directory exists
             outputFile.parentFile?.mkdirs()
 
-            FileWriter(outputFile).use { writer ->
+            OutputStreamWriter(FileOutputStream(outputFile), Charsets.UTF_8).use { writer ->
                 gson.toJson(exportData, writer)
             }
 
@@ -183,7 +190,7 @@ class ExportImportViewModel(
                     inQuotes = !inQuotes
                 }
                 ch == delimiter && !inQuotes -> {
-                    result.add(current.toString().trim())
+                    result.add(current.toString())
                     current = StringBuilder()
                 }
                 else -> {
@@ -194,8 +201,7 @@ class ExportImportViewModel(
         }
 
         // Add last field
-        result.add(current.toString().trim())
-
+        result.add(current.toString())
         return result
     }
 
@@ -216,6 +222,72 @@ class ExportImportViewModel(
         return count
     }
 
+    private val csvCharsetCandidates: List<Charset> by lazy {
+        val windows1250 = runCatching { Charset.forName("windows-1250") }.getOrNull()
+        val iso88592 = runCatching { Charset.forName("ISO-8859-2") }.getOrNull()
+        listOfNotNull(
+            StandardCharsets.UTF_8,
+            windows1250,
+            iso88592,
+            StandardCharsets.ISO_8859_1
+        )
+    }
+
+    private fun readCsvLinesWithEncoding(file: File): Pair<List<String>, Charset> {
+        val bytes = file.readBytes()
+        val (strippedBytes, bomCharset) = stripBom(bytes)
+        val (text, charset) = decodeWithFallback(strippedBytes, bomCharset)
+        val normalized = text.replace("\r\n", "\n").replace('\r', '\n')
+        val lines = normalized.split('\n')
+        return lines to charset
+    }
+
+    private fun decodeWithFallback(bytes: ByteArray, bomCharset: Charset?): Pair<String, Charset> {
+        val charsetsToTry = mutableListOf<Charset>()
+        if (bomCharset != null) {
+            charsetsToTry += bomCharset
+        }
+        csvCharsetCandidates.forEach { candidate ->
+            if (!charsetsToTry.contains(candidate)) {
+                charsetsToTry += candidate
+            }
+        }
+
+        charsetsToTry.forEach { charset ->
+            decodeBytes(bytes, charset)?.let { decoded ->
+                return decoded to charset
+            }
+        }
+
+        return String(bytes, Charsets.UTF_8) to Charsets.UTF_8
+    }
+
+    private fun decodeBytes(bytes: ByteArray, charset: Charset): String? {
+        val decoder: CharsetDecoder = charset.newDecoder()
+        decoder.onMalformedInput(CodingErrorAction.REPORT)
+        decoder.onUnmappableCharacter(CodingErrorAction.REPORT)
+        return try {
+            decoder.decode(ByteBuffer.wrap(bytes)).toString()
+        } catch (ex: CharacterCodingException) {
+            null
+        }
+    }
+
+    private fun stripBom(bytes: ByteArray): Pair<ByteArray, Charset?> {
+        if (bytes.size >= 3 && bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() && bytes[2] == 0xBF.toByte()) {
+            return bytes.copyOfRange(3, bytes.size) to StandardCharsets.UTF_8
+        }
+        if (bytes.size >= 2) {
+            if (bytes[0] == 0xFE.toByte() && bytes[1] == 0xFF.toByte()) {
+                return bytes.copyOfRange(2, bytes.size) to StandardCharsets.UTF_16BE
+            }
+            if (bytes[0] == 0xFF.toByte() && bytes[1] == 0xFE.toByte()) {
+                return bytes.copyOfRange(2, bytes.size) to StandardCharsets.UTF_16LE
+            }
+        }
+        return bytes to null
+    }
+
     /**
      * Generate import preview showing what will be added/updated
      */
@@ -224,7 +296,7 @@ class ExportImportViewModel(
             AppLogger.logAction("Generate Import Preview", "File: ${inputFile.absolutePath}")
             _status.value = "Analyzing import file..."
             
-            val exportData = FileReader(inputFile).use { reader ->
+            val exportData = InputStreamReader(inputFile.inputStream(), Charsets.UTF_8).use { reader ->
                 gson.fromJson(reader, ExportData::class.java)
             }
 
@@ -329,7 +401,7 @@ class ExportImportViewModel(
             
             _status.value = "Importing data..."
             
-            val exportData = FileReader(inputFile).use { reader ->
+            val exportData = InputStreamReader(inputFile.inputStream(), Charsets.UTF_8).use { reader ->
                 gson.fromJson(reader, ExportData::class.java)
             }
 
@@ -792,36 +864,35 @@ class ExportImportViewModel(
             AppLogger.logAction("Parse Unified CSV", "File: ${file.absolutePath}")
             
             val csvRows = mutableListOf<com.example.inventoryapp.data.local.entity.CsvRow>()
-            
-            FileReader(file).use { reader ->
-                val lines = reader.readLines()
-                if (lines.size < 2) {
-                    AppLogger.w("Parse CSV", "File has no data rows")
-                    return null
-                }
-                
-                // Detect delimiter (supports ',', ';', and tab) using header and first data row
-                val header = lines.first()
-                val firstData = lines.drop(1).firstOrNull { it.isNotBlank() } ?: ""
-                val commaScore = countDelimiter(header, ',') + countDelimiter(firstData, ',')
-                val semicolonScore = countDelimiter(header, ';') + countDelimiter(firstData, ';')
-                val tabScore = countDelimiter(header, '\t') + countDelimiter(firstData, '\t')
-                val delimiter = when {
-                    semicolonScore > commaScore && semicolonScore >= tabScore -> ';'
-                    tabScore > commaScore && tabScore > semicolonScore -> '\t'
-                    else -> ','
-                }
 
-                // Skip header (line 0)
-                lines.drop(1).forEach { line ->
-                    if (line.isNotBlank()) {
-                        val fields = parseCsvLine(line, delimiter)
-                        val row = com.example.inventoryapp.data.local.entity.CsvRow.fromCsvFields(fields)
-                        if (row != null && row.isValid()) {
-                            csvRows.add(row)
-                        } else {
-                            AppLogger.w("Parse CSV", "Invalid row: $line")
-                        }
+            val (lines, detectedCharset) = readCsvLinesWithEncoding(file)
+            if (lines.size < 2) {
+                AppLogger.w("Parse CSV", "File has no data rows")
+                return null
+            }
+            AppLogger.logAction("Parse CSV", "Detected charset: ${detectedCharset.name()}")
+
+            // Detect delimiter (supports ',', ';', and tab) using header and first data row
+            val header = lines.first()
+            val firstData = lines.drop(1).firstOrNull { it.isNotBlank() } ?: ""
+            val commaScore = countDelimiter(header, ',') + countDelimiter(firstData, ',')
+            val semicolonScore = countDelimiter(header, ';') + countDelimiter(firstData, ';')
+            val tabScore = countDelimiter(header, '\t') + countDelimiter(firstData, '\t')
+            val delimiter = when {
+                semicolonScore > commaScore && semicolonScore >= tabScore -> ';'
+                tabScore > commaScore && tabScore > semicolonScore -> '\t'
+                else -> ','
+            }
+
+            // Skip header (line 0)
+            lines.drop(1).forEach { line ->
+                if (line.isNotBlank()) {
+                    val fields = parseCsvLine(line, delimiter)
+                    val row = com.example.inventoryapp.data.local.entity.CsvRow.fromCsvFields(fields)
+                    if (row != null && row.isValid()) {
+                        csvRows.add(row)
+                    } else {
+                        AppLogger.w("Parse CSV", "Invalid row: $line")
                     }
                 }
             }
@@ -978,7 +1049,7 @@ class ExportImportViewModel(
             // Use existing JSON import logic
             val tempJsonFile = File(file.parentFile, "temp_import_${System.currentTimeMillis()}.json")
             try {
-                FileWriter(tempJsonFile).use { writer ->
+                OutputStreamWriter(FileOutputStream(tempJsonFile), Charsets.UTF_8).use { writer ->
                     gson.toJson(exportData, writer)
                 }
                 
@@ -1039,7 +1110,10 @@ class ExportImportViewModel(
                 }
             }
             
-            FileWriter(outputFile).use { writer ->
+            OutputStreamWriter(FileOutputStream(outputFile), Charsets.UTF_8).use { writer ->
+                if (outputFile.extension.equals("csv", ignoreCase = true)) {
+                    writer.write("\uFEFF")
+                }
                 // Write header
                 writer.append(com.example.inventoryapp.data.local.entity.CsvRow.CSV_HEADERS.joinToString(","))
                 writer.append("\n")
