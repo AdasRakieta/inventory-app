@@ -126,6 +126,17 @@ class ArchiveViewModel(
             }
         }
     }
+    
+    /**
+     * Delete multiple packages permanently
+     */
+    fun deletePackages(packageIds: Set<Long>) {
+        viewModelScope.launch {
+            packageIds.forEach { packageId ->
+                packageRepository.deletePackageById(packageId)
+            }
+        }
+    }
 }
 
 enum class ArchiveSortOrder {

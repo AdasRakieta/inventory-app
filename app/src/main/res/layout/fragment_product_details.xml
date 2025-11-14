@@ -330,6 +330,31 @@
 
                 </LinearLayout>
 
+                <!-- Movement History (summary row inside Information card) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Movement History:"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_secondary" />
+
+                    <TextView
+                        android:id="@+id/movementSummaryText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="No movements"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_primary" />
+
+                </LinearLayout>
+
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
@@ -352,12 +377,32 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp">
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/movementsRecyclerView"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:nestedScrollingEnabled="false"
-                android:overScrollMode="never" />
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/movementsRecyclerView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never"
+                    android:layout_marginBottom="12dp" />
+
+                <TextView
+                    android:id="@+id/movementsEmptyText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="No movements recorded"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_secondary"
+                    android:gravity="center"
+                    android:padding="8dp"
+                    android:visibility="gone" />
+
+            </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
 

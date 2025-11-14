@@ -44,10 +44,12 @@ class PackageDetailsFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val database = AppDatabase.getDatabase(requireContext())
-        val packageRepository = PackageRepository(database.packageDao(), database.productDao(), database.boxDao())
-        val productRepository = ProductRepository(database.productDao())
-        val contractorRepository = ContractorRepository(database.contractorDao())
+        val app = requireActivity().application as com.example.inventoryapp.InventoryApplication
+        val packageRepository = app.packageRepository
+        val productRepository = app.productRepository
+        val contractorRepository = com.example.inventoryapp.data.repository.ContractorRepository(
+            AppDatabase.getDatabase(requireContext()).contractorDao()
+        )
         val factory = PackageDetailsViewModelFactory(packageRepository, productRepository, contractorRepository, args.packageId)
         val vm: PackageDetailsViewModel by viewModels { factory }
         viewModel = vm

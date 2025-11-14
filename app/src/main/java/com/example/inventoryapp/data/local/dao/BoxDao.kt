@@ -87,6 +87,10 @@ interface BoxDao {
     @RewriteQueriesToDropUnusedColumns
     @Query("SELECT * FROM boxes INNER JOIN box_product_cross_ref ON boxes.id = box_product_cross_ref.boxId WHERE box_product_cross_ref.productId = :productId LIMIT 1")
     fun getBoxForProduct(productId: Long): Flow<BoxEntity?>
+
+    @Query("SELECT * FROM box_product_cross_ref WHERE productId = :productId")
+    suspend fun getBoxCrossRefsForProduct(productId: Long): List<BoxProductCrossRef>
+
 }
 
 data class BoxWithCount(

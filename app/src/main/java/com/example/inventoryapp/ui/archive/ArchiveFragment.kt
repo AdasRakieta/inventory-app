@@ -133,6 +133,11 @@ class ArchiveFragment : Fragment() {
         binding.restoreSelectedButton.setOnClickListener {
             showUnarchiveConfirmationDialog()
         }
+
+        // Delete Selected button
+        binding.deleteSelectedButton.setOnClickListener {
+            showDeleteConfirmationDialog()
+        }
     }
 
     private fun observeViewModel() {
@@ -197,6 +202,18 @@ class ArchiveFragment : Fragment() {
             .show()
     }
 
+    private fun showDeleteConfirmationDialog() {
+        val selectedCount = adapter.getSelectedCount()
+        AlertDialog.Builder(requireContext())
+            .setTitle("Delete Packages")
+            .setMessage("Permanently delete $selectedCount package(s)? This action cannot be undone.")
+            .setPositiveButton("Delete") { _, _ ->
+                deleteSelectedPackages()
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
+    }
+
     private fun unarchiveSelectedPackages() {
         val selectedPackageIds = adapter.getSelectedPackages()
         viewModel.unarchivePackages(selectedPackageIds)
@@ -206,6 +223,19 @@ class ArchiveFragment : Fragment() {
         android.widget.Toast.makeText(
             requireContext(),
             "Restored ${selectedPackageIds.size} package(s)",
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun deleteSelectedPackages() {
+        val selectedPackageIds = adapter.getSelectedPackages()
+        viewModel.deletePackages(selectedPackageIds)
+        adapter.clearSelection()
+        updateSelectionUI()
+        
+        android.widget.Toast.makeText(
+            requireContext(),
+            "Deleted ${selectedPackageIds.size} package(s)",
             android.widget.Toast.LENGTH_SHORT
         ).show()
     }

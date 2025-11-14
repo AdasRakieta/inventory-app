@@ -51,6 +51,9 @@ interface PackageDao {
     @Query("SELECT * FROM packages INNER JOIN package_product_cross_ref ON packages.id = package_product_cross_ref.packageId WHERE package_product_cross_ref.productId = :productId ORDER BY packages.archived ASC LIMIT 1")
     fun getPackageForProduct(productId: Long): Flow<PackageEntity?>
     
+    @Query("SELECT * FROM package_product_cross_ref WHERE productId = :productId")
+    suspend fun getPackageCrossRefsForProduct(productId: Long): List<com.example.inventoryapp.data.local.entities.PackageProductCrossRef>
+    
     @Query("""
         SELECT EXISTS(
             SELECT 1 FROM package_product_cross_ref 

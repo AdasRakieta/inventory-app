@@ -27,9 +27,9 @@ class AddProductFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val database = AppDatabase.getDatabase(requireContext())
-        val repository = ProductRepository(database.productDao())
-        val packageRepository = PackageRepository(database.packageDao(), database.productDao(), database.boxDao())
+        val app = requireActivity().application as com.example.inventoryapp.InventoryApplication
+        val repository = app.productRepository
+        val packageRepository = app.packageRepository
         val factory = ProductsViewModelFactory(repository, packageRepository)
         val vm: ProductsViewModel by viewModels { factory }
         viewModel = vm

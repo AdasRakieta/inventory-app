@@ -89,6 +89,21 @@ class PackageDetailsViewModel(
             packageRepository.updatePackage(updatedPackage)
         }
     }
+
+    // Ensure contractor is refreshed immediately after updating contractor assignment
+    fun updatePackageContractorAndRefresh(contractorId: Long?) {
+        viewModelScope.launch {
+            val currentPackage = _packageEntity.value ?: return@launch
+            val updatedPackage = currentPackage.copy(contractorId = contractorId)
+            packageRepository.updatePackage(updatedPackage)
+            // Refresh contractor view state
+            if (contractorId != null) {
+                loadContractorById(contractorId)
+            } else {
+                _contractor.value = null
+            }
+        }
+    }
     
     fun updatePackageDates(shippedAt: Long?, returnedAt: Long?) {
         viewModelScope.launch {
@@ -154,22 +169,8 @@ class PackageDetailsViewModel(
         viewModelScope.launch {
             try {
                 val currentPackage = _packageEntity.value ?: return@launch
-                val updatedPackage = when (newStatus) {
-                    "SHIPPED" -> currentPackage.copy(
-                        status = newStatus,
-                        shippedAt = System.currentTimeMillis()
-                    )
-                    "DELIVERED" -> currentPackage.copy(
-                        status = newStatus,
-                        deliveredAt = System.currentTimeMillis()
-                    )
-                    "RETURNED" -> currentPackage.copy(
-                        status = newStatus,
-                        deliveredAt = System.currentTimeMillis() // Use deliveredAt for returned timestamp
-                    )
-                    else -> currentPackage.copy(status = newStatus)
-                }
-                packageRepository.updatePackage(updatedPackage)
+                // Use repository method that records per-product package status change movements
+                packageRepository.updatePackageStatus(packageId, newStatus)
             } catch (e: Exception) {
                 // Error will be handled in the fragment
                 throw e

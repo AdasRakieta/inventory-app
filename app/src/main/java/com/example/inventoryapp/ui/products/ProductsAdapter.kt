@@ -108,6 +108,9 @@ class ProductsAdapter(
                     "READY" -> "✅"
                     "SHIPPED" -> "🚚"
                     "DELIVERED" -> "📬"
+                    "RETURNED" -> "↩️"
+                    "ISSUED" -> "🔖"
+                    "WAREHOUSE" -> "🏬"
                     else -> "❓"
                 }
                 val statusText = when (pkg.status) {
@@ -115,6 +118,9 @@ class ProductsAdapter(
                     "READY" -> "Ready"
                     "SHIPPED" -> "Shipped"
                     "DELIVERED" -> "Delivered"
+                    "RETURNED" -> "Returned"
+                    "ISSUED" -> "Issued"
+                    "WAREHOUSE" -> "Warehouse"
                     else -> pkg.status
                 }
                 binding.packageInfo.text = "$statusIcon ${pkg.name} - $statusText"

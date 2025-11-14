@@ -15,12 +15,9 @@ import androidx.navigation.fragment.navArgs
 import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentProductDetailsBinding
 import com.example.inventoryapp.InventoryApplication
-import com.example.inventoryapp.data.local.database.AppDatabase
-import com.example.inventoryapp.data.local.entities.DeviceMovementEntity
-import com.example.inventoryapp.data.repository.DeviceMovementRepository
-import com.example.inventoryapp.data.repository.ProductRepository
 import com.example.inventoryapp.ui.products.adapters.DeviceMovementAdapter
 import com.example.inventoryapp.utils.CategoryHelper
+import androidx.recyclerview.widget.LinearLayoutManager
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -74,13 +71,36 @@ class ProductDetailsFragment : Fragment() {
         movementAdapter = DeviceMovementAdapter()
         binding.movementsRecyclerView.apply {
             adapter = movementAdapter
+            layoutManager = LinearLayoutManager(requireContext())
             // Allow nested scrolling inside ScrollView
             isNestedScrollingEnabled = false
+        }
+
+        // Click once: scroll to movement card on summary tap when data exists
+        binding.movementSummaryText.setOnClickListener {
+            if (movementAdapter.itemCount > 0) {
+                try {
+                    binding.root.smoothScrollTo(0, binding.movementsRecyclerView.top)
+                } catch (e: Exception) {
+                    binding.movementsRecyclerView.post { binding.movementsRecyclerView.smoothScrollToPosition(0) }
+                }
+            }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.movements.collect { list ->
                 movementAdapter.submitList(list)
+                // Show empty state when there are no movements to display
+                binding.movementsEmptyText.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
+
+                // Update summary row in Information card: show count or 'See below'
+                if (list.isEmpty()) {
+                    binding.movementSummaryText.text = "No movements"
+                    binding.movementSummaryText.isClickable = false
+                } else {
+                    binding.movementSummaryText.text = "See below"
+                    binding.movementSummaryText.isClickable = true
+                }
             }
         }
     }

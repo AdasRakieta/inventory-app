@@ -36,9 +36,12 @@ class PackageListFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val database = AppDatabase.getDatabase(requireContext())
-        val repository = PackageRepository(database.packageDao(), database.productDao(), database.boxDao())
-        val contractorRepository = ContractorRepository(database.contractorDao())
+        val app = requireActivity().application as com.example.inventoryapp.InventoryApplication
+        // Use shared repositories from Application (ensures DeviceMovementRepository is available)
+        val repository = app.packageRepository
+        val contractorRepository = com.example.inventoryapp.data.repository.ContractorRepository(
+            AppDatabase.getDatabase(requireContext()).contractorDao()
+        )
         val factory = PackagesViewModelFactory(repository, contractorRepository)
         val vm: PackagesViewModel by viewModels { factory }
         viewModel = vm

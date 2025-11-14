@@ -1,5 +1,51 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.24.5 - Archive Bulk Delete Feature (COMPLETED)
+
+**Version:** 1.24.5 (code 124)
+
+**Cel:**
+- Dodać przycisk "Delete" w panelu zaznaczeń w Archive, umożliwiający masowe usuwanie zarchiwizowanych paczek obok opcji "Select All" i "Restore".
+
+**Status:** COMPLETED ✅
+
+### Changes:
+- Dodano przycisk `deleteSelectedButton` w `fragment_archive.xml` w panelu zaznaczeń obok "Restore".
+- Dodano metodę `deletePackages(packageIds: Set<Long>)` w `ArchiveViewModel.kt` do masowego usuwania paczek.
+- Dodano obsługę kliknięcia `deleteSelectedButton` w `ArchiveFragment.kt` z dialogiem potwierdzenia i wywołaniem `deleteSelectedPackages()`.
+- Dodano metodę `showDeleteConfirmationDialog()` i `deleteSelectedPackages()` w `ArchiveFragment.kt` z ostrzeżeniem o nieodwracalności akcji.
+
+### Testing:
+- Build: ✅ PASS (`.\gradlew.bat assembleDebug --stacktrace`)
+
+### Notes:
+- Wersja aplikacji zaktualizowana do 1.24.5 / code 124 zgodnie z procesem wydawniczym.
+- Usuwanie jest nieodwracalne, więc dialog potwierdzenia zawiera odpowiednie ostrzeżenie.
+
+---
+
+## ✅ v1.24.4 - Movement History UI Fix (COMPLETED)
+
+**Version:** 1.24.4 (code 123)
+
+**Cel:**
+- Upewnić się, że sekcja Movement History wyświetla dane i stan pusty bezpośrednio pod nagłówkiem, a streszczenie w karcie Information przenosi użytkownika do historii.
+
+**Status:** COMPLETED ✅
+
+### Changes:
+- Przebudowano kartę Movement History w `fragment_product_details.xml`, dodając wewnętrzny `LinearLayout` z paddingiem, aby RecyclerView i tekst stanu pustego były widoczne, oraz poprawiono style.
+- Dla `movementsRecyclerView` ustawiono `LinearLayoutManager`, dzięki czemu elementy historii renderują się poprawnie w ScrollView.
+- Uporządkowano zachowanie `movementSummaryText`: pokazuje "No movements" gdy lista jest pusta, "See below" gdy są wpisy i przewija ekran do sekcji historii po kliknięciu.
+
+### Testing:
+- Build: ✅ PASS (`.\gradlew.bat assembleDebug --stacktrace`)
+
+### Notes:
+- Wersja aplikacji zaktualizowana do 1.24.4 / code 123 zgodnie z procesem wydawniczym.
+
+---
+
 ## ✅ v1.24.2 - Package Multi-Select UI Parity (COMPLETED)
 
 **Version:** 1.24.2 (code 122)
