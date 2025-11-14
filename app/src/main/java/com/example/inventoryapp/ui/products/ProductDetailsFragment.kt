@@ -14,8 +14,12 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.example.inventoryapp.R
 import com.example.inventoryapp.databinding.FragmentProductDetailsBinding
+import com.example.inventoryapp.InventoryApplication
 import com.example.inventoryapp.data.local.database.AppDatabase
+import com.example.inventoryapp.data.local.entities.DeviceMovementEntity
+import com.example.inventoryapp.data.repository.DeviceMovementRepository
 import com.example.inventoryapp.data.repository.ProductRepository
+import com.example.inventoryapp.ui.products.adapters.DeviceMovementAdapter
 import com.example.inventoryapp.utils.CategoryHelper
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -34,9 +38,13 @@ class ProductDetailsFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val database = AppDatabase.getDatabase(requireContext())
-        val repository = ProductRepository(database.productDao())
-        val factory = ProductDetailsViewModelFactory(repository, args.productId)
+        // Prefer using application-level repositories (InventoryApplication)
+        val app = requireActivity().application as InventoryApplication
+        val productRepo = app.productRepository
+        val deviceMovementRepo = app.deviceMovementRepository
+        val boxRepo = app.boxRepository
+        val packageRepo = app.packageRepository
+        val factory = ProductDetailsViewModelFactory(productRepo, deviceMovementRepo, boxRepo, packageRepo, args.productId)
         val vm: ProductDetailsViewModel by viewModels { factory }
         viewModel = vm
     }
@@ -53,9 +61,28 @@ class ProductDetailsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Setup movements list
+        setupMovementsList()
         observeProduct()
         observeSnUpdateError()
         setupClickListeners()
+    }
+
+    private lateinit var movementAdapter: DeviceMovementAdapter
+
+    private fun setupMovementsList() {
+        movementAdapter = DeviceMovementAdapter()
+        binding.movementsRecyclerView.apply {
+            adapter = movementAdapter
+            // Allow nested scrolling inside ScrollView
+            isNestedScrollingEnabled = false
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.movements.collect { list ->
+                movementAdapter.submitList(list)
+            }
+        }
     }
 
     private fun observeProduct() {

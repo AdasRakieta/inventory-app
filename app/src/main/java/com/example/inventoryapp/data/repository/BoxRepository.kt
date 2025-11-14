@@ -9,8 +9,7 @@ import com.example.inventoryapp.data.local.entities.ProductWithCategory
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.local.entities.PackageProductCrossRef
 import com.example.inventoryapp.data.local.entities.BoxProductCrossRef
-import com.example.inventoryapp.data.local.entities.DeviceMovementEntity
-import com.example.inventoryapp.data.local.dao.DeviceMovementDao
+import com.example.inventoryapp.data.repository.DeviceMovementRepository
 import com.example.inventoryapp.data.models.AddProductResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -19,7 +18,7 @@ class BoxRepository(
     private val boxDao: BoxDao, 
     private val productDao: ProductDao,
     private val packageDao: PackageDao,
-    private val deviceMovementDao: DeviceMovementDao? = null
+    private val deviceMovementRepository: DeviceMovementRepository? = null
 ) {
 
     fun getAllBoxes(): Flow<List<BoxEntity>> = boxDao.getAllBoxes()
@@ -74,29 +73,11 @@ class BoxRepository(
                     // Package is returned (but not archived), remove from it and add transfer message
                     packageDao.removeProductFromPackage(PackageProductCrossRef(existingPackage.id, productId))
                     // record unassign from package
-                    deviceMovementDao?.insertMovement(
-                        DeviceMovementEntity(
-                            productId = productId,
-                            action = "UNASSIGN",
-                            fromContainerType = "PACKAGE",
-                            fromContainerId = existingPackage.id,
-                            timestamp = System.currentTimeMillis(),
-                            note = "transfer_to_box"
-                        )
-                    )
+                    deviceMovementRepository?.recordUnassignFromPackage(productId, existingPackage.id)
                     val crossRef = BoxProductCrossRef(boxId, productId)
                     boxDao.addProductToBox(crossRef)
                     // record assign to box
-                    deviceMovementDao?.insertMovement(
-                        DeviceMovementEntity(
-                            productId = productId,
-                            action = "ASSIGN",
-                            toContainerType = "BOX",
-                            toContainerId = boxId,
-                            timestamp = System.currentTimeMillis(),
-                            note = "transfer_from_package"
-                        )
-                    )
+                    deviceMovementRepository?.recordAssignToBox(productId, boxId)
                     return AddProductResult.TransferredFromPackage(existingPackage.name)
                 }
             }
@@ -104,16 +85,7 @@ class BoxRepository(
             // Product not in any non-archived package, just add it
             val crossRef = BoxProductCrossRef(boxId, productId)
             boxDao.addProductToBox(crossRef)
-            deviceMovementDao?.insertMovement(
-                DeviceMovementEntity(
-                    productId = productId,
-                    action = "ASSIGN",
-                    toContainerType = "BOX",
-                    toContainerId = boxId,
-                    timestamp = System.currentTimeMillis(),
-                    note = "assign"
-                )
-            )
+            deviceMovementRepository?.recordAssignToBox(productId, boxId)
             AddProductResult.Success
         } catch (e: Exception) {
             AddProductResult.Error("Failed to add product to box: ${e.message}")
@@ -122,6 +94,7 @@ class BoxRepository(
 
     suspend fun removeProductFromBox(boxId: Long, productId: Long) {
         boxDao.removeProductFromBoxById(boxId, productId)
+        deviceMovementRepository?.recordUnassignFromBox(productId, boxId)
     }
     
     suspend fun isProductInBox(boxId: Long, productId: Long): Boolean {

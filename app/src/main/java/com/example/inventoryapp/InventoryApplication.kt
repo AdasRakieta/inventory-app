@@ -6,6 +6,8 @@ import androidx.room.Room
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.local.dao.DeviceMovementDao
 import com.example.inventoryapp.data.repository.BoxRepository
+import com.example.inventoryapp.data.repository.DeviceMovementRepository
+import com.example.inventoryapp.data.repository.PackageRepository
 import com.example.inventoryapp.data.repository.ProductRepository
 import com.example.inventoryapp.data.repository.ImportBackupRepository
 
@@ -27,7 +29,9 @@ class InventoryApplication : Application() {
         }
     }
 
-    val boxRepository by lazy { BoxRepository(database.boxDao(), database.productDao(), database.packageDao(), database.deviceMovementDao()) }
+    val deviceMovementRepository by lazy { DeviceMovementRepository(database.deviceMovementDao()) }
+    val boxRepository by lazy { BoxRepository(database.boxDao(), database.productDao(), database.packageDao(), deviceMovementRepository) }
+    val packageRepository by lazy { PackageRepository(database.packageDao(), database.productDao(), database.boxDao(), deviceMovementRepository) }
     val productRepository by lazy { ProductRepository(database.productDao()) }
     val importBackupRepository by lazy { ImportBackupRepository(database.importBackupDao()) }
 

@@ -335,6 +335,32 @@
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Action Buttons -->
+        <TextView
+            android:id="@+id/movementsLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Movement History"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.App.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/movementsRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="never" />
+
+        </com.google.android.material.card.MaterialCardView>
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/editProductButton"
             style="@style/Widget.App.Button"

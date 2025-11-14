@@ -5,8 +5,7 @@ import com.example.inventoryapp.data.local.dao.BoxDao
 import com.example.inventoryapp.data.local.dao.ProductDao
 import com.example.inventoryapp.data.local.dao.PackageWithCount
 import com.example.inventoryapp.data.local.entities.PackageEntity
-import com.example.inventoryapp.data.local.entities.DeviceMovementEntity
-import com.example.inventoryapp.data.local.dao.DeviceMovementDao
+import com.example.inventoryapp.data.repository.DeviceMovementRepository
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.local.entities.PackageProductCrossRef
 import com.example.inventoryapp.data.local.entities.BoxProductCrossRef
@@ -21,7 +20,7 @@ class PackageRepository(
     private val packageDao: PackageDao,
     private val productDao: ProductDao,
     private val boxDao: BoxDao,
-    private val deviceMovementDao: DeviceMovementDao? = null
+    private val deviceMovementRepository: DeviceMovementRepository? = null
 ) {
     
     fun getAllPackages(): Flow<List<PackageEntity>> = packageDao.getAllPackages()
@@ -61,43 +60,16 @@ class PackageRepository(
                 // remove from box and record movement UNASSIGN -> ASSIGN
                 boxDao.removeProductFromBoxById(existingBox.id, productId)
                 // record unassign from box
-                deviceMovementDao?.insertMovement(
-                    DeviceMovementEntity(
-                        productId = productId,
-                        action = "UNASSIGN",
-                        fromContainerType = "BOX",
-                        fromContainerId = existingBox.id,
-                        timestamp = System.currentTimeMillis(),
-                        note = "backfilled or transfer"
-                    )
-                )
+                deviceMovementRepository?.recordUnassignFromBox(productId, existingBox.id)
                 packageDao.addProductToPackage(PackageProductCrossRef(packageId, productId))
                 // record assign to package
-                deviceMovementDao?.insertMovement(
-                    DeviceMovementEntity(
-                        productId = productId,
-                        action = "ASSIGN",
-                        toContainerType = "PACKAGE",
-                        toContainerId = packageId,
-                        timestamp = System.currentTimeMillis(),
-                        note = "transfer_from_box"
-                    )
-                )
+                deviceMovementRepository?.recordAssignToPackage(productId, packageId)
                 return AddProductResult.TransferredFromBox(existingBox.name)
             }
 
             // Product not in any box, just add it
             packageDao.addProductToPackage(PackageProductCrossRef(packageId, productId))
-            deviceMovementDao?.insertMovement(
-                DeviceMovementEntity(
-                    productId = productId,
-                    action = "ASSIGN",
-                    toContainerType = "PACKAGE",
-                    toContainerId = packageId,
-                    timestamp = System.currentTimeMillis(),
-                    note = "assign"
-                )
-            )
+            deviceMovementRepository?.recordAssignToPackage(productId, packageId)
             AddProductResult.Success
         } catch (e: Exception) {
             AddProductResult.Error("Failed to add product to package: ${e.message}")
@@ -106,16 +78,7 @@ class PackageRepository(
     
     suspend fun removeProductFromPackage(packageId: Long, productId: Long) {
         packageDao.removeProductFromPackage(PackageProductCrossRef(packageId, productId))
-        deviceMovementDao?.insertMovement(
-            DeviceMovementEntity(
-                productId = productId,
-                action = "UNASSIGN",
-                fromContainerType = "PACKAGE",
-                fromContainerId = packageId,
-                timestamp = System.currentTimeMillis(),
-                note = "removed_from_package"
-            )
-        )
+        deviceMovementRepository?.recordUnassignFromPackage(productId, packageId)
     }
     
     fun getProductsInPackage(packageId: Long): Flow<List<ProductEntity>> =
@@ -281,17 +244,7 @@ class PackageRepository(
         // Record package status change per-product
         val products = getProductsInPackage(packageId).first()
         products.forEach { product ->
-            deviceMovementDao?.insertMovement(
-                DeviceMovementEntity(
-                    productId = product.id,
-                    action = "PACKAGE_STATUS_CHANGE",
-                    toContainerType = "PACKAGE",
-                    toContainerId = packageId,
-                    timestamp = System.currentTimeMillis(),
-                    packageStatus = newStatus,
-                    note = "package_status_change"
-                )
-            )
+            deviceMovementRepository?.recordPackageStatusChange(product.id, packageId, newStatus)
         }
     }
     

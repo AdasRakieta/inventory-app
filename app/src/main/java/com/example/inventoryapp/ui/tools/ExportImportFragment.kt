@@ -180,9 +180,8 @@ class ExportImportFragment : Fragment() {
         boxRepository = com.example.inventoryapp.data.repository.BoxRepository(database.boxDao(), database.productDao(), database.packageDao())
         contractorRepository = com.example.inventoryapp.data.repository.ContractorRepository(database.contractorDao())
         val backupRepository = com.example.inventoryapp.data.repository.ImportBackupRepository(database.importBackupDao())
-        val boxRepository = com.example.inventoryapp.data.repository.BoxRepository(database.boxDao(), database.productDao(), database.packageDao())
-        val contractorRepository = com.example.inventoryapp.data.repository.ContractorRepository(database.contractorDao())
-            val inventoryCountRepository = com.example.inventoryapp.data.repository.InventoryCountRepository(database.inventoryCountDao(), database.productDao())
+        val deviceMovementRepository = com.example.inventoryapp.data.repository.DeviceMovementRepository(database.deviceMovementDao())
+        val inventoryCountRepository = com.example.inventoryapp.data.repository.InventoryCountRepository(database.inventoryCountDao(), database.productDao())
         
         // Initialize Zebra printer manager
         zebraPrinterManager = ZebraPrinterManager(requireContext())
@@ -194,6 +193,7 @@ class ExportImportFragment : Fragment() {
             backupRepository,
             boxRepository,
             contractorRepository,
+            deviceMovementRepository,
             inventoryCountRepository
         )
     }
@@ -1350,6 +1350,16 @@ class ExportImportFragment : Fragment() {
                     ).show()
                     
                     AppLogger.logAction("Unified CSV Export", "Success: ${csvFile.absolutePath}")
+                    // Also export device movements as a separate CSV
+                    try {
+                        val movementsFile = File(exportsDir, "device_movements_$timestamp.csv")
+                        val moved = viewModel.exportDeviceMovementsCsv(movementsFile)
+                        if (moved) {
+                            Toast.makeText(requireContext(), "Also exported device movements to: ${movementsFile.name}", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        AppLogger.w("Export", "Failed to export device movements", e)
+                    }
                 } else {
                     Toast.makeText(
                         requireContext(),
@@ -1599,6 +1609,19 @@ class ExportImportFragment : Fragment() {
                     }
                 }
                 
+                // Heuristic: if CSV looks like device movements export, import movements directly
+                val firstLine = tempFile.bufferedReader().use { it.readLine() } ?: ""
+                if (firstLine.contains("action") && firstLine.contains("productSerial")) {
+                    val success = viewModel.importDeviceMovementsCsv(tempFile)
+                    tempFile.delete()
+                    if (success) {
+                        Toast.makeText(requireContext(), "Imported device movements", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(requireContext(), "Failed to import device movements", Toast.LENGTH_LONG).show()
+                    }
+                    return@launch
+                }
+
                 // Parse CSV to ExportData for preview
                 val exportData = viewModel.parseUnifiedCsvToExportData(tempFile)
                 

@@ -15,6 +15,7 @@ import com.example.inventoryapp.data.local.entities.PackageProductCrossRef
 import com.example.inventoryapp.data.local.entities.BoxEntity
 import com.example.inventoryapp.data.local.entities.BoxProductCrossRef
 import com.example.inventoryapp.data.local.entities.ContractorEntity
+import com.example.inventoryapp.data.local.entities.DeviceMovementEntity
 import com.example.inventoryapp.data.local.entities.ImportBackupEntity
 import com.example.inventoryapp.data.local.entity.ImportPreview
 import com.example.inventoryapp.data.local.entity.ImportPreviewFilter
@@ -54,6 +55,8 @@ data class ExportData(
     val boxProductRelations: List<BoxProductCrossRef> = emptyList(), // Product-Box relations
     val inventoryCountSessions: List<InventoryCountSessionEntity> = emptyList(),
     val inventoryCountItems: List<InventoryCountItemEntity> = emptyList()
+    ,
+    val deviceMovements: List<DeviceMovementEntity> = emptyList()
 )
 
 class ExportImportViewModel(
@@ -63,6 +66,7 @@ class ExportImportViewModel(
     private val backupRepository: ImportBackupRepository,
     private val boxRepository: BoxRepository,
     private val contractorRepository: ContractorRepository,
+    private val deviceMovementRepository: com.example.inventoryapp.data.repository.DeviceMovementRepository,
     private val inventoryCountRepository: com.example.inventoryapp.data.repository.InventoryCountRepository
 ) : ViewModel() {
 
@@ -126,6 +130,8 @@ class ExportImportViewModel(
                 }
             }
 
+            // Device movements will be collected inline for the backup
+
             // Inventory Count Sessions & Items
             val inventoryCountSessions = inventoryCountRepository.getAllSessions().first()
             val inventoryCountItems = mutableListOf<InventoryCountItemEntity>()
@@ -143,7 +149,8 @@ class ExportImportViewModel(
                 packageProductRelations = packageProductRelations,
                 boxProductRelations = boxProductRelations,
                 inventoryCountSessions = inventoryCountSessions,
-                inventoryCountItems = inventoryCountItems
+                inventoryCountItems = inventoryCountItems,
+                deviceMovements = deviceMovementRepository.getAllMovements().first()
             )
 
             // Ensure parent directory exists
@@ -606,8 +613,50 @@ class ExportImportViewModel(
                 }
             }
 
+            // Step 10: Import device movements (map old IDs to new IDs where possible)
+            var importedMovements = 0
+            exportData.deviceMovements.forEach { mov ->
+                try {
+                    val newProductId = productIdMap[mov.productId]
+                    if (newProductId == null) {
+                        AppLogger.w("Import", "Skipped movement - product ${mov.productId} not found in mapping")
+                        return@forEach
+                    }
+
+                    val newFromId = when (mov.fromContainerType) {
+                        "PACKAGE" -> mov.fromContainerId?.let { packageIdMap[it] }
+                        "BOX" -> mov.fromContainerId?.let { boxIdMap[it] }
+                        else -> mov.fromContainerId
+                    }
+
+                    val newToId = when (mov.toContainerType) {
+                        "PACKAGE" -> mov.toContainerId?.let { packageIdMap[it] }
+                        "BOX" -> mov.toContainerId?.let { boxIdMap[it] }
+                        else -> mov.toContainerId
+                    }
+
+                    val newMovement = DeviceMovementEntity(
+                        id = 0,
+                        productId = newProductId,
+                        action = mov.action,
+                        fromContainerType = mov.fromContainerType,
+                        fromContainerId = newFromId,
+                        toContainerType = mov.toContainerType,
+                        toContainerId = newToId,
+                        timestamp = mov.timestamp,
+                        packageStatus = mov.packageStatus,
+                        note = mov.note
+                    )
+
+                    deviceMovementRepository.insertMovement(newMovement)
+                    importedMovements++
+                } catch (e: Exception) {
+                    AppLogger.w("Import", "Skipped device movement import", e)
+                }
+            }
+
             val message = "Import successful: $importedProducts products, $importedPackages packages, $importedBoxes boxes, $importedContractors contractors, $importedTemplates templates, $importedPackageRelations pkg-relations, $importedBoxRelations box-relations"
-            val messageFull = "Import successful: $importedProducts products, $importedPackages packages, $importedBoxes boxes, $importedContractors contractors, $importedTemplates templates, $importedPackageRelations pkg-relations, $importedBoxRelations box-relations, $importedInventorySessions inventory sessions, $importedInventoryItems inventory items"
+            val messageFull = "Import successful: $importedProducts products, $importedPackages packages, $importedBoxes boxes, $importedContractors contractors, $importedTemplates templates, $importedPackageRelations pkg-relations, $importedBoxRelations box-relations, $importedInventorySessions inventory sessions, $importedInventoryItems inventory items, $importedMovements device movements"
             _status.value = messageFull
             AppLogger.logAction("Import Completed", messageFull)
             checkForRecentBackup() // Update backup status
@@ -667,7 +716,8 @@ class ExportImportViewModel(
                 boxes = boxes,
                 contractors = contractors,
                 packageProductRelations = packageProductRelations,
-                boxProductRelations = boxProductRelations
+                boxProductRelations = boxProductRelations,
+                deviceMovements = deviceMovementRepository.getAllMovements().first()
             )
 
             val backupJson = gson.toJson(backupData)
@@ -1224,6 +1274,154 @@ class ExportImportViewModel(
             val errorMsg = "Export failed: ${e.message}"
             _status.value = errorMsg
             AppLogger.logError("Unified CSV Export", e)
+            false
+        }
+    }
+
+    /** Export device movements to a dedicated CSV file (human-readable names) */
+    suspend fun exportDeviceMovementsCsv(outputFile: File): Boolean {
+        return try {
+            AppLogger.logAction("Device Movements CSV Export", "File: ${outputFile.absolutePath}")
+            _status.value = "Exporting device movements..."
+
+            val movements = deviceMovementRepository.getAllMovements().first()
+            val products = productRepository.getAllProducts().first()
+            val packages = packageRepository.getAllPackages().first()
+            val boxes = boxRepository.getAllBoxes().first()
+
+            val productIdToSerial = products.associate { it.id to (it.serialNumber ?: "") }
+            val packageIdToName = packages.associate { it.id to it.name }
+            val boxIdToName = boxes.associate { it.id to it.name }
+
+            OutputStreamWriter(FileOutputStream(outputFile), Charsets.UTF_8).use { writer ->
+                // BOM
+                writer.write("\uFEFF")
+                // Header
+                writer.append("action,productSerial,fromType,fromName,toType,toName,timestamp,packageStatus,note\n")
+
+                movements.forEach { m ->
+                    val productSerial = productIdToSerial[m.productId] ?: ""
+                    val fromName = when (m.fromContainerType) {
+                        "PACKAGE" -> m.fromContainerId?.let { packageIdToName[it] } ?: ""
+                        "BOX" -> m.fromContainerId?.let { boxIdToName[it] } ?: ""
+                        else -> ""
+                    }
+                    val toName = when (m.toContainerType) {
+                        "PACKAGE" -> m.toContainerId?.let { packageIdToName[it] } ?: ""
+                        "BOX" -> m.toContainerId?.let { boxIdToName[it] } ?: ""
+                        else -> ""
+                    }
+
+                    fun esc(s: String?): String {
+                        if (s == null) return """"""
+                        return '"' + s.replace("\"", "\"\"") + '"'
+                    }
+
+                    val line = listOf(
+                        esc(m.action),
+                        esc(productSerial),
+                        esc(m.fromContainerType),
+                        esc(fromName),
+                        esc(m.toContainerType),
+                        esc(toName),
+                        esc(m.timestamp.toString()),
+                        esc(m.packageStatus),
+                        esc(m.note)
+                    ).joinToString(",")
+
+                    writer.append(line)
+                    writer.append("\n")
+                }
+            }
+
+            _status.value = "Device movements exported: ${movements.size}"
+            true
+        } catch (e: Exception) {
+            AppLogger.logError("DeviceMovements CSV Export", e)
+            _status.value = "Export failed: ${e.message}"
+            false
+        }
+    }
+
+    /** Import device movements from CSV (expects headers created by exportDeviceMovementsCsv)
+     *  Maps product serial numbers and container names to current DB IDs when possible.
+     */
+    suspend fun importDeviceMovementsCsv(inputFile: File): Boolean {
+        return try {
+            AppLogger.logAction("Device Movements CSV Import", "File: ${inputFile.absolutePath}")
+            _status.value = "Importing device movements..."
+
+            val (lines, charset) = readCsvLinesWithEncoding(inputFile)
+            if (lines.size < 2) return false
+
+            // Build lookup maps
+            val products = productRepository.getAllProducts().first()
+            val packages = packageRepository.getAllPackages().first()
+            val boxes = boxRepository.getAllBoxes().first()
+
+            val serialToProductId = products.mapNotNull { it.serialNumber?.let { sn -> sn to it.id } }.toMap()
+            val packageNameToId = packages.associateBy({ it.name }, { it.id })
+            val boxNameToId = boxes.associateBy({ it.name }, { it.id })
+
+            // Skip header
+            lines.drop(1).forEach { line ->
+                if (line.isBlank()) return@forEach
+                val fields = parseCsvLine(line)
+                // Expecting 9 fields
+                if (fields.size < 9) return@forEach
+                val action = fields[0]
+                val productSerial = fields[1]
+                val fromType = fields[2]
+                val fromName = fields[3]
+                val toType = fields[4]
+                val toName = fields[5]
+                val timestamp = fields[6].toLongOrNull() ?: System.currentTimeMillis()
+                val packageStatus = fields[7].ifBlank { null }
+                val note = fields[8].ifBlank { null }
+
+                val productId = serialToProductId[productSerial]
+                if (productId == null) {
+                    AppLogger.w("Import", "Skipped movement CSV row - unknown product serial: $productSerial")
+                    return@forEach
+                }
+
+                val fromId = when (fromType) {
+                    "PACKAGE" -> packageNameToId[fromName]
+                    "BOX" -> boxNameToId[fromName]
+                    else -> null
+                }
+
+                val toId = when (toType) {
+                    "PACKAGE" -> packageNameToId[toName]
+                    "BOX" -> boxNameToId[toName]
+                    else -> null
+                }
+
+                val movement = DeviceMovementEntity(
+                    id = 0,
+                    productId = productId,
+                    action = action,
+                    fromContainerType = fromType.ifBlank { null },
+                    fromContainerId = fromId,
+                    toContainerType = toType.ifBlank { null },
+                    toContainerId = toId,
+                    timestamp = timestamp,
+                    packageStatus = packageStatus,
+                    note = note
+                )
+
+                try {
+                    deviceMovementRepository.insertMovement(movement)
+                } catch (e: Exception) {
+                    AppLogger.w("Import", "Failed to insert movement row", e)
+                }
+            }
+
+            _status.value = "Device movements import completed"
+            true
+        } catch (e: Exception) {
+            AppLogger.logError("DeviceMovements CSV Import", e)
+            _status.value = "Import failed: ${e.message}"
             false
         }
     }

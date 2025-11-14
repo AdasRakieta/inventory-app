@@ -29,9 +29,12 @@ class EditProductFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val database = AppDatabase.getDatabase(requireContext())
-        val repository = ProductRepository(database.productDao())
-        val factory = ProductDetailsViewModelFactory(repository, args.productId)
+        val app = requireActivity().application as com.example.inventoryapp.InventoryApplication
+        val productRepo = app.productRepository
+        val deviceMovementRepo = app.deviceMovementRepository
+        val boxRepo = app.boxRepository
+        val packageRepo = app.packageRepository
+        val factory = ProductDetailsViewModelFactory(productRepo, deviceMovementRepo, boxRepo, packageRepo, args.productId)
         val vm: ProductDetailsViewModel by viewModels { factory }
         viewModel = vm
     }
