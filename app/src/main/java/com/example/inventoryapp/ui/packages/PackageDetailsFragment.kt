@@ -146,6 +146,35 @@ class PackageDetailsFragment : Fragment() {
                     } else {
                         binding.returnedAtLayout.visibility = View.GONE
                     }
+
+                    // If package is archived, make it read-only in the UI and show Unarchive action
+                    if (it.archived) {
+                        binding.modifyProductsButton.visibility = View.GONE
+                        binding.addProductsButton.visibility = View.GONE
+                        binding.addBulkButton.visibility = View.GONE
+                        binding.editPackageButton.visibility = View.GONE
+                        binding.changeStatusButton.visibility = View.GONE
+                        binding.archivePackageButton.text = "Unarchive Package"
+                        binding.archivePackageButton.setOnClickListener {
+                            viewLifecycleOwner.lifecycleScope.launch {
+                                try {
+                                    viewModel.unarchivePackageBlocking()
+                                    Toast.makeText(requireContext(), "Package unarchived", Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    Toast.makeText(requireContext(), "Failed to unarchive: ${e.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    } else {
+                        // Restore normal actions for non-archived package
+                        binding.modifyProductsButton.visibility = View.VISIBLE
+                        binding.addProductsButton.visibility = View.VISIBLE
+                        binding.addBulkButton.visibility = View.VISIBLE
+                        binding.editPackageButton.visibility = View.VISIBLE
+                        binding.changeStatusButton.visibility = View.VISIBLE
+                        binding.archivePackageButton.text = "Archive Package"
+                        binding.archivePackageButton.setOnClickListener { showArchiveConfirmationDialog() }
+                    }
                 }
             }
         }
@@ -191,6 +220,14 @@ class PackageDetailsFragment : Fragment() {
                         }
                         is AddProductResult.TransferredFromBox -> {
                             Toast.makeText(requireContext(), "Product transferred from box: ${it.boxName}", Toast.LENGTH_SHORT).show()
+                        }
+                        is AddProductResult.TransferredFromPackage -> {
+                            Toast.makeText(requireContext(), "Product transferred from package: ${it.packageName}", Toast.LENGTH_SHORT).show()
+                        }
+                        is AddProductResult.AlreadyInActivePackage -> {
+                            // English error message as requested
+                            val msg = "Device is in package: ${it.packageName} with status: ${it.status}. Package must be archived before reassignment."
+                            Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
                         }
                         is AddProductResult.Error -> {
                             Toast.makeText(requireContext(), it.message, Toast.LENGTH_LONG).show()
@@ -358,9 +395,16 @@ class PackageDetailsFragment : Fragment() {
             .setTitle("Archive Package")
             .setMessage("Archive \"${currentPackage.name}\"? Archived packages will be moved to the Archive tab.")
             .setPositiveButton("Archive") { _, _ ->
-                viewModel.archivePackage()
-                Toast.makeText(requireContext(), "Package archived", Toast.LENGTH_SHORT).show()
-                findNavController().navigateUp()
+                // Perform the archive and wait for completion before navigating back
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        viewModel.archivePackageBlocking()
+                        Toast.makeText(requireContext(), "Package archived", Toast.LENGTH_SHORT).show()
+                        findNavController().navigateUp()
+                    } catch (e: Exception) {
+                        Toast.makeText(requireContext(), "Failed to archive package: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
             .setNegativeButton("Cancel", null)
             .show()

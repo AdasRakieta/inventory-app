@@ -43,8 +43,20 @@ class PackageRepository(
         return packageDao.insertPackage(packageEntity)
     }
     
-    suspend fun updatePackage(packageEntity: PackageEntity) =
+    /**
+     * Update package. If the package is currently archived, disallow edits (no-op)
+     * unless caller is unarchiving (setting archived=false).
+     */
+    suspend fun updatePackage(packageEntity: PackageEntity) {
+        val current = getPackageById(packageEntity.id).first() ?: return
+        // If currently archived and still archived in the update, disallow edits
+        if (current.archived && packageEntity.archived) {
+            // No-op: archived packages are read-only. Caller should unarchive first.
+            return
+        }
+        // Otherwise allow update (including unarchive)
         packageDao.updatePackage(packageEntity)
+    }
     
     suspend fun deletePackage(packageEntity: PackageEntity) =
         packageDao.deletePackage(packageEntity)
@@ -54,6 +66,18 @@ class PackageRepository(
     
     suspend fun addProductToPackage(packageId: Long, productId: Long): AddProductResult {
         return try {
+            // If product is already assigned to a package, enforce rules
+            val existingPackage = packageDao.getPackageForProduct(productId).first()
+            if (existingPackage != null && existingPackage.id != packageId) {
+                if (existingPackage.archived) {
+                    // Existing package is archived — treat it as historical. Keep the archived relation intact
+                    // and allow assigning the product to the new package (no unassign from archived package).
+                } else {
+                    // Existing package is active: do not allow reassignment — user must archive the previous package first
+                    return AddProductResult.AlreadyInActivePackage(existingPackage.name, existingPackage.status)
+                }
+            }
+
             // Check if product is already in a box, remove it if so
             val existingBox = boxDao.getBoxForProduct(productId).first()
             if (existingBox != null) {
@@ -67,7 +91,7 @@ class PackageRepository(
                 return AddProductResult.TransferredFromBox(existingBox.name)
             }
 
-            // Product not in any box, just add it
+            // Product not in any box or package (or previous was archived), just add it
             packageDao.addProductToPackage(PackageProductCrossRef(packageId, productId))
             deviceMovementRepository?.recordAssignToPackage(productId, packageId)
             AddProductResult.Success
@@ -77,6 +101,12 @@ class PackageRepository(
     }
     
     suspend fun removeProductFromPackage(packageId: Long, productId: Long) {
+        // Prevent removing products from an archived package — archived packages are read-only
+        val pkg = getPackageById(packageId).first() ?: return
+        if (pkg.archived) {
+            // Don't remove relations from archived packages; keep historical membership
+            return
+        }
         packageDao.removeProductFromPackage(PackageProductCrossRef(packageId, productId))
         deviceMovementRepository?.recordUnassignFromPackage(productId, packageId)
     }

@@ -177,10 +177,19 @@ class PackageDetailsViewModel(
         }
     }
 
-    fun archivePackage() {
-        viewModelScope.launch {
-            packageRepository.archivePackage(packageId)
-        }
+    /**
+     * Archive the package and suspend until completion.
+     * Use this from callers that need to wait for the operation to finish.
+     */
+    suspend fun archivePackageBlocking() {
+        packageRepository.archivePackage(packageId)
+    }
+
+    /**
+     * Unarchive the package and suspend until completion.
+     */
+    suspend fun unarchivePackageBlocking() {
+        packageRepository.unarchivePackage(packageId)
     }
 
     fun deletePackage() {

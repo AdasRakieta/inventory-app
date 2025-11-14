@@ -63,26 +63,22 @@ class BoxRepository(
 
     suspend fun addProductToBox(boxId: Long, productId: Long): AddProductResult {
         return try {
-            // Check if product is already in a package (ignore archived packages)
+            // Check if product is already in a package
             val existingPackage = packageDao.getPackageForProduct(productId).first()
-            if (existingPackage != null && !existingPackage.archived) {
-                // If package is not returned, prevent adding to box
-                if (existingPackage.status != "RETURNED") {
-                    return AddProductResult.AlreadyInActivePackage(existingPackage.name, existingPackage.status)
-                } else {
-                    // Package is returned (but not archived), remove from it and add transfer message
-                    packageDao.removeProductFromPackage(PackageProductCrossRef(existingPackage.id, productId))
-                    // record unassign from package
-                    deviceMovementRepository?.recordUnassignFromPackage(productId, existingPackage.id)
+            if (existingPackage != null) {
+                if (existingPackage.archived) {
+                    // Historical package: keep archived relation and allow transfer to box
                     val crossRef = BoxProductCrossRef(boxId, productId)
                     boxDao.addProductToBox(crossRef)
-                    // record assign to box
                     deviceMovementRepository?.recordAssignToBox(productId, boxId)
                     return AddProductResult.TransferredFromPackage(existingPackage.name)
+                } else {
+                    // Active package: do not allow transfer to box
+                    return AddProductResult.AlreadyInActivePackage(existingPackage.name, existingPackage.status)
                 }
             }
 
-            // Product not in any non-archived package, just add it
+            // Product not in any package, just add it
             val crossRef = BoxProductCrossRef(boxId, productId)
             boxDao.addProductToBox(crossRef)
             deviceMovementRepository?.recordAssignToBox(productId, boxId)
