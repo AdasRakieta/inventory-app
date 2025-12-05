@@ -1425,4 +1425,99 @@ class ExportImportViewModel(
             false
         }
     }
+    
+    // ============================================================================
+    // Google Sheets API Integration
+    // ============================================================================
+    
+    /**
+     * Sealed class representing Google Sheets sync state
+     */
+    sealed class GoogleSheetsSyncState {
+        object Idle : GoogleSheetsSyncState()
+        object Loading : GoogleSheetsSyncState()
+        data class Success(val message: String) : GoogleSheetsSyncState()
+        data class Error(val message: String) : GoogleSheetsSyncState()
+    }
+    
+    private val _googleSheetsSyncState = MutableStateFlow<GoogleSheetsSyncState>(GoogleSheetsSyncState.Idle)
+    val googleSheetsSyncState: StateFlow<GoogleSheetsSyncState> = _googleSheetsSyncState
+    
+    /**
+     * Sync (download) data from Google Sheets API to local database
+     * Fetches all sheets and merges products into Room database
+     */
+    fun syncFromGoogleSheets() {
+        viewModelScope.launch {
+            try {
+                _googleSheetsSyncState.value = GoogleSheetsSyncState.Loading
+                _status.value = "Downloading from Google Sheets..."
+                
+                AppLogger.logAction("Google Sheets Sync", "Starting download")
+                
+                // Create repository instances
+                val apiService = com.example.inventoryapp.data.remote.GoogleSheetsApiService()
+                val googleSheetsRepo = com.example.inventoryapp.data.repository.GoogleSheetsRepository(
+                    apiService,
+                    productRepository,
+                    packageRepository,
+                    contractorRepository
+                )
+                
+                // Execute sync
+                val (packagesProcessed, productsProcessed) = googleSheetsRepo.downloadAndSync()
+                
+                val message = "Sync complete: $packagesProcessed packages, $productsProcessed products processed"
+                _status.value = message
+                _googleSheetsSyncState.value = GoogleSheetsSyncState.Success(message)
+                
+                AppLogger.logAction("Google Sheets Sync", message)
+                
+            } catch (e: Exception) {
+                val errorMessage = "Sync failed: ${e.message}"
+                _status.value = errorMessage
+                _googleSheetsSyncState.value = GoogleSheetsSyncState.Error(errorMessage)
+                AppLogger.logError("Google Sheets Sync", e)
+            }
+        }
+    }
+    
+    /**
+     * Upload local changes to Google Sheets API
+     * Uploads products that have been modified recently
+     */
+    fun uploadToGoogleSheets() {
+        viewModelScope.launch {
+            try {
+                _googleSheetsSyncState.value = GoogleSheetsSyncState.Loading
+                _status.value = "Uploading to Google Sheets..."
+                
+                AppLogger.logAction("Google Sheets Upload", "Starting upload")
+                
+                // Create repository instances
+                val apiService = com.example.inventoryapp.data.remote.GoogleSheetsApiService()
+                val googleSheetsRepo = com.example.inventoryapp.data.repository.GoogleSheetsRepository(
+                    apiService,
+                    productRepository,
+                    packageRepository,
+                    contractorRepository
+                )
+                
+                // Execute upload (only recent changes from last 7 days)
+                val uploadedCount = googleSheetsRepo.uploadChanges(onlyRecent = true)
+                
+                val message = "Upload complete: $uploadedCount products uploaded"
+                _status.value = message
+                _googleSheetsSyncState.value = GoogleSheetsSyncState.Success(message)
+                
+                AppLogger.logAction("Google Sheets Upload", message)
+                
+            } catch (e: Exception) {
+                val errorMessage = "Upload failed: ${e.message}"
+                _status.value = errorMessage
+                _googleSheetsSyncState.value = GoogleSheetsSyncState.Error(errorMessage)
+                AppLogger.logError("Google Sheets Upload", e)
+            }
+        }
+    }
 }

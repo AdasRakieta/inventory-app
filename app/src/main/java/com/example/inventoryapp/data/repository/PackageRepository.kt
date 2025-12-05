@@ -34,6 +34,12 @@ class PackageRepository(
     fun getPackageById(packageId: Long): Flow<PackageEntity?> = 
         packageDao.getPackageById(packageId)
     
+    suspend fun getPackageByName(name: String): PackageEntity? =
+        packageDao.getPackageByName(name)
+    
+    suspend fun getPackageByCode(packageCode: String): PackageEntity? =
+        packageDao.getPackageByCode(packageCode)
+    
     suspend fun insertPackage(packageEntity: PackageEntity): Long {
         // Check if package with same name already exists
         val existing = packageDao.getPackageByName(packageEntity.name)

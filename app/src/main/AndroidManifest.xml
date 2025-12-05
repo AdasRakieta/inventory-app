@@ -21,7 +21,11 @@
     <!-- Android 12+ (API 31+) Bluetooth permissions -->
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
         android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />    <application
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    
+    <!-- Internet permission for Google Sheets API sync -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application
         android:name=".InventoryApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

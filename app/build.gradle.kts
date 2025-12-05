@@ -13,8 +13,8 @@ android {
         applicationId = "com.inventory.prd"
         minSdkVersion(26)
         targetSdkVersion(31)
-            versionCode = 125
-            versionName = "1.24.6"
+            versionCode = 136
+            versionName = "1.24.17"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -101,6 +101,9 @@ dependencies {
 
     // Gson
     implementation("com.google.code.gson:gson:2.8.9")
+
+    // OkHttp for Google Sheets API integration
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
 
     // ZXing
     implementation("com.google.zxing:core:3.4.1")

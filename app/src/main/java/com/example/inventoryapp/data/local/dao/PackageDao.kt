@@ -22,6 +22,9 @@ interface PackageDao {
     @Query("SELECT * FROM packages WHERE LOWER(name) = LOWER(:name) AND status != 'RETURNED' LIMIT 1")
     suspend fun getPackageByName(name: String): PackageEntity?
 
+    @Query("SELECT * FROM packages WHERE packageCode = :packageCode LIMIT 1")
+    suspend fun getPackageByCode(packageCode: String): PackageEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPackage(packageEntity: PackageEntity): Long
 

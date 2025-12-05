@@ -10,6 +10,9 @@ class ContractorRepository(private val contractorDao: ContractorDao) {
 
     fun getContractorById(contractorId: Long): Flow<ContractorEntity?> = contractorDao.getContractorById(contractorId)
 
+    suspend fun getContractorByName(name: String): ContractorEntity? =
+        contractorDao.getContractorByName(name)
+
     suspend fun insertContractor(contractor: ContractorEntity): Long {
         // Check if contractor with same name already exists
         val existing = contractorDao.getContractorByName(contractor.name)

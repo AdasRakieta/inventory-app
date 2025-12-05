@@ -224,6 +224,15 @@ class ExportImportFragment : Fragment() {
             downloadCsvTemplate()
         }
 
+        // Google Sheets Sync buttons
+        binding.syncFromGoogleSheetsButton.setOnClickListener {
+            viewModel.syncFromGoogleSheets()
+        }
+
+        binding.uploadToGoogleSheetsButton.setOnClickListener {
+            viewModel.uploadToGoogleSheets()
+        }
+
         binding.shareQrButton.setOnClickListener {
             shareViaQR()
         }
@@ -257,6 +266,32 @@ class ExportImportFragment : Fragment() {
             viewModel.hasRecentBackup.collect { hasBackup ->
                 binding.undoImportButton.isEnabled = hasBackup
                 binding.undoImportButton.alpha = if (hasBackup) 1.0f else 0.5f
+            }
+        }
+        
+        // Observe Google Sheets sync state
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.googleSheetsSyncState.collect { state ->
+                when (state) {
+                    is ExportImportViewModel.GoogleSheetsSyncState.Idle -> {
+                        binding.syncFromGoogleSheetsButton.isEnabled = true
+                        binding.uploadToGoogleSheetsButton.isEnabled = true
+                    }
+                    is ExportImportViewModel.GoogleSheetsSyncState.Loading -> {
+                        binding.syncFromGoogleSheetsButton.isEnabled = false
+                        binding.uploadToGoogleSheetsButton.isEnabled = false
+                    }
+                    is ExportImportViewModel.GoogleSheetsSyncState.Success -> {
+                        binding.syncFromGoogleSheetsButton.isEnabled = true
+                        binding.uploadToGoogleSheetsButton.isEnabled = true
+                        Toast.makeText(requireContext(), state.message, Toast.LENGTH_LONG).show()
+                    }
+                    is ExportImportViewModel.GoogleSheetsSyncState.Error -> {
+                        binding.syncFromGoogleSheetsButton.isEnabled = true
+                        binding.uploadToGoogleSheetsButton.isEnabled = true
+                        Toast.makeText(requireContext(), state.message, Toast.LENGTH_LONG).show()
+                    }
+                }
             }
         }
     }
