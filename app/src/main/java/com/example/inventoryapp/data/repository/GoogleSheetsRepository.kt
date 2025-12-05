@@ -5,6 +5,8 @@ import com.example.inventoryapp.data.local.entities.PackageEntity
 import com.example.inventoryapp.data.local.entities.ContractorEntity
 import com.example.inventoryapp.data.remote.GoogleSheetsApiService
 import com.example.inventoryapp.data.remote.GoogleSheetItem
+import com.example.inventoryapp.data.remote.BulkOperation
+import com.example.inventoryapp.data.remote.InsertData
 import com.example.inventoryapp.utils.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -301,18 +303,20 @@ class GoogleSheetsRepository(
      * Upload local products to Google Sheets
      * Only uploads products that have been modified (updatedAt > threshold)
      * @param onlyRecent If true, only upload products modified in last 7 days
-     * @return Number of products uploaded
+     * @return UploadResult with details about upload operation
      */
-    suspend fun uploadChanges(onlyRecent: Boolean = true): Int = withContext(Dispatchers.IO) {
+    suspend fun uploadChanges(onlyRecent: Boolean = true): UploadResult = withContext(Dispatchers.IO) {
         var uploadedCount = 0
         var insertCount = 0
         var updateCount = 0
+        var errorCount = 0
+        var resultMessage = ""
         
         try {
             AppLogger.logAction("Google Sheets Upload", "Starting upload to API")
             println("[UPLOAD] Starting Google Sheets upload")
             
-            val allProducts = productRepository.getAllProducts()
+            val allProducts = productRepository.getAllProducts().first()
             val threshold = if (onlyRecent) {
                 System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000L) // 7 days ago
             } else {
@@ -327,69 +331,105 @@ class GoogleSheetsRepository(
             
             println("[UPLOAD] Found ${productsToUpload.size} products to upload")
             
+            // Build list of bulk operations
+            val operations = mutableListOf<BulkOperation>()
+            
             for (product in productsToUpload) {
                 try {
-                    // Determine target sheet based on product name and category
                     val sheetName = determineTargetSheet(product)
-                    println("[UPLOAD] Product ${product.serialNumber} -> Sheet: $sheetName")
-                    
-                    // Get package info if product is assigned to one
                     val packageInfo = packageRepository.getPackageForProduct(product.id).first()
-                    
-                    // Determine if this is INSERT (new product) or UPDATE (from Google Sheets)
+                    val contractorName = packageInfo?.contractorId?.let { contractorRepository.getContractorById(it).first()?.name }
                     val isFromGoogleSheets = wasDownloadedFromSheets(product)
                     
-                    val response = if (isFromGoogleSheets) {
-                        // UPDATE: Product was synced from Google Sheets
-                        println("[UPLOAD] UPDATE: ${product.serialNumber}")
-                        apiService.updateItem(
-                            sheetName = sheetName,
+                    if (isFromGoogleSheets) {
+                        // UPDATE operation
+                        println("[UPLOAD] Preparing UPDATE: ${product.serialNumber}")
+                        updateCount++
+                        operations.add(BulkOperation(
+                            typ = "update",
+                            arkusz = sheetName,
                             serialNumber = product.serialNumber!!,
-                            kod = packageInfo?.name,
-                            nazwa = packageInfo?.description,
+                            kod = packageInfo?.packageCode,
+                            nazwa = packageInfo?.name,
                             status = mapPackageStatusToSheetStatus(packageInfo?.status),
-                            firma = null // Not tracked in current schema
-                        )
+                            miejsce = null
+                        ))
                     } else {
-                        // INSERT: Product was created in the app
-                        println("[UPLOAD] INSERT: ${product.serialNumber}")
-                        val item = GoogleSheetItem(
-                            urzadzenie = product.name,
+                        // INSERT operation
+                        println("[UPLOAD] Preparing INSERT: ${product.serialNumber}")
+                        insertCount++
+                        val insertData = InsertData(
                             serialNumber = product.serialNumber!!,
-                            status = mapPackageStatusToSheetStatus(packageInfo?.status),
-                            kod = packageInfo?.name,
-                            nazwa = packageInfo?.description,
+                            Urzadzenie = product.name,
+                            Kod = packageInfo?.packageCode,
+                            Nazwa = packageInfo?.name,
+                            Status = mapPackageStatusToSheetStatus(packageInfo?.status),
+                            Firma = contractorName,
+                            Komentarz = cleanComment(product.description),
                             dataWydania = packageInfo?.shippedAt?.toString(),
-                            dataZwrotu = packageInfo?.returnedAt?.toString(),
-                            firma = null,
-                            komentarz = product.description
+                            dataZwrotu = packageInfo?.returnedAt?.toString()
                         )
-                        apiService.insertItem(sheetName, item)
+                        operations.add(BulkOperation(
+                            typ = "insert",
+                            arkusz = sheetName,
+                            serialNumber = product.serialNumber!!,
+                            dane = insertData
+                        ))
                     }
-                    
-                    if (response.status == "SUKCES") {
-                        uploadedCount++
-                        if (isFromGoogleSheets) updateCount++ else insertCount++
-                        println("[UPLOAD] SUCCESS: ${product.serialNumber} - ${response.message}")
-                    } else {
-                        println("[UPLOAD] FAILED: ${product.serialNumber} - ${response.message}")
-                    }
-                    
                 } catch (e: Exception) {
-                    println("[UPLOAD] ERROR for ${product.serialNumber}: ${e.message}")
-                    AppLogger.logError("Upload product ${product.serialNumber}", e)
+                    println("[UPLOAD] ERROR preparing ${product.serialNumber}: ${e.message}")
+                    AppLogger.logError("Prepare upload ${product.serialNumber}", e)
+                    errorCount++
                 }
             }
             
-            AppLogger.logAction("Google Sheets Upload", "Upload complete: $insertCount inserts, $updateCount updates")
+            // Send bulk request
+            if (operations.isNotEmpty()) {
+                println("[UPLOAD] Sending bulk request with ${operations.size} operations")
+                val response = apiService.bulkUpload(operations)
+                
+                val ok = (response.success == true) || (response.status == "SUKCES")
+                if (ok) {
+                    uploadedCount = operations.size
+                    resultMessage = "✓ Upload SUCCESS: $insertCount new, $updateCount updated"
+                    println("[UPLOAD] BULK SUCCESS: ${response.message}")
+                } else {
+                    resultMessage = "✗ Upload FAILED: ${response.message}"
+                    println("[UPLOAD] BULK FAILED: ${response.message}")
+                    errorCount = operations.size
+                }
+            } else {
+                resultMessage = "No products to upload"
+                println("[UPLOAD] No operations to upload")
+            }
+            
+            AppLogger.logAction("Google Sheets Upload", "Complete: $insertCount inserts, $updateCount updates")
             println("[UPLOAD] Complete: $insertCount inserts, $updateCount updates, $uploadedCount total")
             
         } catch (e: Exception) {
+            resultMessage = "✗ Upload ERROR: ${e.message}"
             AppLogger.logError("Google Sheets uploadChanges", e)
-            throw e
+            errorCount++
         }
         
-        uploadedCount
+        UploadResult(
+            totalUploaded = uploadedCount,
+            insertCount = insertCount,
+            updateCount = updateCount,
+            errorCount = errorCount,
+            message = resultMessage
+        )
+    }
+
+    // Usuwa z opisu wstępne etykiety typu "Firma: ... | Status: ..." aby Komentarz był czysty
+    private fun cleanComment(description: String?): String? {
+        if (description.isNullOrBlank()) return null
+        val cleaned = description
+            .replace(Regex("(?i)firma:\\s*[^|]*\\|?\\s*"), "")
+            .replace(Regex("(?i)status:\\s*[^|]*\\|?\\s*"), "")
+            .replace(Regex("(?i)lokalizacja:\\s*[^|]*\\|?\\s*"), "")
+            .trim().trim('|', ' ')
+        return cleaned.ifBlank { null }
     }
     
     /**
@@ -397,14 +437,16 @@ class GoogleSheetsRepository(
      * Android: ISSUED, RETURNED, PREPARATION, READY, WAREHOUSE
      * Google Sheets: Wydano, Zwrócono, Przygotowanie, Do wysyłki, Magazyn
      */
-    private fun mapPackageStatusToSheetStatus(androidStatus: String?): String? {
-        return when (androidStatus?.uppercase()) {
+    private fun mapPackageStatusToSheetStatus(androidStatus: String?): String {
+        // Domyślnie (brak paczki / null / puste) traktuj jako Magazyn
+        val normalized = androidStatus?.uppercase()?.trim()
+        return when (normalized) {
+            null, "", "WAREHOUSE" -> "Magazyn"
             "ISSUED" -> "Wydano"
             "RETURNED" -> "Zwrócono"
             "PREPARATION" -> "Przygotowanie"
             "READY" -> "Do wysyłki"
-            "WAREHOUSE" -> "Magazyn"
-            else -> androidStatus // Pass through if unknown
+            else -> "Magazyn" // fallback na Magazyn dla nieznanych
         }
     }
     

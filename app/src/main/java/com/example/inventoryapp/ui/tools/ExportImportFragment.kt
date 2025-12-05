@@ -269,6 +269,16 @@ class ExportImportFragment : Fragment() {
             }
         }
         
+        // Observe toast messages for upload results
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.toastMessage.collect { message ->
+                message?.let {
+                    Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
+                    viewModel.clearToastMessage()
+                }
+            }
+        }
+        
         // Observe Google Sheets sync state
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.googleSheetsSyncState.collect { state ->

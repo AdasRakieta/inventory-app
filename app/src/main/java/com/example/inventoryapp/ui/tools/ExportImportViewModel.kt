@@ -8,6 +8,7 @@ import com.example.inventoryapp.data.repository.ProductTemplateRepository
 import com.example.inventoryapp.data.repository.ImportBackupRepository
 import com.example.inventoryapp.data.repository.BoxRepository
 import com.example.inventoryapp.data.repository.ContractorRepository
+import com.example.inventoryapp.data.repository.UploadResult
 import com.example.inventoryapp.data.local.entities.ProductEntity
 import com.example.inventoryapp.data.local.entities.PackageEntity
 import com.example.inventoryapp.data.local.entities.ProductTemplateEntity
@@ -72,6 +73,9 @@ class ExportImportViewModel(
 
     private val _status = MutableStateFlow("")
     val status: StateFlow<String> = _status
+    
+    private val _toastMessage = MutableStateFlow<String?>(null)
+    val toastMessage: StateFlow<String?> = _toastMessage
 
     private val _hasRecentBackup = MutableStateFlow(false)
     val hasRecentBackup: StateFlow<Boolean> = _hasRecentBackup
@@ -1504,20 +1508,26 @@ class ExportImportViewModel(
                 )
                 
                 // Execute upload (only recent changes from last 7 days)
-                val uploadedCount = googleSheetsRepo.uploadChanges(onlyRecent = true)
+                val result = googleSheetsRepo.uploadChanges(onlyRecent = true)
                 
-                val message = "Upload complete: $uploadedCount products uploaded"
+                val message = "${result.message}\nTotal: ${result.totalUploaded} products"
                 _status.value = message
                 _googleSheetsSyncState.value = GoogleSheetsSyncState.Success(message)
                 
                 AppLogger.logAction("Google Sheets Upload", message)
+                _toastMessage.value = result.message  // Show toast with result
                 
             } catch (e: Exception) {
-                val errorMessage = "Upload failed: ${e.message}"
+                val errorMessage = "✗ Upload failed: ${e.message}"
                 _status.value = errorMessage
                 _googleSheetsSyncState.value = GoogleSheetsSyncState.Error(errorMessage)
+                _toastMessage.value = errorMessage
                 AppLogger.logError("Google Sheets Upload", e)
             }
         }
+    }
+    
+    fun clearToastMessage() {
+        _toastMessage.value = null
     }
 }

@@ -98,32 +98,36 @@ class GoogleSheetsApiService {
         kod: String? = null,
         nazwa: String? = null,
         status: String? = null,
-        firma: String? = null
+        miejsce: String? = null
     ): ApiResponse = withContext(Dispatchers.IO) {
         try {
             val requestData = ApiRequest(
                 akcja = "update",
-                skanery = serialNumber,
+                arkusz = sheetName,
+                serialNumber = serialNumber,
                 kod = kod,
                 nazwa = nazwa,
                 status = status,
-                firma = firma
+                miejsce = miejsce
             )
             
             val jsonBody = gson.toJson(requestData)
+            println("[API] UPDATE Request: $jsonBody")
             val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
             
-            val url = "$BASE_URL&arkusz=${sheetName}"
             val request = Request.Builder()
-                .url(url)
+                .url(BASE_URL)
                 .post(requestBody)
                 .build()
             
             val response = client.newCall(request).execute()
             val body = response.body?.string() ?: throw IOException("Empty response")
+            println("[API] UPDATE Response: $body")
             
             gson.fromJson(body, ApiResponse::class.java)
         } catch (e: Exception) {
+            println("[API] UPDATE Error: ${e.message}")
+            e.printStackTrace()
             ApiResponse(
                 status = "BLAD",
                 message = "Failed to update: ${e.message}"
@@ -142,32 +146,83 @@ class GoogleSheetsApiService {
         item: GoogleSheetItem
     ): ApiResponse = withContext(Dispatchers.IO) {
         try {
+            val insertData = InsertData(
+                serialNumber = item.serialNumber,
+                Urzadzenie = item.urzadzenie,
+                Kod = item.kod,
+                Nazwa = item.nazwa,
+                Status = item.status,
+                Firma = item.firma,
+                Komentarz = item.komentarz,
+                dataWydania = item.dataWydania,
+                dataZwrotu = item.dataZwrotu
+            )
+            
             val requestData = ApiRequest(
                 akcja = "insert",
-                skanery = item.serialNumber,  // v1.24.17: Use serialNumber field
-                kod = item.kod,
-                nazwa = item.nazwa,
-                status = item.status,
-                firma = item.firma
+                arkusz = sheetName,
+                dane = insertData
             )
             
             val jsonBody = gson.toJson(requestData)
+            println("[API] INSERT Request: $jsonBody")
             val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
             
-            val url = "$BASE_URL&arkusz=${sheetName}"
             val request = Request.Builder()
-                .url(url)
+                .url(BASE_URL)
                 .post(requestBody)
                 .build()
             
             val response = client.newCall(request).execute()
             val body = response.body?.string() ?: throw IOException("Empty response")
+            println("[API] INSERT Response: $body")
             
             gson.fromJson(body, ApiResponse::class.java)
         } catch (e: Exception) {
+            println("[API] INSERT Error: ${e.message}")
+            e.printStackTrace()
             ApiResponse(
                 status = "BLAD",
                 message = "Failed to insert: ${e.message}"
+            )
+        }
+    }
+    
+    /**
+     * Bulk upload - send multiple operations in single request
+     * @param operations List of operations to perform
+     * @return API response with results
+     */
+    suspend fun bulkUpload(
+        operations: List<BulkOperation>
+    ): ApiResponse = withContext(Dispatchers.IO) {
+        try {
+            val requestData = BulkApiRequest(
+                akcja = "bulk",
+                operacje = operations
+            )
+            
+            val jsonBody = gson.toJson(requestData)
+            println("[API] BULK Request: ${operations.size} operations")
+            println("[API] BULK Request body: $jsonBody")
+            val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
+            
+            val request = Request.Builder()
+                .url(BASE_URL)
+                .post(requestBody)
+                .build()
+            
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: throw IOException("Empty response")
+            println("[API] BULK Response: $body")
+            
+            gson.fromJson(body, ApiResponse::class.java)
+        } catch (e: Exception) {
+            println("[API] BULK Error: ${e.message}")
+            e.printStackTrace()
+            ApiResponse(
+                status = "BLAD",
+                message = "Failed bulk upload: ${e.message}"
             )
         }
     }
