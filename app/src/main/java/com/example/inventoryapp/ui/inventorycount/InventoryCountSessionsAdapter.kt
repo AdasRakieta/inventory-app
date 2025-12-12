@@ -85,7 +85,6 @@ class InventoryCountSessionsAdapter(
             val itemCount = sessionWithCount.itemCount
             
             binding.sessionName.text = session.name
-            binding.sessionStatus.text = session.status
             binding.sessionItemCount.text = "$itemCount items"
             
             // Format dates
@@ -93,9 +92,14 @@ class InventoryCountSessionsAdapter(
             binding.sessionDate.text = "Created on ${dateFormat.format(Date(session.createdAt))}"
             
             if (session.completedAt != null) {
-                binding.sessionCompletedDate.text = "Completed"
+                // For completed sessions, hide status and show "COMPLETED" badge
+                binding.sessionStatus.visibility = android.view.View.GONE
+                binding.sessionCompletedDate.text = "COMPLETED"
                 binding.sessionCompletedDate.visibility = android.view.View.VISIBLE
             } else {
+                // For in-progress sessions, show status and hide completed badge
+                binding.sessionStatus.text = session.status
+                binding.sessionStatus.visibility = android.view.View.VISIBLE
                 binding.sessionCompletedDate.visibility = android.view.View.GONE
             }
 

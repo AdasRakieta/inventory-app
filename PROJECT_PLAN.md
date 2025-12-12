@@ -1,5 +1,56 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.25.0 - Version Update (COMPLETED)
+
+**Version:** 1.25.0 (code 148)
+
+**Changes:**
+- Updated app version to 1.25.0 as requested
+
+**Tested:**
+- Build: ✅ PASS
+- Install: ✅ PASS
+
+**Next:**
+- Continue with other inventory management features
+
+---
+
+## ✅ v1.5 - Fixed Duplicate COMPLETED Status Display (COMPLETED)
+
+**Version:** 1.5 (code 147)
+
+**Changes:**
+- Fixed duplicate "COMPLETED" status display in inventory count sessions list
+- For completed sessions: hide sessionStatus, show only sessionCompletedDate with "COMPLETED"
+- For in-progress sessions: show sessionStatus with current status, hide sessionCompletedDate
+
+**Tested:**
+- Build: ✅ PASS
+- UI: ✅ Only one status badge displayed per session
+
+**Next:**
+- Continue with other inventory management features
+
+---
+
+## ✅ v1.4 - Standardized Inventory Count Status Display (COMPLETED)
+
+**Version:** 1.4 (code 146)
+
+**Changes:**
+- Standardized inventory count completion status display to "COMPLETED" (all uppercase)
+- Updated InventoryCountSessionsAdapter to show consistent status format
+
+**Tested:**
+- Build: ✅ PASS
+- UI: ✅ Status displays as "COMPLETED" consistently
+
+**Next:**
+- Continue with other inventory management features
+
+---
+
 ## ✅ v1.3 - Package Information Display in Inventory Count View (COMPLETED)
 
 **Version:** 1.3 (code 145)
