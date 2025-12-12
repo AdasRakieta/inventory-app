@@ -50,23 +50,30 @@
                 android:layout_height="wrap_content"
                 android:text="SN123456"
                 android:textSize="12sp"
-                android:textColor="@color/text_secondary"/>
+                android:textColor="@color/text_secondary"
+                android:layout_marginTop="2dp"/>
+
+            <TextView
+                android:id="@+id/productCategoryText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Category"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginTop="2dp"/>
+
+            <!-- Package Information -->
+            <TextView
+                android:id="@+id/packageInfoText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📦 Package Name"
+                android:textSize="12sp"
+                android:textColor="@color/primary"
+                android:layout_marginTop="4dp"
+                android:textStyle="bold"/>
 
         </LinearLayout>
-
-        <!-- Category -->
-        <TextView
-            android:id="@+id/productCategoryText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Scanner"
-            android:textSize="12sp"
-            android:textColor="@color/primary"
-            android:background="@drawable/rounded_background"
-            android:backgroundTint="@color/primary_light"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="4dp"
-            android:layout_marginStart="8dp"/>
 
     </LinearLayout>
 

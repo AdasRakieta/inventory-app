@@ -18,8 +18,10 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.inventoryapp.data.local.entities.ProductWithPackageInfo
 import com.example.inventoryapp.databinding.DialogPackageSelectionBinding
 import com.example.inventoryapp.databinding.FragmentInventoryCountSessionBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
@@ -48,7 +50,7 @@ class InventoryCountSessionFragment : Fragment() {
     private var currentInputField: TextInputEditText? = null
     private val scannedSerials = mutableSetOf<String>()
     
-    private var currentProducts = emptyList<com.example.inventoryapp.data.local.entities.ProductEntity>()
+    private var currentProducts = emptyList<ProductWithPackageInfo>()
     
     private lateinit var productsAdapter: InventoryCountProductsAdapter
 
@@ -115,7 +117,8 @@ class InventoryCountSessionFragment : Fragment() {
         }
         
         binding.showMissingProductsButton.setOnClickListener {
-            showMissingProductsDialog()
+            val action = InventoryCountSessionFragmentDirections.actionInventoryCountSessionToMissingProducts(args.sessionId)
+            findNavController().navigate(action)
         }
     }
     
@@ -297,7 +300,7 @@ class InventoryCountSessionFragment : Fragment() {
                 // Update scannedSerials set
                 scannedSerials.clear()
                 products.forEach { product ->
-                    product.serialNumber?.let { scannedSerials.add(it) }
+                    product.product.serialNumber?.let { scannedSerials.add(it) }
                 }
                 
                 // Update adapter with products
@@ -502,7 +505,7 @@ class InventoryCountSessionFragment : Fragment() {
                 
                 for (product in productsToAssign) {
                     try {
-                        viewModel.assignProductToPackage(product.id, packageId)
+                        viewModel.assignProductToPackage(product.product.id, packageId)
                         successCount++
                     } catch (e: Exception) {
                         errorCount++
@@ -532,7 +535,7 @@ class InventoryCountSessionFragment : Fragment() {
 
                 for (product in productsToUnassign) {
                     try {
-                        viewModel.unassignProductFromPackage(product.id)
+                        viewModel.unassignProductFromPackage(product.product.id)
                         successCount++
                     } catch (e: Exception) {
                         errorCount++
@@ -553,156 +556,7 @@ class InventoryCountSessionFragment : Fragment() {
         }
     }
 
-    private fun showMissingProductsDialog() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                // Get missing products with package info
-                val missingProducts = viewModel.getMissingProducts()
 
-                if (missingProducts.isEmpty()) {
-                    Toast.makeText(requireContext(), "All products have been scanned", Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-
-                // Create dialog
-                val dialog = Dialog(requireContext())
-                dialog.setTitle("Missing Products (${missingProducts.size})")
-
-                // Create main container
-                val mainContainer = LinearLayout(requireContext()).apply {
-                    orientation = LinearLayout.VERTICAL
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                    )
-                }
-
-                // Search input
-                val searchInputLayout = com.google.android.material.textfield.TextInputLayout(requireContext()).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        setMargins(24, 16, 24, 8)
-                    }
-                    hint = "Search products..."
-                    setBoxBackgroundMode(com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE)
-                }
-
-                val searchEditText = com.google.android.material.textfield.TextInputEditText(searchInputLayout.context).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    )
-                }
-
-                searchInputLayout.addView(searchEditText)
-                mainContainer.addView(searchInputLayout)
-
-                // Filter checkboxes
-                val filterContainer = LinearLayout(requireContext()).apply {
-                    orientation = LinearLayout.VERTICAL
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        setMargins(24, 8, 24, 16)
-                    }
-                }
-
-                val showAssignedCheckbox = android.widget.CheckBox(requireContext()).apply {
-                    text = "Show products assigned to packages"
-                    isChecked = true
-                    setTextColor(ContextCompat.getColor(requireContext(), com.example.inventoryapp.R.color.text_primary))
-                }
-
-                val showUnassignedCheckbox = android.widget.CheckBox(requireContext()).apply {
-                    text = "Show products not assigned to packages"
-                    isChecked = true
-                    setTextColor(ContextCompat.getColor(requireContext(), com.example.inventoryapp.R.color.text_primary))
-                }
-
-                filterContainer.addView(showAssignedCheckbox)
-                filterContainer.addView(showUnassignedCheckbox)
-                mainContainer.addView(filterContainer)
-
-                // RecyclerView
-                val recyclerView = androidx.recyclerview.widget.RecyclerView(requireContext()).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        400 // Fixed height for dialog
-                    ).apply {
-                        setMargins(24, 0, 24, 16)
-                    }
-                    layoutManager = LinearLayoutManager(requireContext())
-                }
-
-                // Setup adapter
-                val adapter = MissingProductsAdapter()
-                recyclerView.adapter = adapter
-
-                // Function to filter and display products
-                fun updateDisplayedProducts() {
-                    val searchQuery = searchEditText.text.toString().trim().toLowerCase()
-                    val showAssigned = showAssignedCheckbox.isChecked
-                    val showUnassigned = showUnassignedCheckbox.isChecked
-
-                    val filteredProducts = missingProducts.filter { productWithPackage ->
-                        // Search filter
-                        val matchesSearch = searchQuery.isEmpty() ||
-                                productWithPackage.product.name.toLowerCase().contains(searchQuery) ||
-                                (productWithPackage.product.serialNumber?.toLowerCase()?.contains(searchQuery) == true) ||
-                                (productWithPackage.packageInfo?.name?.toLowerCase()?.contains(searchQuery) == true)
-
-                        // Package assignment filter
-                        val isAssigned = productWithPackage.packageInfo != null
-                        val matchesFilter = (showAssigned && isAssigned) || (showUnassigned && !isAssigned)
-
-                        matchesSearch && matchesFilter
-                    }
-
-                    adapter.submitList(filteredProducts)
-                }
-
-                // Initial display
-                updateDisplayedProducts()
-
-                // Search listener
-                searchEditText.addTextChangedListener(object : android.text.TextWatcher {
-                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-                    override fun afterTextChanged(s: android.text.Editable?) {
-                        updateDisplayedProducts()
-                    }
-                })
-
-                // Filter listeners
-                showAssignedCheckbox.setOnCheckedChangeListener { _, _ -> updateDisplayedProducts() }
-                showUnassignedCheckbox.setOnCheckedChangeListener { _, _ -> updateDisplayedProducts() }
-
-                mainContainer.addView(recyclerView)
-
-                // Close button
-                val closeButton = android.widget.Button(requireContext()).apply {
-                    text = "Close"
-                    setOnClickListener { dialog.dismiss() }
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        setMargins(24, 16, 24, 24)
-                    }
-                }
-                mainContainer.addView(closeButton)
-
-                dialog.setContentView(mainContainer)
-                dialog.show()
-
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Error loading missing products: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
 
     override fun onDestroyView() {
         super.onDestroyView()

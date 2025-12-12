@@ -30,9 +30,9 @@ class InventoryCountSessionViewModel(
     private val _session = MutableStateFlow<InventoryCountSessionEntity?>(null)
     val session: StateFlow<InventoryCountSessionEntity?> = _session.asStateFlow()
 
-    // Scanned products in this session
-    private val _scannedProducts = MutableStateFlow<List<ProductEntity>>(emptyList())
-    val scannedProducts: StateFlow<List<ProductEntity>> = _scannedProducts.asStateFlow()
+    // Scanned products in this session with package info
+    private val _scannedProducts = MutableStateFlow<List<ProductWithPackageInfo>>(emptyList())
+    val scannedProducts: StateFlow<List<ProductWithPackageInfo>> = _scannedProducts.asStateFlow()
 
     // Total count of scanned items
     val totalCount: StateFlow<Int> = _scannedProducts.map { it.size }
@@ -77,7 +77,12 @@ class InventoryCountSessionViewModel(
     private fun loadProducts() {
         viewModelScope.launch {
             inventoryCountRepository.getProductsInSession(sessionId).collect { products ->
-                _scannedProducts.value = products
+                // Get package info for each scanned product
+                val productsWithPackageInfo = products.map { product ->
+                    val packageInfo = packageRepository.getPackageForProduct(product.id).first()
+                    ProductWithPackageInfo(product, packageInfo)
+                }
+                _scannedProducts.value = productsWithPackageInfo
             }
         }
     }
@@ -172,7 +177,7 @@ class InventoryCountSessionViewModel(
     suspend fun getMissingProducts(): List<ProductWithPackageInfo> {
         val allProducts = getAllProducts()
         val scannedProducts = scannedProducts.value
-        val scannedIds = scannedProducts.map { it.id }.toSet()
+        val scannedIds = scannedProducts.map { it.product.id }.toSet()
 
         val missingProducts = allProducts.filter { it.id !in scannedIds }
 

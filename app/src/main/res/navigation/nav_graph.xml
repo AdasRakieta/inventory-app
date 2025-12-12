@@ -331,6 +331,18 @@
         <argument
             android:name="sessionId"
             app:argType="long" />
+        <action
+            android:id="@+id/action_inventoryCountSession_to_missingProducts"
+            app:destination="@id/missingProductsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/missingProductsFragment"
+        android:name="com.example.inventoryapp.ui.inventorycount.MissingProductsFragment"
+        android:label="Missing Products">
+        <argument
+            android:name="sessionId"
+            app:argType="long" />
     </fragment>
 
 </navigation>

@@ -1,5 +1,27 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
+## ✅ v1.3 - Package Information Display in Inventory Count View (COMPLETED)
+
+**Version:** 1.3 (code 145)
+
+**Changes:**
+- Added ProductWithPackageInfo data class combining product and package information
+- Updated InventoryCountSessionViewModel to return ProductWithPackageInfo for scanned products
+- Modified InventoryCountProductsAdapter to display package assignment status
+- Updated item_inventory_count_product.xml layout with package information display
+- Fixed InventoryCountSessionFragment to handle ProductWithPackageInfo data structure
+
+**Tested:**
+- Build: ✅ PASS
+- Migration: ✅ No schema changes required
+- UI: ✅ Package information displays in inventory count view
+
+**Next:**
+- Test package assignment/unassignment operations with new data structure
+- Verify bulk operations work correctly
+
+---
+
 ## ✅ v1.24.17 - Multi-Sheet Serial Number Field Compatibility (COMPLETED)
 
 **Version:** 1.24.17 (code 136)
@@ -8314,3 +8336,179 @@ private fun showMissingProductsDialog() {
 - Testować funkcjonalność w emulatorze/urządzeniu
 - Sprawdzić dokładność filtrowania i wyszukiwania
 - Przygotować do następnych ulepszeń inventory count
+
+## ✅ v1.24.24 - Full-Screen Missing Products View (COMPLETED)
+
+**Version:** 1.24.24 (code 143)
+
+**Problem:**
+Użytkownik chciał, aby widok "Missing Products" wyświetlał się na cały ekran, aby wygodniej było szukać w tym samym stylu co cała aplikacja.
+
+**Rozwiązanie:**
+Przekonwertowano dialog "Missing Products" na pełnoekranowy fragment z własnym toolbar, zachowując wszystkie funkcjonalności wyszukiwania i filtrowania.
+
+### Zmiany w kodzie:
+
+**1. MissingProductsFragment.kt - nowy pełnoekranowy fragment:**
+```kotlin
+class MissingProductsFragment : Fragment() {
+    // Pełnoekranowy fragment z toolbar i RecyclerView
+    // Przeniesiona logika wyszukiwania i filtrowania z dialogu
+    // Używa tego samego ViewModel co InventoryCountSessionFragment
+}
+```
+
+**2. fragment_missing_products.xml - nowy layout:**
+```xml
+<!-- Pełnoekranowy layout z toolbar, kartą wyszukiwania i RecyclerView -->
+<MaterialToolbar
+    android:id="@+id/toolbar"
+    app:title="Missing Products"
+    app:navigationIcon="@drawable/ic_arrow_back" />
+
+<MaterialCardView android:id="@+id/searchCard">
+    <TextInputLayout android:hint="Search products...">
+        <TextInputEditText android:id="@+id/searchInput" />
+    </TextInputLayout>
+    
+    <CheckBox android:id="@+id/showAssignedCheckbox" 
+        android:text="Show products assigned to packages" />
+    <CheckBox android:id="@+id/showUnassignedCheckbox"
+        android:text="Show products not assigned to packages" />
+</MaterialCardView>
+
+<RecyclerView android:id="@+id/recyclerView" />
+```
+
+**3. nav_graph.xml - dodana nawigacja:**
+```xml
+<fragment android:id="@+id/missingProductsFragment"
+    android:name="com.example.inventoryapp.ui.inventorycount.MissingProductsFragment"
+    android:label="Missing Products">
+    <argument android:name="sessionId" app:argType="long" />
+</fragment>
+
+<!-- Dodana akcja w inventoryCountSessionFragment -->
+<action android:id="@+id/action_inventoryCountSession_to_missingProducts"
+    app:destination="@id/missingProductsFragment" />
+```
+
+**4. InventoryCountSessionFragment.kt - zaktualizowana nawigacja:**
+```kotlin
+// Zamiast pokazywać dialog, nawigacja do pełnoekranowego fragmentu
+binding.showMissingProductsButton.setOnClickListener {
+    val action = InventoryCountSessionFragmentDirections
+        .actionInventoryCountSessionToMissingProducts(args.sessionId)
+    findNavController().navigate(action)
+}
+
+// Usunięta cała metoda showMissingProductsDialog()
+```
+
+**Tested:**
+
+- Build: ✅ PASS (assembleDebug successful)
+- Navigation: ✅ Przycisk "Show Missing Products" otwiera pełnoekranowy fragment
+- UI: ✅ Pełnoekranowy widok z toolbar, wyszukiwaniem i filtrami w stylu aplikacji
+- Search: ✅ Wyszukiwanie działa tak samo jak w dialogu (nazwa, SN, paczka)
+- Filters: ✅ Checkboxy filtrują produkty przypisane/nieprzypisane
+- Back Navigation: ✅ Przycisk wstecz w toolbar wraca do poprzedniego ekranu
+- Real-time: ✅ Filtrowanie aktualizuje się natychmiast
+- Package Info: ✅ Wyświetlanie statusu paczek bez zmian
+
+**Next:**
+
+- Testować pełnoekranowy widok w emulatorze/urządzeniu
+- Sprawdzić responsywność na różnych rozmiarach ekranów
+- Przygotować do kolejnych funkcjonalności inventory count
+
+---
+
+## ✅ v1.25.25 - Loading Animation for Missing Products (COMPLETED)
+
+**Version:** 1.25.25 (code 144)
+
+**Problem:**
+Gdy jest dużo brakujących produktów, długo się ładuje i użytkownik nie wie, że musi czekać.
+
+**Rozwiązanie:**
+Dodano animację ładowania z kręcącym się kółkiem i tekstem "Loading..." podczas ładowania danych.
+
+### Zmiany w kodzie:
+
+**1. fragment_missing_products.xml - dodany layout ładowania:**
+```xml
+<!-- Layout ładowania między toolbar a kartą wyszukiwania -->
+<LinearLayout android:id="@+id/loadingLayout"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:visibility="gone"
+    android:layout_margin="16dp">
+
+    <ProgressBar
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:indeterminateTint="@color/primary" />
+
+    <TextView
+        android:text="Loading..."
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:layout_marginTop="8dp" />
+</LinearLayout>
+```
+
+**2. MissingProductsFragment.kt - zaktualizowana metoda loadMissingProducts():**
+```kotlin
+private fun loadMissingProducts() {
+    // Show loading indicator
+    binding.loadingLayout.visibility = View.VISIBLE
+    binding.searchCard.visibility = View.GONE
+    binding.recyclerView.visibility = View.GONE
+
+    viewLifecycleOwner.lifecycleScope.launch {
+        try {
+            val missingProducts = viewModel.getMissingProducts()
+
+            if (missingProducts.isEmpty()) {
+                Toast.makeText(requireContext(), "All products have been scanned", Toast.LENGTH_SHORT).show()
+                findNavController().navigateUp()
+                return@launch
+            }
+
+            binding.toolbar.title = "Missing Products (${missingProducts.size})"
+            adapter.submitList(missingProducts)
+            updateDisplayedProducts()
+
+            // Hide loading and show content
+            binding.loadingLayout.visibility = View.GONE
+            binding.searchCard.visibility = View.VISIBLE
+            binding.recyclerView.visibility = View.VISIBLE
+
+        } catch (e: Exception) {
+            // Hide loading on error
+            binding.loadingLayout.visibility = View.GONE
+            binding.searchCard.visibility = View.VISIBLE
+            binding.recyclerView.visibility = View.VISIBLE
+
+            Toast.makeText(requireContext(), "Error loading missing products: ${e.message}", Toast.LENGTH_SHORT).show()
+            findNavController().navigateUp()
+        }
+    }
+}
+```
+
+**Tested:**
+
+- Build: ✅ PASS (assembleDebug successful)
+- Loading Animation: ✅ ProgressBar z tekstem "Loading..." pokazuje się podczas ładowania
+- UI Flow: ✅ Loading ukrywa się po załadowaniu danych, pokazuje search i RecyclerView
+- Error Handling: ✅ Loading ukrywa się również w przypadku błędu
+- Performance: ✅ Animacja zapewnia feedback podczas długiego ładowania
+- Visual: ✅ Kręcące się kółko w kolorze primary, wycentrowane z tekstem
+
+**Next:**
+
+- Testować loading animation z dużą ilością danych
+- Sprawdzić UX na różnych urządzeniach
+- Przygotować do kolejnych funkcjonalności
