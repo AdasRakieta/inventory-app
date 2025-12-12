@@ -1,15 +1,33 @@
 # Plan Projektu - Aplikacja Inwentaryzacyjna (Android/Kotlin)
 
-## ✅ v1.25.0 - Version Update (COMPLETED)
+## ✅ v1.25.1 - Version Update (COMPLETED)
 
-**Version:** 1.25.0 (code 148)
+**Version:** 1.25.1 (code 149)
 
 **Changes:**
-- Updated app version to 1.25.0 as requested
+- Updated app version to 1.25.1 as requested
 
 **Tested:**
 - Build: ✅ PASS
 - Install: ✅ PASS
+
+**Next:**
+- Continue with other inventory management features
+
+---
+
+## ✅ v1.25.0 - Layout Fix for Product Display (COMPLETED)
+
+**Changes:**
+- Fixed product list positioning in completed inventory count sessions
+- Removed RecyclerView padding that was creating space below the footer
+- Adjusted layout constraints so products display immediately below the controls footer
+- Modified manualEntryContainer to use wrap_content height for proper spacing
+
+**Tested:**
+- Build: ✅ PASS
+- Install: ✅ PASS
+- Layout: ✅ Products now display from top of available space
 
 **Next:**
 - Continue with other inventory management features
