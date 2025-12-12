@@ -2,6 +2,7 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background">
@@ -28,6 +29,23 @@
         </LinearLayout>
 
     </ScrollView>
+
+    <!-- Scanned Products List -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/scannedProductsRecyclerView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        app:layout_constraintTop_toBottomOf="@id/manualEntryContainer"
+        app:layout_constraintBottom_toTopOf="@id/controlsCard"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:padding="16dp"
+        android:clipToPadding="false"
+        android:scrollbars="vertical"
+        android:fadeScrollbars="true"
+        tools:listitem="@layout/item_inventory_count_product"
+        tools:itemCount="3" />
 
     <!-- Controls Card -->
     <com.google.android.material.card.MaterialCardView
@@ -124,6 +142,16 @@
                     android:layout_weight="1"
                     android:text="Clear All"
                     android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                <Button
+                    android:id="@+id/showMissingProductsButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Missing"
+                    android:layout_marginStart="4dp"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
             </LinearLayout>
@@ -137,32 +165,15 @@
                 android:visibility="gone"
                 style="@style/Widget.MaterialComponents.Button" />
 
-            <!-- Import/Export Buttons -->
-            <LinearLayout
+            <!-- Bulk Assign Button (shown when COMPLETED) -->
+            <Button
+                android:id="@+id/bulkAssignButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="8dp">
-
-                <Button
-                    android:id="@+id/importCsvButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Import CSV"
-                    android:layout_marginEnd="4dp"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-
-                <Button
-                    android:id="@+id/downloadTemplateButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Template"
-                    android:layout_marginStart="4dp"
-                    style="@style/Widget.MaterialComponents.Button.TextButton" />
-
-            </LinearLayout>
+                android:text="Assign to Package"
+                android:visibility="gone"
+                android:layout_marginTop="8dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
         </LinearLayout>
 

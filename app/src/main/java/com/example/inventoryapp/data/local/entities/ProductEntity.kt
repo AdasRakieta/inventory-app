@@ -20,3 +20,12 @@ data class ProductEntity(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )
+
+/**
+ * Data class that holds a Product and its Package information
+ * Used for displaying missing products with package assignment status
+ */
+data class ProductWithPackageInfo(
+    val product: ProductEntity,
+    val packageInfo: PackageEntity? = null
+)

@@ -1,6 +1,7 @@
 package com.example.inventoryapp.ui.inventorycount
 
 import android.app.AlertDialog
+import android.app.Dialog
 import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
@@ -18,9 +19,12 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.navArgs
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.inventoryapp.databinding.DialogPackageSelectionBinding
 import com.example.inventoryapp.databinding.FragmentInventoryCountSessionBinding
 import com.example.inventoryapp.data.local.database.AppDatabase
 import com.example.inventoryapp.data.repository.InventoryCountRepository
+import com.example.inventoryapp.ui.inventorycount.PackageSelectionAdapter
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.flow.collect
@@ -43,13 +47,10 @@ class InventoryCountSessionFragment : Fragment() {
     
     private var currentInputField: TextInputEditText? = null
     private val scannedSerials = mutableSetOf<String>()
-
-    // CSV file picker launcher
-    private val csvPickerLauncher = registerForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { importCsvFile(it) }
-    }
+    
+    private var currentProducts = emptyList<com.example.inventoryapp.data.local.entities.ProductEntity>()
+    
+    private lateinit var productsAdapter: InventoryCountProductsAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,7 +60,9 @@ class InventoryCountSessionFragment : Fragment() {
             database.inventoryCountDao(),
             database.productDao()
         )
-        val factory = InventoryCountSessionViewModelFactory(repository, args.sessionId)
+        val packageRepository = (requireActivity().application as com.example.inventoryapp.InventoryApplication).packageRepository
+        val productRepository = (requireActivity().application as com.example.inventoryapp.InventoryApplication).productRepository
+        val factory = InventoryCountSessionViewModelFactory(repository, packageRepository, productRepository, args.sessionId)
         val vm: InventoryCountSessionViewModel by viewModels { factory }
         viewModel = vm
     }
@@ -76,6 +79,7 @@ class InventoryCountSessionFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setupRecyclerView()
         setupClickListeners()
         observeSession()
         observeProducts()
@@ -83,6 +87,14 @@ class InventoryCountSessionFragment : Fragment() {
         
         // Start with one empty input field
         addProductInputField()
+    }
+
+    private fun setupRecyclerView() {
+        productsAdapter = InventoryCountProductsAdapter()
+        binding.scannedProductsRecyclerView.apply {
+            layoutManager = androidx.recyclerview.widget.LinearLayoutManager(requireContext())
+            adapter = productsAdapter
+        }
     }
 
     private fun setupClickListeners() {
@@ -98,12 +110,12 @@ class InventoryCountSessionFragment : Fragment() {
             showStatisticsDialog()
         }
         
-        binding.importCsvButton.setOnClickListener {
-            csvPickerLauncher.launch("text/*")
+        binding.bulkAssignButton.setOnClickListener {
+            showBulkAssignDialog()
         }
         
-        binding.downloadTemplateButton.setOnClickListener {
-            downloadCsvTemplate()
+        binding.showMissingProductsButton.setOnClickListener {
+            showMissingProductsDialog()
         }
     }
     
@@ -248,10 +260,6 @@ class InventoryCountSessionFragment : Fragment() {
                     binding.clearSessionButton.visibility = 
                         if (!isCompleted) View.VISIBLE else View.GONE
                     
-                    // Disable import/template buttons when completed
-                    binding.importCsvButton.isEnabled = !isCompleted
-                    binding.downloadTemplateButton.isEnabled = !isCompleted
-                    
                     // Show/hide input container (disable adding items when completed)
                     binding.manualEntryContainer.visibility = 
                         if (!isCompleted) View.VISIBLE else View.GONE
@@ -259,8 +267,22 @@ class InventoryCountSessionFragment : Fragment() {
                     // Show statistics button when completed
                     binding.viewStatisticsButton.visibility = 
                         if (isCompleted) View.VISIBLE else View.GONE
+                    
+                    // Update bulk assign button visibility
+                    updateBulkAssignButtonVisibility()
                 }
             }
+        }
+    }
+
+    private fun updateBulkAssignButtonVisibility() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val session = viewModel.session.value
+            val isCompleted = session?.status == "COMPLETED"
+            val hasProducts = currentProducts.isNotEmpty()
+            
+            binding.bulkAssignButton.visibility = 
+                if (isCompleted && hasProducts) View.VISIBLE else View.GONE
         }
     }
 
@@ -269,14 +291,23 @@ class InventoryCountSessionFragment : Fragment() {
             viewModel.scannedProducts.collect { products ->
                 binding.totalCountText.text = "${products.size} items"
                 
+                // Update current products list
+                currentProducts = products
+                
                 // Update scannedSerials set
                 scannedSerials.clear()
                 products.forEach { product ->
                     product.serialNumber?.let { scannedSerials.add(it) }
                 }
                 
+                // Update adapter with products
+                productsAdapter.submitList(products)
+                
                 // Update input field hint with current count
                 updateInputFieldHint()
+                
+                // Update bulk assign button visibility
+                updateBulkAssignButtonVisibility()
             }
         }
     }
@@ -361,118 +392,314 @@ class InventoryCountSessionFragment : Fragment() {
         }
     }
 
-    private fun downloadCsvTemplate() {
+    private fun showBulkAssignDialog() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                // Use app-specific external storage
-                val templatesDir = java.io.File(requireContext().getExternalFilesDir(null), "inventory/templates")
-                
-                // Create directory if not exists
-                if (!templatesDir.exists()) {
-                    templatesDir.mkdirs()
+                // Get all packages
+                val packages = viewModel.getAllPackages()
+
+                if (packages.isEmpty()) {
+                    Toast.makeText(requireContext(), "No packages available", Toast.LENGTH_SHORT).show()
+                    return@launch
                 }
-                
-                val templateFile = java.io.File(templatesDir, "inventory_count_template.csv")
-                
-                // CSV Template content
-                val templateContent = """Serial Number
-EXAMPLE123
-EXAMPLE456
-EXAMPLE789
-""".trimIndent()
-                
-                // Write to file (overwrite if exists)
-                templateFile.writeText(templateContent)
-                
-                Toast.makeText(
-                    requireContext(), 
-                    "Template downloaded to:\n${templateFile.absolutePath}", 
-                    Toast.LENGTH_LONG
-                ).show()
+
+                // Create dialog
+                val dialog = Dialog(requireContext())
+                val binding = DialogPackageSelectionBinding.inflate(layoutInflater)
+                dialog.setContentView(binding.root)
+
+                // Setup RecyclerView
+                val adapter = PackageSelectionAdapter { selectedPackage ->
+                    // Handle package selection
+                    binding.assignButton.isEnabled = true
+                }
+                binding.packagesRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+                binding.packagesRecyclerView.adapter = adapter
+                adapter.submitList(packages)
+
+                // Setup search functionality
+                binding.searchEditText.addTextChangedListener(object : TextWatcher {
+                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                    override fun afterTextChanged(s: Editable?) {
+                        val query = s?.toString()?.trim() ?: ""
+                        if (query.isEmpty()) {
+                            adapter.submitList(packages)
+                        } else {
+                            val filteredPackages = packages.filter { pkg ->
+                                pkg.name.contains(query, ignoreCase = true) ||
+                                pkg.packageCode?.contains(query, ignoreCase = true) == true ||
+                                pkg.status.contains(query, ignoreCase = true)
+                            }
+                            adapter.submitList(filteredPackages)
+                        }
+                    }
+                })
+
+                // Initially disable assign button
+                binding.assignButton.isEnabled = false
+
+                // Handle assign button
+                binding.assignButton.setOnClickListener {
+                    val selectedPackage = adapter.getSelectedPackage()
+                    if (selectedPackage != null) {
+                        dialog.dismiss()
+                        showBulkAssignConfirmationDialog(selectedPackage.id, selectedPackage.name)
+                    }
+                }
+
+                // Handle unassign button
+                binding.unassignButton.setOnClickListener {
+                    dialog.dismiss()
+                    showBulkUnassignConfirmationDialog()
+                }
+
+                // Handle cancel button
+                binding.cancelButton.setOnClickListener {
+                    dialog.dismiss()
+                }
+
+                dialog.show()
+
             } catch (e: Exception) {
-                Toast.makeText(
-                    requireContext(), 
-                    "Error downloading template: ${e.message}", 
-                    Toast.LENGTH_LONG
-                ).show()
+                Toast.makeText(requireContext(), "Error loading packages: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun importCsvFile(uri: Uri) {
+    private fun showBulkAssignConfirmationDialog(packageId: Long, packageName: String) {
+        val currentProducts = productsAdapter.currentList.size
+        
+        AlertDialog.Builder(requireContext())
+            .setTitle("Confirm Bulk Assignment")
+            .setMessage("Assign all $currentProducts scanned products to package '$packageName'?")
+            .setPositiveButton("Assign") { _, _ ->
+                performBulkAssignment(packageId, packageName)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showBulkUnassignConfirmationDialog() {
+        val currentProducts = productsAdapter.currentList.size
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Confirm Bulk Unassignment")
+            .setMessage("Remove all $currentProducts scanned products from their current packages?")
+            .setPositiveButton("Unassign") { _, _ ->
+                performBulkUnassignment()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun performBulkAssignment(packageId: Long, packageName: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val inputStream = requireContext().contentResolver.openInputStream(uri)
-                    ?: throw Exception("Cannot open file")
-                
-                val lines = inputStream.bufferedReader().use { it.readLines() }
-                
-                if (lines.isEmpty()) {
-                    Toast.makeText(requireContext(), "CSV file is empty", Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-                
-                // Skip header row
-                val serialNumbers = lines.drop(1).map { it.trim() }.filter { it.isNotEmpty() }
-                
-                if (serialNumbers.isEmpty()) {
-                    Toast.makeText(requireContext(), "No serial numbers found in CSV", Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-                
+                val productsToAssign = productsAdapter.currentList
                 var successCount = 0
                 var errorCount = 0
-                val errors = mutableListOf<String>()
                 
-                // Process each serial number
-                for (serialNumber in serialNumbers) {
-                    // Check if already scanned
-                    if (scannedSerials.contains(serialNumber)) {
+                for (product in productsToAssign) {
+                    try {
+                        viewModel.assignProductToPackage(product.id, packageId)
+                        successCount++
+                    } catch (e: Exception) {
                         errorCount++
-                        errors.add("$serialNumber (already scanned)")
-                        continue
-                    }
-                    
-                    val result = viewModel.scanProduct(serialNumber)
-                    
-                    when (result) {
-                        is com.example.inventoryapp.data.repository.ScanResult.Success -> {
-                            successCount++
-                            scannedSerials.add(serialNumber)
-                        }
-                        is com.example.inventoryapp.data.repository.ScanResult.Error -> {
-                            errorCount++
-                            errors.add("$serialNumber (${result.message})")
-                        }
+                        // Continue with other products
                     }
                 }
                 
-                // Show results
-                val message = buildString {
-                    append("Import completed!\n")
-                    append("✅ Success: $successCount\n")
-                    if (errorCount > 0) {
-                        append("❌ Errors: $errorCount\n\n")
-                        append("Failed items:\n")
-                        append(errors.take(5).joinToString("\n"))
-                        if (errors.size > 5) {
-                            append("\n... and ${errors.size - 5} more")
-                        }
-                    }
+                val message = "Assigned $successCount products to '$packageName'"
+                if (errorCount > 0) {
+                    message.plus(" ($errorCount errors)")
                 }
                 
-                AlertDialog.Builder(requireContext())
-                    .setTitle("CSV Import Results")
-                    .setMessage(message)
-                    .setPositiveButton("OK", null)
-                    .show()
+                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
                 
             } catch (e: Exception) {
-                Toast.makeText(
-                    requireContext(), 
-                    "Error importing CSV: ${e.message}", 
-                    Toast.LENGTH_LONG
-                ).show()
+                Toast.makeText(requireContext(), "Error during bulk assignment: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun performBulkUnassignment() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val productsToUnassign = productsAdapter.currentList
+                var successCount = 0
+                var errorCount = 0
+
+                for (product in productsToUnassign) {
+                    try {
+                        viewModel.unassignProductFromPackage(product.id)
+                        successCount++
+                    } catch (e: Exception) {
+                        errorCount++
+                        // Continue with other products
+                    }
+                }
+
+                val message = "Unassigned $successCount products from packages"
+                if (errorCount > 0) {
+                    message.plus(" ($errorCount errors)")
+                }
+
+                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Error during bulk unassignment: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun showMissingProductsDialog() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // Get missing products with package info
+                val missingProducts = viewModel.getMissingProducts()
+
+                if (missingProducts.isEmpty()) {
+                    Toast.makeText(requireContext(), "All products have been scanned", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                // Create dialog
+                val dialog = Dialog(requireContext())
+                dialog.setTitle("Missing Products (${missingProducts.size})")
+
+                // Create main container
+                val mainContainer = LinearLayout(requireContext()).apply {
+                    orientation = LinearLayout.VERTICAL
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                }
+
+                // Search input
+                val searchInputLayout = com.google.android.material.textfield.TextInputLayout(requireContext()).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        setMargins(24, 16, 24, 8)
+                    }
+                    hint = "Search products..."
+                    setBoxBackgroundMode(com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE)
+                }
+
+                val searchEditText = com.google.android.material.textfield.TextInputEditText(searchInputLayout.context).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                }
+
+                searchInputLayout.addView(searchEditText)
+                mainContainer.addView(searchInputLayout)
+
+                // Filter checkboxes
+                val filterContainer = LinearLayout(requireContext()).apply {
+                    orientation = LinearLayout.VERTICAL
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        setMargins(24, 8, 24, 16)
+                    }
+                }
+
+                val showAssignedCheckbox = android.widget.CheckBox(requireContext()).apply {
+                    text = "Show products assigned to packages"
+                    isChecked = true
+                    setTextColor(ContextCompat.getColor(requireContext(), com.example.inventoryapp.R.color.text_primary))
+                }
+
+                val showUnassignedCheckbox = android.widget.CheckBox(requireContext()).apply {
+                    text = "Show products not assigned to packages"
+                    isChecked = true
+                    setTextColor(ContextCompat.getColor(requireContext(), com.example.inventoryapp.R.color.text_primary))
+                }
+
+                filterContainer.addView(showAssignedCheckbox)
+                filterContainer.addView(showUnassignedCheckbox)
+                mainContainer.addView(filterContainer)
+
+                // RecyclerView
+                val recyclerView = androidx.recyclerview.widget.RecyclerView(requireContext()).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        400 // Fixed height for dialog
+                    ).apply {
+                        setMargins(24, 0, 24, 16)
+                    }
+                    layoutManager = LinearLayoutManager(requireContext())
+                }
+
+                // Setup adapter
+                val adapter = MissingProductsAdapter()
+                recyclerView.adapter = adapter
+
+                // Function to filter and display products
+                fun updateDisplayedProducts() {
+                    val searchQuery = searchEditText.text.toString().trim().toLowerCase()
+                    val showAssigned = showAssignedCheckbox.isChecked
+                    val showUnassigned = showUnassignedCheckbox.isChecked
+
+                    val filteredProducts = missingProducts.filter { productWithPackage ->
+                        // Search filter
+                        val matchesSearch = searchQuery.isEmpty() ||
+                                productWithPackage.product.name.toLowerCase().contains(searchQuery) ||
+                                (productWithPackage.product.serialNumber?.toLowerCase()?.contains(searchQuery) == true) ||
+                                (productWithPackage.packageInfo?.name?.toLowerCase()?.contains(searchQuery) == true)
+
+                        // Package assignment filter
+                        val isAssigned = productWithPackage.packageInfo != null
+                        val matchesFilter = (showAssigned && isAssigned) || (showUnassigned && !isAssigned)
+
+                        matchesSearch && matchesFilter
+                    }
+
+                    adapter.submitList(filteredProducts)
+                }
+
+                // Initial display
+                updateDisplayedProducts()
+
+                // Search listener
+                searchEditText.addTextChangedListener(object : android.text.TextWatcher {
+                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                    override fun afterTextChanged(s: android.text.Editable?) {
+                        updateDisplayedProducts()
+                    }
+                })
+
+                // Filter listeners
+                showAssignedCheckbox.setOnCheckedChangeListener { _, _ -> updateDisplayedProducts() }
+                showUnassignedCheckbox.setOnCheckedChangeListener { _, _ -> updateDisplayedProducts() }
+
+                mainContainer.addView(recyclerView)
+
+                // Close button
+                val closeButton = android.widget.Button(requireContext()).apply {
+                    text = "Close"
+                    setOnClickListener { dialog.dismiss() }
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        setMargins(24, 16, 24, 24)
+                    }
+                }
+                mainContainer.addView(closeButton)
+
+                dialog.setContentView(mainContainer)
+                dialog.show()
+
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Error loading missing products: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }

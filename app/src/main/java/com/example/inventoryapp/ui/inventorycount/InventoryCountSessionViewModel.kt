@@ -5,11 +5,15 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.inventoryapp.data.local.entities.InventoryCountSessionEntity
 import com.example.inventoryapp.data.local.entities.ProductEntity
+import com.example.inventoryapp.data.local.entities.ProductWithPackageInfo
 import com.example.inventoryapp.data.repository.InventoryCountRepository
 import com.example.inventoryapp.data.repository.ScanResult
 import com.example.inventoryapp.utils.CategoryHelper
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+
+import com.example.inventoryapp.data.repository.PackageRepository
+import com.example.inventoryapp.data.repository.ProductRepository
 
 /**
  * ViewModel for Inventory Count session details.
@@ -17,6 +21,8 @@ import kotlinx.coroutines.launch
  */
 class InventoryCountSessionViewModel(
     private val inventoryCountRepository: InventoryCountRepository,
+    private val packageRepository: PackageRepository,
+    private val productRepository: ProductRepository,
     private val sessionId: Long
 ) : ViewModel() {
 
@@ -127,16 +133,67 @@ class InventoryCountSessionViewModel(
             )
         }.sortedByDescending { it.count }
     }
+
+    /**
+     * Get all available packages for bulk assignment.
+     */
+    suspend fun getAllPackages(): List<com.example.inventoryapp.data.local.entities.PackageEntity> {
+        return packageRepository.getAllPackages().first()
+    }
+
+    /**
+     * Assign a product to a package.
+     */
+    suspend fun assignProductToPackage(productId: Long, packageId: Long) {
+        packageRepository.addProductToPackage(packageId, productId)
+    }
+
+    /**
+     * Remove a product from any package (unassign).
+     */
+    suspend fun unassignProductFromPackage(productId: Long) {
+        // Find which package the product is in
+        val packageEntity = packageRepository.getPackageForProduct(productId).first()
+        if (packageEntity != null) {
+            packageRepository.removeProductFromPackage(packageEntity.id, productId)
+        }
+    }
+
+    /**
+     * Get all products in the database (for finding missing products).
+     */
+    suspend fun getAllProducts(): List<ProductEntity> {
+        return productRepository.getAllProducts().first()
+    }
+
+    /**
+     * Get missing products (products in database but not scanned in this session).
+     */
+    suspend fun getMissingProducts(): List<ProductWithPackageInfo> {
+        val allProducts = getAllProducts()
+        val scannedProducts = scannedProducts.value
+        val scannedIds = scannedProducts.map { it.id }.toSet()
+
+        val missingProducts = allProducts.filter { it.id !in scannedIds }
+
+        // Get package info for each missing product
+        return missingProducts.map { product ->
+            val packageInfo = packageRepository.getPackageForProduct(product.id).first()
+            ProductWithPackageInfo(product, packageInfo)
+        }
+    }
 }
 
 class InventoryCountSessionViewModelFactory(
     private val inventoryCountRepository: InventoryCountRepository,
+    private val packageRepository: PackageRepository,
+    private val productRepository: ProductRepository,
     private val sessionId: Long
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(InventoryCountSessionViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return InventoryCountSessionViewModel(inventoryCountRepository, sessionId) as T
+            return InventoryCountSessionViewModel(inventoryCountRepository, packageRepository, productRepository, sessionId) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
