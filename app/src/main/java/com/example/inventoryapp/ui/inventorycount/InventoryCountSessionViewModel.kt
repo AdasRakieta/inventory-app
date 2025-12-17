@@ -93,6 +93,17 @@ class InventoryCountSessionViewModel(
      */
     suspend fun scanProduct(serialNumber: String): ScanResult {
         val result = inventoryCountRepository.scanProduct(sessionId, serialNumber)
+        
+        if (result is ScanResult.Success) {
+            // Immediately update the scanned products list for real-time UI update
+            val products = inventoryCountRepository.getProductsInSession(sessionId).first()
+            val productsWithPackageInfo = products.map { product ->
+                val packageInfo = packageRepository.getPackageForProduct(product.id).first()
+                ProductWithPackageInfo(product, packageInfo)
+            }
+            _scannedProducts.value = productsWithPackageInfo
+        }
+        
         _lastScanResult.value = result
         return result
     }
