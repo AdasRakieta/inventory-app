@@ -122,31 +122,35 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/completeSessionButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:minHeight="@dimen/inventory_control_button_min_height"
                     android:layout_weight="1"
                     android:text="Complete"
                     android:layout_marginEnd="4dp"
                     style="@style/Widget.MaterialComponents.Button" />
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/clearSessionButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:minHeight="@dimen/inventory_control_button_min_height"
                     android:layout_weight="1"
                     android:text="Clear All"
                     android:layout_marginStart="4dp"
                     android:layout_marginEnd="4dp"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/showMissingProductsButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:minHeight="@dimen/inventory_control_button_min_height"
                     android:layout_weight="1"
                     android:text="Missing"
                     android:layout_marginStart="4dp"
