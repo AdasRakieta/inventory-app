@@ -130,9 +130,14 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:minHeight="@dimen/inventory_control_button_min_height"
+                    android:minWidth="@dimen/inventory_control_button_min_width"
                     android:layout_weight="1"
                     android:text="Complete"
+                    android:textSize="13sp"
                     android:layout_marginEnd="4dp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:gravity="center"
                     style="@style/Widget.MaterialComponents.Button" />
 
                 <com.google.android.material.button.MaterialButton
@@ -140,10 +145,15 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:minHeight="@dimen/inventory_control_button_min_height"
+                    android:minWidth="@dimen/inventory_control_button_min_width"
                     android:layout_weight="1"
                     android:text="Clear All"
+                    android:textSize="13sp"
                     android:layout_marginStart="4dp"
                     android:layout_marginEnd="4dp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:gravity="center"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
                 <com.google.android.material.button.MaterialButton
@@ -151,9 +161,14 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:minHeight="@dimen/inventory_control_button_min_height"
+                    android:minWidth="@dimen/inventory_control_button_min_width"
                     android:layout_weight="1"
                     android:text="Missing"
+                    android:textSize="13sp"
                     android:layout_marginStart="4dp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:gravity="center"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
             </LinearLayout>
