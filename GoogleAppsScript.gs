@@ -20,6 +20,8 @@ var KONFIGURACJA = [
  */
 function doGet(e) {
   var nazwaArkusza = e.parameter.arkusz;
+  var filterSn = e.parameter.sn;
+  
   if (!nazwaArkusza) {
     return ContentService.createTextOutput(JSON.stringify({
       status: "BLAD",
@@ -58,6 +60,11 @@ function doGet(e) {
         if (data[i][j] !== "") hasData = true;
       }
       
+      // Jeśli podano SN do filtrowania, sprawdź pierwszą kolumnę (SN)
+      if (filterSn && data[i][0].toString().trim() !== filterSn.toString().trim()) {
+        continue;
+      }
+      
       if (hasData) result.push(rowObj);
     }
     
@@ -87,6 +94,8 @@ function doPost(e) {
       return obslugaInsert(params);
     } else if (akcja === "update") {
       return obslugaUpdate(params);
+    } else if (akcja === "add_step") {
+      return obslugaAddStep(params);
     } else {
       return ContentService.createTextOutput(JSON.stringify({
         success: false,
@@ -454,6 +463,60 @@ function errorResponse(msg) {
   return ContentService.createTextOutput(JSON.stringify({success: false, message: msg})).setMimeType(ContentService.MimeType.JSON);
 }
 
+/**
+ * Obsługa dodawania nowego kroku do historii urządzenia
+ */
+function obslugaAddStep(params) {
+  try {
+    var arkuszNazwa = params.arkusz;
+    var serialNumber = params.serialNumber;
+    var krok = params.krok;
+    var data = params.data;
+    
+    if (!arkuszNazwa || !serialNumber || !krok || !data) {
+      return errorResponse("Brak wymaganych parametrów: arkusz, serialNumber, krok, data");
+    }
+    
+    var ss = SpreadsheetApp.openById(ID_ARKUSZA);
+    var sheet = ss.getSheetByName(arkuszNazwa);
+    
+    if (!sheet) {
+      return errorResponse("Nie znaleziono arkusza: " + arkuszNazwa);
+    }
+    
+    var allData = sheet.getDataRange().getValues();
+    var headers = allData[0];
+    
+    // Znajdź kolumnę SN (zakładamy pierwszą kolumnę)
+    var snCol = 0; // SN w pierwszej kolumnie
+    
+    var rowIndex = -1;
+    for (var r = 1; r < allData.length; r++) {
+      if (allData[r][snCol] && allData[r][snCol].toString().trim() === serialNumber.toString().trim()) {
+        rowIndex = r;
+        break;
+      }
+    }
+    
+    if (rowIndex !== -1) {
+      // Istniejący wiersz - dodaj na końcu
+      var rowNum = rowIndex + 1;
+      var lastCol = sheet.getLastColumn();
+      sheet.getRange(rowNum, lastCol + 1).setValue(krok);
+      sheet.getRange(rowNum, lastCol + 2).setValue(data);
+    } else {
+      // Nowy wiersz
+      var newRow = [serialNumber, krok, data];
+      sheet.appendRow(newRow);
+    }
+    
+    return successResponse("Dodano krok do historii dla SN: " + serialNumber);
+    
+  } catch (error) {
+    return errorResponse("Błąd add_step: " + error.toString());
+  }
+}
+
 function testBulkInsert() {
   Logger.log("=== TEST BULK ===");
   var testParams = {
@@ -466,5 +529,18 @@ function testBulkInsert() {
     }]
   };
   var res = obslugaBulk(testParams);
+  Logger.log(res.getContent());
+}
+
+function testAddStep() {
+  Logger.log("=== TEST ADD STEP ===");
+  var testParams = {
+    akcja: "add_step",
+    arkusz: "Historia", // Załóżmy nazwę arkusza
+    serialNumber: "S25013524202057",
+    krok: "Wydano: Test",
+    data: "2025-12-17 14:00"
+  };
+  var res = obslugaAddStep(testParams);
   Logger.log(res.getContent());
 }

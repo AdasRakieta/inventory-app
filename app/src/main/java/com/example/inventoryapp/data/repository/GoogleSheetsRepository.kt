@@ -20,7 +20,8 @@ class GoogleSheetsRepository(
     private val apiService: GoogleSheetsApiService,
     private val productRepository: ProductRepository,
     private val packageRepository: PackageRepository,
-    private val contractorRepository: ContractorRepository
+    private val contractorRepository: ContractorRepository,
+    private val deviceMovementRepository: DeviceMovementRepository
 ) {
     
     companion object {
@@ -401,6 +402,65 @@ class GoogleSheetsRepository(
             } else {
                 resultMessage = "No products to upload"
                 println("[UPLOAD] No operations to upload")
+            }
+            
+            // Upload device movements (history steps)
+            try {
+                val allMovements = deviceMovementRepository.getAllMovements().first()
+                val movementsToUpload = allMovements.filter { movement ->
+                    (!onlyRecent || movement.timestamp >= threshold)
+                }
+                
+                println("[UPLOAD] Found ${movementsToUpload.size} device movements to upload")
+                
+                var movementsUploaded = 0
+                var movementsError = 0
+                
+                for (movement in movementsToUpload) {
+                    try {
+                        val product = productRepository.getProductById(movement.productId).first()
+                        val serialNumber = product?.serialNumber
+                        
+                        if (serialNumber.isNullOrBlank()) {
+                            println("[UPLOAD] Skipping movement for product ${movement.productId} - no SN")
+                            continue
+                        }
+                        
+                        // Send add_step request
+                        val stepData = mapOf(
+                            "action" to "add_step",
+                            "sn" to serialNumber,
+                            "krok" to movement.action,
+                            "data" to movement.timestamp.toString()
+                        )
+                        
+                        println("[UPLOAD] Uploading movement: ${serialNumber} - ${movement.action}")
+                        val response = apiService.addStep(stepData)
+                        
+                        if (response.success == true || response.status == "SUKCES") {
+                            movementsUploaded++
+                            println("[UPLOAD] Movement uploaded: ${serialNumber}")
+                        } else {
+                            movementsError++
+                            println("[UPLOAD] Movement failed: ${serialNumber} - ${response.message}")
+                        }
+                        
+                    } catch (e: Exception) {
+                        println("[UPLOAD] ERROR uploading movement ${movement.id}: ${e.message}")
+                        AppLogger.logError("Upload movement ${movement.id}", e)
+                        movementsError++
+                    }
+                }
+                
+                if (movementsUploaded > 0 || movementsError > 0) {
+                    resultMessage += "\nHistory: $movementsUploaded uploaded, $movementsError errors"
+                    println("[UPLOAD] History complete: $movementsUploaded uploaded, $movementsError errors")
+                }
+                
+            } catch (e: Exception) {
+                resultMessage += "\nHistory upload error: ${e.message}"
+                println("[UPLOAD] History upload error: ${e.message}")
+                AppLogger.logError("Upload device movements", e)
             }
             
             AppLogger.logAction("Google Sheets Upload", "Complete: $insertCount inserts, $updateCount updates")

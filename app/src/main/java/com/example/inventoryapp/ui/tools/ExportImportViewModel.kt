@@ -1465,7 +1465,8 @@ class ExportImportViewModel(
                     apiService,
                     productRepository,
                     packageRepository,
-                    contractorRepository
+                    contractorRepository,
+                    deviceMovementRepository
                 )
                 
                 // Execute sync
@@ -1504,7 +1505,8 @@ class ExportImportViewModel(
                     apiService,
                     productRepository,
                     packageRepository,
-                    contractorRepository
+                    contractorRepository,
+                    deviceMovementRepository
                 )
                 
                 // Execute upload (only recent changes from last 7 days)

@@ -226,4 +226,36 @@ class GoogleSheetsApiService {
             )
         }
     }
+    
+    suspend fun addStep(
+        stepData: Map<String, String>
+    ): ApiResponse = withContext(Dispatchers.IO) {
+        try {
+            val requestData = stepData.toMutableMap().apply {
+                put("akcja", "add_step")
+            }
+            
+            val jsonBody = gson.toJson(requestData)
+            println("[API] ADD_STEP Request: $jsonBody")
+            val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
+            
+            val request = Request.Builder()
+                .url(BASE_URL)
+                .post(requestBody)
+                .build()
+            
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: throw IOException("Empty response")
+            println("[API] ADD_STEP Response: $body")
+            
+            gson.fromJson(body, ApiResponse::class.java)
+        } catch (e: Exception) {
+            println("[API] ADD_STEP Error: ${e.message}")
+            e.printStackTrace()
+            ApiResponse(
+                status = "BLAD",
+                message = "Failed add step: ${e.message}"
+            )
+        }
+    }
 }
