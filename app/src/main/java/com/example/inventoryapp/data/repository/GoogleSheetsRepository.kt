@@ -209,6 +209,8 @@ class GoogleSheetsRepository(
                                     name = productName,
                                     categoryId = categoryId,
                                     description = productDesc,
+                                    deviceId = item.deviceId?.takeIf { it.isNotBlank() },
+                                    configValue = item.configValue?.takeIf { it in 0..10 },
                                     updatedAt = System.currentTimeMillis()
                                 )
                                 productRepository.updateProduct(updatedProduct)
@@ -220,6 +222,8 @@ class GoogleSheetsRepository(
                                     categoryId = categoryId,
                                     serialNumber = serialNumber,
                                     description = productDesc,
+                                    deviceId = item.deviceId?.takeIf { it.isNotBlank() },
+                                    configValue = item.configValue?.takeIf { it in 0..10 },
                                     createdAt = System.currentTimeMillis(),
                                     updatedAt = System.currentTimeMillis()
                                 )
@@ -261,6 +265,8 @@ class GoogleSheetsRepository(
                                 name = productName,
                                 categoryId = categoryId,
                                 description = productDesc,
+                                deviceId = item.deviceId?.takeIf { it.isNotBlank() },
+                                configValue = item.configValue?.takeIf { it in 0..10 },
                                 updatedAt = System.currentTimeMillis()
                             )
                             productRepository.updateProduct(updatedProduct)
@@ -272,6 +278,8 @@ class GoogleSheetsRepository(
                                 categoryId = categoryId,
                                 serialNumber = serialNumber,
                                 description = productDesc,
+                                deviceId = item.deviceId?.takeIf { it.isNotBlank() },
+                                configValue = item.configValue?.takeIf { it in 0..10 },
                                 createdAt = System.currentTimeMillis(),
                                 updatedAt = System.currentTimeMillis()
                             )
@@ -353,7 +361,10 @@ class GoogleSheetsRepository(
                             kod = packageInfo?.packageCode,
                             nazwa = packageInfo?.name,
                             status = mapPackageStatusToSheetStatus(packageInfo?.status),
-                            miejsce = null
+                            miejsce = null,
+                            dataWydania = if (packageInfo?.status == "ISSUED") {
+                                (packageInfo.shippedAt ?: System.currentTimeMillis()).toString()
+                            } else null
                         ))
                     } else {
                         // INSERT operation
@@ -367,8 +378,12 @@ class GoogleSheetsRepository(
                             Status = mapPackageStatusToSheetStatus(packageInfo?.status),
                             Firma = contractorName,
                             Komentarz = cleanComment(product.description),
-                            dataWydania = packageInfo?.shippedAt?.toString(),
-                            dataZwrotu = packageInfo?.returnedAt?.toString()
+                            dataWydania = if (packageInfo?.status == "ISSUED") {
+                                (packageInfo.shippedAt ?: System.currentTimeMillis()).toString()
+                            } else packageInfo?.shippedAt?.toString(),
+                            dataZwrotu = packageInfo?.returnedAt?.toString(),
+                            deviceId = product.deviceId,
+                            configValue = product.configValue
                         )
                         operations.add(BulkOperation(
                             typ = "insert",

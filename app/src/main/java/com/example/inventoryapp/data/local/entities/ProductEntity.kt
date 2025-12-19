@@ -17,6 +17,8 @@ data class ProductEntity(
     val description: String? = null,
     val imageUri: String? = null,
     val quantity: Int = 1, // Quantity for aggregated products (especially "Other" category)
+    val deviceId: String? = null, // Fixed device ID from Google Sheets column J
+    val configValue: Int? = null, // Config value from Google Sheets (0-10 range)
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

@@ -28,7 +28,9 @@ data class GoogleSheetItem(
     @SerializedName("Data wydania") val dataWydania: String? = null,// Issue date
     @SerializedName("Data zwrotu") val dataZwrotu: String? = null,  // Return date
     @SerializedName("Firma") val firma: String? = null,             // Company name
-    @SerializedName("Komentarz") val komentarz: String? = null      // Comments
+    @SerializedName("Komentarz") val komentarz: String? = null,     // Comments
+    @SerializedName("ID") val deviceId: String? = null,             // Fixed device ID (column J)
+    @SerializedName("Config") val configValue: Int? = null          // Config value (0-10 range)
 )
 
 /**
@@ -72,7 +74,9 @@ data class InsertData(
     val Data: String? = null,
     val Model: String? = null,
     @SerializedName("Data wydania") val dataWydania: String? = null,
-    @SerializedName("Data zwrotu") val dataZwrotu: String? = null
+    @SerializedName("Data zwrotu") val dataZwrotu: String? = null,
+    @SerializedName("ID") val deviceId: String? = null,
+    @SerializedName("Config") val configValue: Int? = null
 )
 
 /**
@@ -94,5 +98,6 @@ data class BulkOperation(
     val nazwa: String? = null,
     val status: String? = null,
     val miejsce: String? = null,
+    @SerializedName("Data wydania") val dataWydania: String? = null,
     val dane: InsertData? = null          // For insert operations
 )
